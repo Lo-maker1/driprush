@@ -24,44 +24,50 @@
 
         // RÉCUPÉRATION DES COMMANDES
         const ordersRef = ref(db, 'driprush_orders');
+        
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
+            console.log("Données reçues :", data); // Vérifie ici dans ta console (F12)
+            
             const container = document.getElementById('orders-list');
             container.innerHTML = '';
 
             if (data) {
-                Object.keys(data).reverse().forEach(id => {
-                    const o = data[id];
-                    const date = new Date(o.timestamp).toLocaleTimeString();
+                // On transforme l'objet en tableau pour le trier (les plus récents en haut)
+                const ordersArray = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+                ordersArray.sort((a, b) => b.timestamp - a.timestamp);
+
+                ordersArray.forEach(o => {
+                    const date = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : "Heure inconnue";
                     
                     container.innerHTML += `
-                        <div class="bg-gray-900 border ${o.status === 'En livraison' ? 'border-blue-500/30' : 'border-white/5'} p-6 rounded-[2.5rem] mb-6 shadow-2xl relative overflow-hidden">
+                        <div class="bg-gray-900 border ${o.status === 'En livraison' ? 'border-blue-500/30' : 'border-white/5'} p-6 rounded-[2.5rem] mb-6 shadow-2xl relative">
                             <div class="flex justify-between items-start mb-4">
                                 <div>
                                     <span class="text-[10px] font-black px-4 py-1.5 rounded-full ${o.status === 'Attente Dépôt' ? 'bg-orange-500 text-black' : 'bg-blue-600 text-white'} uppercase italic">
-                                        ${o.status}
+                                        ${o.status || 'Nouveau'}
                                     </span>
                                     <p class="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">${date}</p>
                                 </div>
-                                <button onclick="deleteOrder('${id}')" class="bg-red-500/10 text-red-500 p-3 rounded-xl text-[10px] font-black uppercase">Supprimer</button>
+                                <button onclick="deleteOrder('${o.id}')" class="bg-red-500/10 text-red-500 p-2 rounded-xl text-[9px] font-black uppercase">Supprimer</button>
                             </div>
 
                             <div class="space-y-4">
-                                <h3 class="text-2xl font-black italic uppercase text-white">${o.clientName}</h3>
+                                <h3 class="text-2xl font-black italic uppercase text-white">${o.clientName || 'Client Inconnu'}</h3>
                                 
                                 <div class="bg-black/40 p-5 rounded-[2rem] border border-white/5 space-y-3">
-                                    <p class="text-xs font-bold"><span class="text-orange-500">🛍️ ARTICLES :</span> ${o.items}</p>
-                                    <p class="text-xs font-bold"><span class="text-orange-500">🏪 BOUTIQUE :</span> ${o.shopName}</p>
-                                    <p class="text-xs font-bold"><span class="text-orange-500">📍 ADRESSE :</span> ${o.address}</p>
-                                    <p class="text-xs font-bold"><span class="text-orange-500">📞 TEL :</span> ${o.phone}</p>
+                                    <p class="text-xs font-bold"><span class="text-orange-500">🛍️ ARTICLES :</span> ${o.items || 'Aucun'}</p>
+                                    <p class="text-xs font-bold"><span class="text-orange-500">🏪 BOUTIQUE :</span> ${o.shopName || 'Non précisé'}</p>
+                                    <p class="text-xs font-bold"><span class="text-orange-500">📍 ADRESSE :</span> ${o.address || 'Non fournie'}</p>
+                                    <p class="text-xs font-bold"><span class="text-orange-500">📞 TEL :</span> ${o.phone || 'N/A'}</p>
                                 </div>
 
                                 <div class="flex justify-between items-center bg-orange-500 p-4 rounded-2xl">
                                     <span class="text-black font-black uppercase text-[10px]">Total à encaisser</span>
-                                    <span class="text-black font-black text-xl italic">${o.total.toLocaleString()} F</span>
+                                    <span class="text-black font-black text-xl italic">${Number(o.total || 0).toLocaleString()} F</span>
                                 </div>
 
-                                <button onclick="sendWhatsAppRider('${id}')" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase text-xs italic shadow-xl active:scale-95 transition flex items-center justify-center gap-2">
+                                <button onclick="sendWhatsAppRider('${o.id}')" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
                                     🚀 ENVOYER AU LIVREUR
                                 </button>
                             </div>
@@ -69,11 +75,10 @@
                     `;
                 });
             } else {
-                container.innerHTML = '<div class="text-center py-20 text-gray-700 font-black italic uppercase">Aucune commande...</div>';
+                container.innerHTML = '<div class="text-center py-20 text-gray-700 font-black italic uppercase">Aucune commande en attente...</div>';
             }
         });
 
-        // FONCTION WHATSAPP (GÉNÈRE LE MESSAGE POUR LE LIVREUR)
         window.sendWhatsAppRider = (id) => {
             const orderRef = ref(db, `driprush_orders/${id}`);
             onValue(orderRef, (snapshot) => {
@@ -81,49 +86,49 @@
                 if(!o) return;
 
                 const message = `✨ *COURSE DRIPRUSH*%0A%0A` +
-                                `🏪 *RECUPÉRATION (BOUTIQUE)*%0A` +
-                                `Nom : ${o.shopName}%0A` +
+                                `🏪 *RECUPÉRATION*%0A` +
+                                `Boutique : ${o.shopName}%0A` +
                                 `📍 GPS : ${o.shopGPS}%0A%0A` +
-                                `👤 *LIVRAISON (CLIENT)*%0A` +
+                                `👤 *LIVRAISON*%0A` +
                                 `Client : ${o.clientName}%0A` +
                                 `Articles : ${o.items}%0A` +
                                 `Tel : ${o.phone}%0A` +
                                 `📍 GPS : ${o.clientGPS}%0A%0A` +
-                                `💰 *MONTANT : ${o.total} F*%0A%0A` +
-                                `_Précise au client si le dépôt MoMo a été validé !_`;
+                                `💰 *MONTANT : ${o.total} F*`;
 
-                // CHANGE LE NUMÉRO CI-DESSOUS (Numéro du livreur)
-                const riderPhone = "229XXXXXXXX"; 
+                const riderPhone = "229XXXXXXXX"; // REMPLACE PAR TON NUMÉRO
                 window.open(`https://wa.me/${riderPhone}?text=${message}`, '_blank');
-
-                // On passe le statut en "En livraison"
                 update(ref(db, `driprush_orders/${id}`), { status: 'En livraison' });
             }, { onlyOnce: true });
         };
 
         window.deleteOrder = (id) => {
-            if(confirm("Supprimer définitivement ?")) {
+            if(confirm("Supprimer cette commande ?")) {
                 remove(ref(db, `driprush_orders/${id}`));
             }
         };
 
     </script>
 </head>
-<body class="bg-black text-white p-6 font-sans">
+<body class="bg-black text-white p-6 font-sans selection:bg-orange-500">
 
     <div class="max-w-md mx-auto">
         <header class="flex justify-between items-center mb-10">
             <div>
                 <h1 class="text-3xl font-black italic text-orange-500 uppercase tracking-tighter">ADMIN</h1>
-                <p class="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em]">Driprush Control</p>
+                <p class="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em]">Gestion des flux</p>
             </div>
-            <div class="bg-gray-900 px-4 py-2 rounded-full border border-white/10">
-                <span class="text-[10px] font-black italic text-orange-500">LIVE MONITORING</span>
+            <div class="bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-[9px] font-black italic uppercase">Connecté</span>
+                </div>
             </div>
         </header>
 
         <div id="orders-list">
-            </div>
+            <div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase">Chargement du flux...</div>
+        </div>
     </div>
 
 </body>
