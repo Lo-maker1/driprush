@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
@@ -22,22 +22,36 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // --- LISTE DES LIVREURS (Modifie les numéros ici) ---
+        const RIDERS = [
+            { name: "Boris", phone: "2290195480000" },
+            { name: "LIVREUR 2", phone: "229XXXXXXXX" },
+            { name: "LIVREUR 3", phone: "229XXXXXXXX" }
+        ];
+
         // RÉCUPÉRATION DES COMMANDES
         const ordersRef = ref(db, 'driprush_orders');
         
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
-            console.log("Données reçues :", data); // Vérifie ici dans ta console (F12)
-            
             const container = document.getElementById('orders-list');
+            const statsContainer = document.getElementById('rider-stats');
             container.innerHTML = '';
+            
+            // Initialisation des compteurs
+            let counts = {};
+            RIDERS.forEach(r => counts[r.name] = 0);
 
             if (data) {
-                // On transforme l'objet en tableau pour le trier (les plus récents en haut)
                 const ordersArray = Object.keys(data).map(key => ({ id: key, ...data[key] }));
                 ordersArray.sort((a, b) => b.timestamp - a.timestamp);
 
                 ordersArray.forEach(o => {
+                    // On compte si la commande a été assignée à un livreur
+                    if(o.riderName && counts[o.riderName] !== undefined) {
+                        counts[o.riderName]++;
+                    }
+
                     const date = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : "Heure inconnue";
                     
                     container.innerHTML += `
@@ -45,7 +59,7 @@
                             <div class="flex justify-between items-start mb-4">
                                 <div>
                                     <span class="text-[10px] font-black px-4 py-1.5 rounded-full ${o.status === 'Attente Dépôt' ? 'bg-orange-500 text-black' : 'bg-blue-600 text-white'} uppercase italic">
-                                        ${o.status || 'Nouveau'}
+                                        ${o.status || 'Nouveau'} ${o.riderName ? '• ' + o.riderName : ''}
                                     </span>
                                     <p class="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">${date}</p>
                                 </div>
@@ -67,9 +81,15 @@
                                     <span class="text-black font-black text-xl italic">${Number(o.total || 0).toLocaleString()} F</span>
                                 </div>
 
-                                <button onclick="sendWhatsAppRider('${o.id}')" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
-                                    🚀 ENVOYER AU LIVREUR
-                                </button>
+                                <div class="flex flex-col gap-2">
+                                    <select id="select-${o.id}" class="bg-black border border-white/10 text-white text-[10px] font-bold p-3 rounded-xl outline-none uppercase italic">
+                                        <option value="">-- CHOISIR LIVREUR --</option>
+                                        ${RIDERS.map(r => `<option value="${r.name}">${r.name}</option>`).join('')}
+                                    </select>
+                                    <button onclick="sendWhatsAppRider('${o.id}')" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
+                                        🚀 ENVOYER AU LIVREUR
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -77,11 +97,24 @@
             } else {
                 container.innerHTML = '<div class="text-center py-20 text-gray-700 font-black italic uppercase">Aucune commande en attente...</div>';
             }
+
+            // MISE À JOUR DU COMPTEUR (STATS)
+            statsContainer.innerHTML = RIDERS.map(r => `
+                <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex justify-between items-center">
+                    <span class="text-[9px] font-black uppercase text-gray-400">${r.name}</span>
+                    <span class="text-orange-500 font-black italic">${counts[r.name]}</span>
+                </div>
+            `).join('');
         });
 
         window.sendWhatsAppRider = (id) => {
+            const riderName = document.getElementById(`select-${id}`).value;
+            if(!riderName) return alert("Sélectionne un livreur d'abord !");
+
+            const rider = RIDERS.find(r => r.name === riderName);
             const orderRef = ref(db, `driprush_orders/${id}`);
-            onValue(orderRef, (snapshot) => {
+
+            get(orderRef).then((snapshot) => {
                 const o = snapshot.val();
                 if(!o) return;
 
@@ -96,10 +129,15 @@
                                 `📍 GPS : ${o.clientGPS}%0A%0A` +
                                 `💰 *MONTANT : ${o.total} F*`;
 
-                const riderPhone = "229XXXXXXXX"; // REMPLACE PAR TON NUMÉRO
-                window.open(`https://wa.me/${riderPhone}?text=${message}`, '_blank');
-                update(ref(db, `driprush_orders/${id}`), { status: 'En livraison' });
-            }, { onlyOnce: true });
+                window.open(`https://wa.me/${rider.phone}?text=${message}`, '_blank');
+                update(orderRef, { status: 'En livraison', riderName: rider.name });
+            });
+        };
+
+        window.closeDay = () => {
+            if(confirm("Clôturer la journée ? Cela videra toutes les commandes.")) {
+                remove(ref(db, 'driprush_orders'));
+            }
         };
 
         window.deleteOrder = (id) => {
@@ -113,18 +151,23 @@
 <body class="bg-black text-white p-6 font-sans selection:bg-orange-500">
 
     <div class="max-w-md mx-auto">
-        <header class="flex justify-between items-center mb-10">
+        <header class="flex justify-between items-center mb-6">
             <div>
                 <h1 class="text-3xl font-black italic text-orange-500 uppercase tracking-tighter">ADMIN</h1>
                 <p class="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em]">Gestion des flux</p>
             </div>
-            <div class="bg-white/5 px-4 py-2 rounded-full border border-white/10">
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span class="text-[9px] font-black italic uppercase">Connecté</span>
-                </div>
-            </div>
+            <button onclick="closeDay()" class="bg-red-600 text-white px-4 py-2 rounded-full font-black text-[9px] uppercase italic">
+                Clôturer 🏁
+            </button>
         </header>
+
+        <div id="rider-stats" class="grid grid-cols-3 gap-2 mb-8">
+            </div>
+
+        <div class="flex items-center gap-2 mb-6">
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span class="text-[9px] font-black italic uppercase tracking-widest text-gray-400">Flux en direct</span>
+        </div>
 
         <div id="orders-list">
             <div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase">Chargement du flux...</div>
