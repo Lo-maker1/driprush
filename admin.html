@@ -53,12 +53,13 @@
                     }
 
                     const date = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : "Heure inconnue";
+                    const isLivree = o.status === 'Livrée';
                     
                     container.innerHTML += `
-                        <div class="bg-gray-900 border ${o.status === 'En livraison' ? 'border-blue-500/30' : 'border-white/5'} p-6 rounded-[2.5rem] mb-6 shadow-2xl relative">
+                        <div class="bg-gray-900 border ${isLivree ? 'border-green-500/20 opacity-60' : (o.status === 'En livraison' ? 'border-blue-500/30' : 'border-white/5')} p-6 rounded-[2.5rem] mb-6 shadow-2xl relative">
                             <div class="flex justify-between items-start mb-4">
                                 <div>
-                                    <span class="text-[10px] font-black px-4 py-1.5 rounded-full ${o.status === 'Attente Dépôt' ? 'bg-orange-500 text-black' : 'bg-blue-600 text-white'} uppercase italic">
+                                    <span class="text-[10px] font-black px-4 py-1.5 rounded-full ${isLivree ? 'bg-green-500 text-black' : (o.status === 'Attente Dépôt' ? 'bg-orange-500 text-black' : 'bg-blue-600 text-white')} uppercase italic">
                                         ${o.status || 'Nouveau'} ${o.riderName ? '• ' + o.riderName : ''}
                                     </span>
                                     <p class="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">${date}</p>
@@ -69,7 +70,7 @@
                             <div class="space-y-4">
                                 <h3 class="text-2xl font-black italic uppercase text-white">${o.clientName || 'Client Inconnu'}</h3>
                                 
-                                <div class="bg-black/40 p-5 rounded-[2rem] border border-white/5 space-y-3">
+                                <div class="bg-black/40 p-5 rounded-[2rem] border border-white/5 space-y-3 text-white">
                                     <p class="text-xs font-bold"><span class="text-orange-500">🛍️ ARTICLES :</span> ${o.items || 'Aucun'}</p>
                                     <p class="text-xs font-bold"><span class="text-orange-500">🏪 BOUTIQUE :</span> ${o.shopName || 'Non précisé'}</p>
                                     <p class="text-xs font-bold"><span class="text-orange-500">📍 ADRESSE :</span> ${o.address || 'Non fournie'}</p>
@@ -82,13 +83,25 @@
                                 </div>
 
                                 <div class="flex flex-col gap-2">
-                                    <select id="select-${o.id}" class="bg-black border border-white/10 text-white text-[10px] font-bold p-3 rounded-xl outline-none uppercase italic">
-                                        <option value="">-- CHOISIR LIVREUR --</option>
-                                        ${RIDERS.map(r => `<option value="${r.name}">${r.name}</option>`).join('')}
-                                    </select>
-                                    <button onclick="sendWhatsAppRider('${o.id}')" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
-                                        🚀 ENVOYER AU LIVREUR
-                                    </button>
+                                    ${!isLivree ? `
+                                        <select id="select-${o.id}" class="bg-black border border-white/10 text-white text-[10px] font-bold p-3 rounded-xl outline-none uppercase italic">
+                                            <option value="">-- CHOISIR LIVREUR --</option>
+                                            ${RIDERS.map(r => `<option value="${r.name}" ${o.riderName === r.name ? 'selected' : ''}>${r.name}</option>`).join('')}
+                                        </select>
+                                        <button onclick="sendWhatsAppRider('${o.id}')" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
+                                            🚀 ENVOYER AU LIVREUR
+                                        </button>
+                                        
+                                        ${o.status === 'En livraison' ? `
+                                            <button onclick="markAsDelivered('${o.id}')" class="w-full bg-green-500 text-black py-3 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
+                                                MARQUER COMME LIVRÉ ✅
+                                            </button>
+                                        ` : ''}
+                                    ` : `
+                                        <div class="bg-green-500/10 border border-green-500/20 py-4 rounded-2xl text-center text-green-500 font-black uppercase text-[10px] italic">
+                                            COMMANDE LIVRÉE AVEC SUCCÈS ✅
+                                        </div>
+                                    `}
                                 </div>
                             </div>
                         </div>
@@ -132,6 +145,17 @@
                 window.open(`https://wa.me/${rider.phone}?text=${message}`, '_blank');
                 update(orderRef, { status: 'En livraison', riderName: rider.name });
             });
+        };
+
+        // --- NOUVELLE FONCTION LIVRAISON (MODIF) ---
+        window.markAsDelivered = (id) => {
+            if(confirm("Confirmer que cette commande est livrée ?")) {
+                const orderRef = ref(db, `driprush_orders/${id}`);
+                update(orderRef, { status: 'Livrée' })
+                .then(() => {
+                    alert("Statut mis à jour ! ✅");
+                });
+            }
         };
 
         window.closeDay = () => {
