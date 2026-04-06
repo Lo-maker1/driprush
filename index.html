@@ -73,32 +73,72 @@
 
         window.addToCart = () => {
             if(!selectedItem.size) return alert("Choisis une taille !");
-            cart.push({...selectedItem});
+            // On ajoute l'article avec un statut "non validé"
+            cart.push({...selectedItem, validated: false});
             updateCartUI();
             document.getElementById('product-modal').classList.add('hidden');
+        };
+
+        // ZOOM IMAGE
+        window.zoomImage = () => {
+            const imgSrc = document.getElementById('modal-img').src;
+            document.getElementById('zoom-img-src').src = imgSrc;
+            document.getElementById('zoom-modal').classList.remove('hidden');
         };
 
         const updateCartUI = () => {
             document.getElementById('cart-count').innerText = cart.length;
             const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
-            document.getElementById('cart-bar').classList.toggle('hidden', cart.length === 0 || !isCheckoutHidden);
-            let total = 0; cart.forEach(i => total += parseInt(i.price));
+            
+            // On affiche la barre du bas s'il y a des articles non validés
+            const hasPending = cart.some(i => !i.validated);
+            document.getElementById('cart-bar').classList.toggle('hidden', !hasPending || !isCheckoutHidden);
+            
+            let total = 0; 
+            const listContainer = document.getElementById('cart-items-list');
+            listContainer.innerHTML = '';
+
+            cart.forEach((item, index) => {
+                if(!item.validated) total += parseInt(item.price);
+                
+                listContainer.innerHTML += `
+                    <div class="flex items-center gap-3 bg-black/40 p-3 rounded-2xl border border-white/5 mb-2">
+                        <img src="${item.image}" class="w-10 h-10 object-cover rounded-lg">
+                        <div class="flex-1">
+                            <p class="text-[9px] font-black uppercase">${item.name} (${item.size})</p>
+                            <p class="text-orange-500 text-[10px] font-black">${parseInt(item.price).toLocaleString()} F</p>
+                        </div>
+                        ${item.validated ? 
+                            '<span class="text-[7px] font-black text-green-500 bg-green-500/10 px-2 py-1 rounded-full uppercase">Validée ✅</span>' : 
+                            `<button onclick="removeFromCart(${index})" class="text-red-500 text-xs px-2">✕</button>`
+                        }
+                    </div>
+                `;
+            });
             document.getElementById('cart-total').innerText = total.toLocaleString() + " F";
+        };
+
+        window.removeFromCart = (index) => {
+            cart.splice(index, 1);
+            updateCartUI();
         };
 
         window.setShipping = (fee) => {
             deliveryFee = fee;
-            let subtotal = 0; cart.forEach(i => subtotal += parseInt(i.price));
+            let subtotal = 0; 
+            cart.filter(i => !i.validated).forEach(i => subtotal += parseInt(i.price));
             document.getElementById('final-total-display').innerText = (subtotal + fee).toLocaleString() + " F";
             document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('border-orange-500', 'text-orange-500', 'bg-orange-500/10'));
             event.target.classList.add('border-orange-500', 'text-orange-500', 'bg-orange-500/10');
         };
 
-        // MODIFICATION ICI : Gestion du bouton et confirmation
         window.confirmOrder = () => {
             const name = document.getElementById('c-name').value;
             const phone = document.getElementById('c-phone').value;
             const addr = document.getElementById('c-addr').value;
+            const pendingItems = cart.filter(i => !i.validated);
+
+            if(pendingItems.length === 0) return alert("Aucun nouvel article à commander !");
             if(!name || !phone || !addr || deliveryFee === 0) return alert("Infos manquantes !");
 
             const btn = event.target;
@@ -114,29 +154,25 @@
             }, { timeout: 8000 });
         };
 
-        // MODIFICATION ICI : Correction shopName/shopGPS et alerte de fin
         const saveOrder = (name, phone, addr, gps, btn, originalText) => {
-            let subtotal = 0; cart.forEach(i => subtotal += parseInt(i.price));
+            const pendingItems = cart.filter(i => !i.validated);
+            let subtotal = 0; 
+            pendingItems.forEach(i => subtotal += parseInt(i.price));
             
-            // On récupère les infos de la boutique du premier article du panier
-            const sName = cart.shop || "Inconnue";
-            const sGPS = cart.shopGPS || "";
+            const sName = pendingItems.shop || "Inconnue";
+            const sGPS = pendingItems.shopGPS || "";
 
             const orderRef = push(ref(db, 'driprush_orders'));
             set(orderRef, {
-                clientName: name, 
-                phone, 
-                address: addr, 
-                clientGPS: gps,
-                items: cart.map(i => `${i.name} [${i.size}]`).join(', '),
+                clientName: name, phone, address: addr, clientGPS: gps,
+                items: pendingItems.map(i => `${i.name} [${i.size}]`).join(', '),
                 total: subtotal + deliveryFee,
-                shopName: sName, 
-                shopGPS: sGPS,
-                status: 'Attente Dépôt', 
-                timestamp: Date.now()
+                shopName: sName, shopGPS: sGPS,
+                status: 'Attente Dépôt', timestamp: Date.now()
             }).then(() => {
                 alert("🔥 Commande envoyée avec succès !");
-                cart = []; 
+                // On marque les articles comme validés pour qu'ils restent dans le panier
+                cart.forEach(item => item.validated = true);
                 updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
             }).catch((err) => {
@@ -160,7 +196,7 @@
             <h1 class="text-3xl font-black italic tracking-tighter text-orange-500 uppercase">DRIPRUSH</h1>
             <p class="text-[8px] text-gray-500 font-bold uppercase tracking-[0.2em]">Premium Delivery</p>
         </div>
-        <div class="relative bg-gray-900 p-3 rounded-2xl border border-white/5">
+        <div onclick="toggleCheckout(true)" class="relative bg-gray-900 p-3 rounded-2xl border border-white/5 active:scale-90 transition cursor-pointer">
             <span class="text-lg">🛍️</span>
             <span id="cart-count" class="absolute -top-1 -right-1 bg-orange-500 text-black text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">0</span>
         </div>
@@ -179,9 +215,7 @@
     <div id="product-modal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-end hidden">
         <div class="w-full bg-gray-950 rounded-t-[3rem] p-6 border-t border-white/10 space-y-6">
             <div class="flex flex-col items-center">
-                <a id="modal-link" href="#" target="_blank" class="w-full">
-                    <img id="modal-img" src="" class="w-full h-64 object-cover rounded-[2rem] border border-white/10 shadow-2xl mb-4">
-                </a>
+                <img id="modal-img" onclick="zoomImage()" src="" class="w-full h-64 object-cover rounded-[2rem] border border-white/10 shadow-2xl mb-4 active:scale-95 transition cursor-zoom-in">
                 <div class="text-center">
                     <h2 id="modal-name" class="text-xl font-black italic uppercase text-white leading-tight"></h2>
                     <p id="modal-price" class="text-2xl font-black text-orange-500 mt-1"></p>
@@ -196,10 +230,18 @@
         </div>
     </div>
 
+    <div id="zoom-modal" class="fixed inset-0 bg-black z- flex items-center justify-center hidden" onclick="this.classList.add('hidden')">
+        <img id="zoom-img-src" src="" class="max-w-full max-h-full object-contain">
+        <p class="absolute bottom-10 text-[9px] font-black uppercase opacity-50 italic">Appuie pour fermer</p>
+    </div>
+
     <div id="checkout-modal" class="fixed inset-0 bg-black z-50 p-4 flex items-center justify-center hidden">
         <div class="w-full max-w-sm bg-gray-900 p-6 rounded-[2.5rem] border border-white/10 space-y-4 overflow-y-auto max-h-[90vh]">
-            <h2 class="text-xl font-black italic uppercase text-center text-orange-500">Dernière étape</h2>
+            <h2 class="text-xl font-black italic uppercase text-center text-orange-500 tracking-tighter">Mon Panier</h2>
             
+            <div id="cart-items-list" class="max-h-48 overflow-y-auto pr-1">
+                </div>
+
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="setShipping(500)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition">🚲 Standard (+500)</button>
                 <button onclick="setShipping(800)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition">🚀 Express (+800)</button>
