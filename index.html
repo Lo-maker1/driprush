@@ -2,14 +2,13 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DRIPRUSH - Premium Store</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // CONFIGURATION (La même que Vroomiam)
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
             authDomain: "vroomiam.firebaseapp.com",
@@ -26,50 +25,41 @@
         let cart = [];
         let selectedItem = null;
         let deliveryFee = 0;
-        let deliveryType = "";
 
-        // 1. RÉCUPÉRATION DU CATALOGUE (AVEC RÉCUPÉRATION GPS BOUTIQUE)
-        const productsRef = ref(db, 'driprush_products');
-        onValue(productsRef, (snapshot) => {
+        // 1. CHARGEMENT PRODUITS
+        onValue(ref(db, 'driprush_products'), (snapshot) => {
             const data = snapshot.val();
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
-
             if (data) {
                 Object.keys(data).reverse().forEach(id => {
                     const p = data[id];
-                    // On passe maintenant p.shopGPS à la fonction openModal
                     grid.innerHTML += `
-                        <div onclick="openModal('${id}', '${p.name}', '${p.price}', '${p.image}', '${p.sizes}', '${p.shop}', '${p.shopGPS || ''}')" class="bg-gray-900 rounded-[2.5rem] p-3 border border-white/5 active:scale-95 transition shadow-xl">
-                            <img src="${p.image}" class="w-full h-44 object-cover rounded-[2rem] mb-3 shadow-2xl">
-                            <div class="px-2">
-                                <h3 class="text-white font-bold text-[11px] truncate uppercase italic">${p.name}</h3>
-                                <p class="text-[9px] text-orange-500/50 font-black uppercase tracking-tighter mb-2">${p.shop}</p>
-                                <div class="flex justify-between items-center border-t border-white/5 pt-2">
-                                    <span class="text-white font-black text-xs">${parseInt(p.price).toLocaleString()} F</span>
-                                    <div class="bg-orange-500 p-2 rounded-xl text-black text-[10px]">➕</div>
+                        <div onclick="openModal('${id}', '${p.name}', '${p.price}', '${p.image}', '${p.sizes}', '${p.shop}', '${p.shopGPS || ''}')" class="bg-gray-900 rounded-[2rem] p-2 border border-white/5 active:scale-95 transition">
+                            <img src="${p.image}" class="w-full h-40 object-cover rounded-[1.5rem] mb-2 shadow-lg">
+                            <div class="px-1">
+                                <h3 class="text-white font-bold text-[10px] truncate uppercase italic">${p.name}</h3>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span class="text-orange-500 font-black text-[11px]">${parseInt(p.price).toLocaleString()} F</span>
+                                    <span class="bg-white/10 p-1.5 rounded-lg text-[8px]">➕</span>
                                 </div>
                             </div>
                         </div>
                     `;
                 });
-            } else {
-                grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-500 font-bold italic uppercase text-[10px]">Collection en cours de chargement...</div>';
             }
         });
 
-        // 2. LOGIQUE DU PANIER ET MODAL (INTACTE)
         window.openModal = (id, name, price, image, sizes, shop, shopGPS) => {
             selectedItem = { id, name, price, image, shop, shopGPS };
             document.getElementById('modal-img').src = image;
             document.getElementById('modal-name').innerText = name;
             document.getElementById('modal-price').innerText = parseInt(price).toLocaleString() + " F";
-            
-            const sizeContainer = document.getElementById('size-container');
-            sizeContainer.innerHTML = '';
+            const container = document.getElementById('size-container');
+            container.innerHTML = '';
             if(sizes) {
                 sizes.split(',').forEach(s => {
-                    sizeContainer.innerHTML += `<button onclick="selectSize('${s.trim()}')" class="size-btn border border-white/10 px-5 py-3 rounded-2xl text-[10px] font-black text-white uppercase">${s.trim()}</button>`;
+                    container.innerHTML += `<button onclick="selectSize('${s.trim()}')" class="size-btn border border-white/10 px-4 py-2 rounded-xl text-[9px] font-black text-white uppercase transition">${s.trim()}</button>`;
                 });
             }
             document.getElementById('product-modal').classList.remove('hidden');
@@ -82,168 +72,127 @@
         };
 
         window.addToCart = () => {
-            if(!selectedItem.size) return alert("Choisis une taille ou pointure !");
+            if(!selectedItem.size) return alert("Choisis une taille !");
             cart.push({...selectedItem});
             updateCartUI();
-            closeModal();
+            document.getElementById('product-modal').classList.add('hidden');
         };
 
         const updateCartUI = () => {
             document.getElementById('cart-count').innerText = cart.length;
-            document.getElementById('cart-bar').classList.toggle('hidden', cart.length === 0);
+            // Affiche la barre seulement si panier non vide ET checkout fermé
+            const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
+            document.getElementById('cart-bar').classList.toggle('hidden', cart.length === 0 || !isCheckoutHidden);
             let total = 0; cart.forEach(i => total += parseInt(i.price));
             document.getElementById('cart-total').innerText = total.toLocaleString() + " F";
         };
 
-        window.closeModal = () => {
-            document.getElementById('product-modal').classList.add('hidden');
-        };
-
-        // 3. LOGIQUE LIVRAISON (INTACTE)
-        window.setShipping = (fee, type) => {
+        window.setShipping = (fee) => {
             deliveryFee = fee;
-            deliveryType = type;
-            let subtotal = 0;
-            cart.forEach(i => subtotal += parseInt(i.price));
-            let totalFinal = subtotal + deliveryFee;
-            document.getElementById('final-total-display').innerText = totalFinal.toLocaleString() + " F";
-            document.getElementById('ship-500').classList.toggle('border-orange-500', fee === 500);
-            document.getElementById('ship-500').classList.toggle('text-orange-500', fee === 500);
-            document.getElementById('ship-800').classList.toggle('border-orange-500', fee === 800);
-            document.getElementById('ship-800').classList.toggle('text-orange-500', fee === 800);
+            let subtotal = 0; cart.forEach(i => subtotal += parseInt(i.price));
+            document.getElementById('final-total-display').innerText = (subtotal + fee).toLocaleString() + " F";
+            document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('border-orange-500', 'text-orange-500', 'bg-orange-500/10'));
+            event.target.classList.add('border-orange-500', 'text-orange-500', 'bg-orange-500/10');
         };
 
-        // 4. ENVOI COMMANDE AVEC DOUBLE GPS (MODIFIÉ)
         window.confirmOrder = () => {
             const name = document.getElementById('c-name').value;
             const phone = document.getElementById('c-phone').value;
             const addr = document.getElementById('c-addr').value;
+            if(!name || !phone || !addr || deliveryFee === 0) return alert("Infos manquantes !");
 
-            if(!name || !phone || !addr || deliveryFee === 0) {
-                return alert("Choisis la livraison et remplis tes infos !");
-            }
-
-            // ON CAPTURE LE GPS DU CLIENT
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition((pos) => {
-                    const clientGPS = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                    envoyerVersFirebase(name, phone, addr, clientGPS);
-                }, (err) => {
-                    envoyerVersFirebase(name, phone, addr, "GPS Refusé");
-                });
-            } else {
-                envoyerVersFirebase(name, phone, addr, "GPS Non supporté");
-            }
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                saveOrder(name, phone, addr, gps);
+            }, () => saveOrder(name, phone, addr, "GPS Refusé"));
         };
 
-        const envoyerVersFirebase = (name, phone, addr, clientGPS) => {
+        const saveOrder = (name, phone, addr, gps) => {
             let subtotal = 0; cart.forEach(i => subtotal += parseInt(i.price));
-            let finalTotal = subtotal + deliveryFee;
-            let itemsTxt = cart.map(i => `${i.name} [${i.size}]`).join(', ');
-
             const orderRef = push(ref(db, 'driprush_orders'));
             set(orderRef, {
-                clientName: name,
-                phone: phone,
-                address: addr,
-                clientGPS: clientGPS, // Position exacte du client
-                items: itemsTxt, 
-                subtotal: subtotal,
-                delivery: deliveryFee,
-                total: finalTotal,
-                deliveryType: deliveryType,
-                shopName: cart.shop, // Nom de la boutique
-                shopGPS: cart.shopGPS || "Non défini", // On récupère le GPS de la boutique stocké
-                status: 'Attente Dépôt', 
-                timestamp: Date.now()
+                clientName: name, phone, address: addr, clientGPS: gps,
+                items: cart.map(i => `${i.name} [${i.size}]`).join(', '),
+                total: subtotal + deliveryFee,
+                shopName: cart.shop, shopGPS: cart.shopGPS || "",
+                status: 'Attente Dépôt', timestamp: Date.now()
             });
-
-            alert("Driprush : Commande enregistrée ! 🔥");
+            alert("Commande envoyée ! 🔥");
             cart = []; updateCartUI();
             document.getElementById('checkout-modal').classList.add('hidden');
         };
+
+        // Gérer la visibilité de la barre de panier lors de l'ouverture du checkout
+        window.toggleCheckout = (show) => {
+            document.getElementById('checkout-modal').classList.toggle('hidden', !show);
+            updateCartUI(); 
+        };
     </script>
 </head>
-<body class="bg-[#050505] text-white p-6 font-sans">
+<body class="bg-[#050505] text-white p-4 font-sans selection:bg-orange-500">
 
-    <header class="flex justify-between items-center mb-8 sticky top-0 bg-[#050505]/80 backdrop-blur-lg py-4 z-40">
+    <header class="flex justify-between items-center mb-6 sticky top-0 bg-[#050505]/90 backdrop-blur-md py-4 z-40">
         <div>
-            <h1 class="text-4xl font-black italic tracking-tighter text-orange-500 uppercase">DRIPRUSH</h1>
-            <p class="text-[9px] text-gray-500 font-bold uppercase tracking-[0.3em]">Premium Delivery</p>
+            <h1 class="text-3xl font-black italic tracking-tighter text-orange-500 uppercase">DRIPRUSH</h1>
+            <p class="text-[8px] text-gray-500 font-bold uppercase tracking-[0.2em]">Premium Delivery</p>
         </div>
-        <div class="relative bg-gray-900/50 p-4 rounded-3xl border border-white/5">
-            <span class="text-xl">🛍️</span>
-            <span id="cart-count" class="absolute -top-1 -right-1 bg-orange-500 text-black text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-lg">0</span>
+        <div class="relative bg-gray-900 p-3 rounded-2xl border border-white/5">
+            <span class="text-lg">🛍️</span>
+            <span id="cart-count" class="absolute -top-1 -right-1 bg-orange-500 text-black text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">0</span>
         </div>
     </header>
 
-    <div id="products-grid" class="grid grid-cols-2 gap-4 pb-32"></div>
+    <div id="products-grid" class="grid grid-cols-2 gap-3 pb-28"></div>
 
-    <div id="cart-bar" class="fixed bottom-8 left-6 right-6 bg-white text-black p-6 rounded-[2.5rem] flex justify-between items-center hidden shadow-[0_20px_50px_rgba(255,255,255,0.1)] z-40">
+    <div id="cart-bar" class="fixed bottom-6 left-4 right-4 bg-white text-black p-4 rounded-[1.8rem] flex justify-between items-center hidden shadow-2xl z-40 animate-bounce-in">
         <div>
-            <p class="text-[9px] font-black uppercase opacity-40 italic">Total</p>
-            <p id="cart-total" class="text-xl font-black italic tracking-tighter">0 F</p>
+            <p class="text-[8px] font-black uppercase opacity-40">Total</p>
+            <p id="cart-total" class="text-lg font-black italic tracking-tighter">0 F</p>
         </div>
-        <button onclick="document.getElementById('checkout-modal').classList.remove('hidden')" class="bg-black text-white px-10 py-4 rounded-2xl font-black uppercase text-[10px] italic active:scale-95 transition">Payer 🚀</button>
+        <button onclick="toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-xl font-black uppercase text-[9px] italic">Valider 🚀</button>
     </div>
 
-    <div id="product-modal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-end hidden transition-transform duration-500">
-        <div class="w-full bg-gray-950 rounded-t-[4rem] p-10 border-t border-white/10 space-y-8">
-            <div class="flex gap-6 items-center">
-                <img id="modal-img" src="" class="w-32 h-32 rounded-[2.5rem] object-cover shadow-2xl border-4 border-white/5">
-                <div>
-                    <h2 id="modal-name" class="text-2xl font-black italic uppercase leading-none mb-2"></h2>
-                    <p id="modal-price" class="text-3xl font-black text-orange-500 tracking-tighter"></p>
+    <div id="product-modal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-end hidden">
+        <div class="w-full bg-gray-950 rounded-t-[3rem] p-6 border-t border-white/10 space-y-6">
+            <div class="flex flex-col items-center">
+                <a id="modal-link" href="#" target="_blank" class="w-full">
+                    <img id="modal-img" src="" class="w-full h-64 object-cover rounded-[2rem] border border-white/10 shadow-2xl mb-4">
+                </a>
+                <div class="text-center">
+                    <h2 id="modal-name" class="text-xl font-black italic uppercase text-white leading-tight"></h2>
+                    <p id="modal-price" class="text-2xl font-black text-orange-500 mt-1"></p>
                 </div>
             </div>
             <div>
-                <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Choisir Taille / Pointure</p>
+                <p class="text-[9px] font-black text-gray-500 uppercase mb-3">Taille / Pointure</p>
                 <div id="size-container" class="flex flex-wrap gap-2"></div>
             </div>
-            <button onclick="addToCart()" class="w-full bg-orange-500 text-black py-6 rounded-[2.5rem] font-black uppercase italic shadow-2xl active:scale-95 transition">Ajouter au panier ➕</button>
-            <button onclick="closeModal()" class="w-full text-gray-500 font-bold py-2 uppercase text-[10px] tracking-widest">Fermer</button>
+            <button onclick="addToCart()" class="w-full bg-orange-500 text-black py-4 rounded-[1.5rem] font-black uppercase italic shadow-lg active:scale-95 transition">Ajouter au panier</button>
+            <button onclick="document.getElementById('product-modal').classList.add('hidden')" class="w-full text-gray-600 font-bold py-1 text-[9px] uppercase tracking-widest">Annuler</button>
         </div>
     </div>
 
-    <div id="checkout-modal" class="fixed inset-0 bg-black z- p-6 flex items-center justify-center hidden">
-        <div class="w-full max-w-sm bg-gray-900 p-8 rounded-[3.5rem] border border-white/10 space-y-5 shadow-2xl overflow-y-auto max-h-[95vh]">
-            <h2 class="text-2xl font-black italic uppercase text-center text-orange-500 tracking-tighter">Validation & Dépôt</h2>
+    <div id="checkout-modal" class="fixed inset-0 bg-black z-50 p-4 flex items-center justify-center hidden">
+        <div class="w-full max-w-sm bg-gray-900 p-6 rounded-[2.5rem] border border-white/10 space-y-4 overflow-y-auto max-h-[90vh]">
+            <h2 class="text-xl font-black italic uppercase text-center text-orange-500">Dernière étape</h2>
             
             <div class="grid grid-cols-2 gap-2">
-                <button onclick="setShipping(500, 'Standard')" id="ship-500" class="bg-black border border-white/5 p-3 rounded-2xl text-[9px] font-black text-gray-400 uppercase transition">🚲 Standard (+500F)</button>
-                <button onclick="setShipping(800, 'Express')" id="ship-800" class="bg-black border border-white/5 p-3 rounded-2xl text-[9px] font-black text-gray-400 uppercase transition">🚀 Express (+800F)</button>
+                <button onclick="setShipping(500)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition">🚲 Standard (+500)</button>
+                <button onclick="setShipping(800)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition">🚀 Express (+800)</button>
             </div>
 
-            <div class="bg-orange-500 p-5 rounded-[2rem] text-center shadow-lg">
-                <p class="text-[9px] font-black text-black/60 uppercase">Montant total à déposer</p>
-                <p id="final-total-display" class="text-3xl font-black text-black italic">Choisir livraison</p>
+            <div class="bg-orange-500 p-4 rounded-2xl text-center">
+                <p id="final-total-display" class="text-2xl font-black text-black italic">Choisir livraison</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-black border border-yellow-500/30 p-3 rounded-2xl text-center">
-                    <p class="text-[8px] font-black text-yellow-500 uppercase mb-1">MTN MoMo</p>
-                    <p class="text-xs font-bold">01 02 03 04 05</p> 
-                </div>
-                <div class="bg-black border border-blue-500/30 p-3 rounded-2xl text-center">
-                    <p class="text-[8px] font-black text-blue-500 uppercase mb-1">MOOV Money</p>
-                    <p class="text-xs font-bold">01 02 03 04 05</p>
-                </div>
+            <div class="space-y-2">
+                <input id="c-name" placeholder="Nom Complet" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold">
+                <input id="c-phone" placeholder="WhatsApp (ex: 229...)" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold">
+                <textarea id="c-addr" placeholder="Adresse de livraison" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold h-16"></textarea>
             </div>
 
-            <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-center">
-                <p class="text-[10px] text-gray-400 font-medium italic">
-                    "Le système attend votre dépôt pour lancer le livreur."
-                </p>
-            </div>
-
-            <div class="space-y-3">
-                <input id="c-name" placeholder="Prénom & Nom" class="w-full bg-black p-4 rounded-2xl border border-white/5 outline-none focus:border-orange-500 transition font-bold text-sm">
-                <input id="c-phone" placeholder="Numéro WhatsApp" class="w-full bg-black p-4 rounded-2xl border border-white/5 outline-none focus:border-orange-500 transition font-bold text-sm">
-                <textarea id="c-addr" placeholder="Ton Adresse (Quartier/Maison/Étage)" class="w-full bg-black p-4 rounded-2xl border border-white/5 outline-none h-20 focus:border-orange-500 transition font-bold text-sm"></textarea>
-            </div>
-
-            <button onclick="confirmOrder()" class="w-full bg-white text-black py-5 rounded-[2.5rem] font-black uppercase italic shadow-lg active:scale-95 transition text-xs">J'ai effectué le dépôt ✅</button>
-            <button onclick="document.getElementById('checkout-modal').classList.add('hidden')" class="w-full text-gray-600 font-bold py-1 text-[9px] uppercase">Annuler</button>
+            <button onclick="confirmOrder()" class="w-full bg-white text-black py-4 rounded-[1.5rem] font-black uppercase italic active:scale-95 transition text-xs">Confirmer & Payer ✅</button>
+            <button onclick="toggleCheckout(false)" class="w-full text-gray-600 font-bold py-1 text-[9px] uppercase">Retourner à la boutique</button>
         </div>
     </div>
 
