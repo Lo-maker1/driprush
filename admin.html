@@ -89,7 +89,7 @@
                                             ${RIDERS.map(r => `<option value="${r.name}" ${o.riderName === r.name ? 'selected' : ''}>${r.name}</option>`).join('')}
                                         </select>
                                         <button onclick="sendWhatsAppRider('${o.id}')" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
-                                            🚀 ENVOYER AU LIVREUR
+                                            🚀 ENVOYER AU LIVREUR & BOUTIQUE
                                         </button>
                                         
                                         ${o.status === 'En livraison' ? `
@@ -108,7 +108,7 @@
                     `;
                 });
             } else {
-                container.innerHTML = '<div class="text-center py-20 text-gray-700 font-black italic uppercase">Aucune commande en attente...</div>';
+                container.innerHTML = '<div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase">Aucune commande en attente...</div>';
             }
 
             // MISE À JOUR DU COMPTEUR (STATS)
@@ -131,7 +131,8 @@
                 const o = snapshot.val();
                 if(!o) return;
 
-                const message = `✨ *COURSE DRIPRUSH*%0A%0A` +
+                // 1. MESSAGE POUR LE LIVREUR
+                const messageLivreur = `✨ *COURSE DRIPRUSH*%0A%0A` +
                                 `🏪 *RECUPÉRATION*%0A` +
                                 `Boutique : ${o.shopName}%0A` +
                                 `📍 GPS : ${o.shopGPS}%0A%0A` +
@@ -142,12 +143,30 @@
                                 `📍 GPS : ${o.clientGPS}%0A%0A` +
                                 `💰 *MONTANT : ${o.total} F*`;
 
-                window.open(`https://wa.me/${rider.phone}?text=${message}`, '_blank');
+                // 2. MESSAGE POUR LA BOUTIQUE
+                const messageBoutique = `✨ *COMMANDE À PRÉPARER*%0A%0A` +
+                                 `📦 *ARTICLES :* ${o.items}%0A` +
+                                 `👤 *CLIENT :* ${o.clientName}%0A%0A` +
+                                 `⚠️ *NB : Le livreur arrive dans 15min max, préparez la commande.*`;
+
+                // Ouvrir d'abord le WhatsApp du Livreur
+                window.open(`https://wa.me/${rider.phone}?text=${messageLivreur}`, '_blank');
+
+                // Si un numéro de boutique existe, proposer l'envoi après un petit délai
+                if(o.shopPhone) {
+                    setTimeout(() => {
+                        if(confirm("Voulez-vous envoyer le message de préparation à la boutique ?")) {
+                            window.open(`https://wa.me/${o.shopPhone}?text=${messageBoutique}`, '_blank');
+                        }
+                    }, 2500);
+                } else {
+                    alert("Numéro de boutique manquant pour cette commande.");
+                }
+
                 update(orderRef, { status: 'En livraison', riderName: rider.name });
             });
         };
 
-        // --- NOUVELLE FONCTION LIVRAISON (MODIF) ---
         window.markAsDelivered = (id) => {
             if(confirm("Confirmer que cette commande est livrée ?")) {
                 const orderRef = ref(db, `driprush_orders/${id}`);
