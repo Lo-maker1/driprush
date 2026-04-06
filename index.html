@@ -73,13 +73,11 @@
 
         window.addToCart = () => {
             if(!selectedItem.size) return alert("Choisis une taille !");
-            // On ajoute l'article avec un statut "non validé"
             cart.push({...selectedItem, validated: false});
             updateCartUI();
             document.getElementById('product-modal').classList.add('hidden');
         };
 
-        // ZOOM IMAGE
         window.zoomImage = () => {
             const imgSrc = document.getElementById('modal-img').src;
             document.getElementById('zoom-img-src').src = imgSrc;
@@ -89,8 +87,6 @@
         const updateCartUI = () => {
             document.getElementById('cart-count').innerText = cart.length;
             const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
-            
-            // On affiche la barre du bas s'il y a des articles non validés
             const hasPending = cart.some(i => !i.validated);
             document.getElementById('cart-bar').classList.toggle('hidden', !hasPending || !isCheckoutHidden);
             
@@ -100,12 +96,11 @@
 
             cart.forEach((item, index) => {
                 if(!item.validated) total += parseInt(item.price);
-                
                 listContainer.innerHTML += `
                     <div class="flex items-center gap-3 bg-black/40 p-3 rounded-2xl border border-white/5 mb-2">
                         <img src="${item.image}" class="w-10 h-10 object-cover rounded-lg">
                         <div class="flex-1">
-                            <p class="text-[9px] font-black uppercase">${item.name} (${item.size})</p>
+                            <p class="text-[9px] font-black uppercase text-white">${item.name} (${item.size})</p>
                             <p class="text-orange-500 text-[10px] font-black">${parseInt(item.price).toLocaleString()} F</p>
                         </div>
                         ${item.validated ? 
@@ -159,8 +154,8 @@
             let subtotal = 0; 
             pendingItems.forEach(i => subtotal += parseInt(i.price));
             
-            const sName = pendingItems.shop || "Inconnue";
-            const sGPS = pendingItems.shopGPS || "";
+            const sName = pendingItems?.shop || "Inconnue";
+            const sGPS = pendingItems?.shopGPS || "";
 
             const orderRef = push(ref(db, 'driprush_orders'));
             set(orderRef, {
@@ -171,7 +166,6 @@
                 status: 'Attente Dépôt', timestamp: Date.now()
             }).then(() => {
                 alert("🔥 Commande envoyée avec succès !");
-                // On marque les articles comme validés pour qu'ils restent dans le panier
                 cart.forEach(item => item.validated = true);
                 updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
@@ -230,21 +224,20 @@
         </div>
     </div>
 
-    <div id="zoom-modal" class="fixed inset-0 bg-black z- flex items-center justify-center hidden" onclick="this.classList.add('hidden')">
-        <img id="zoom-img-src" src="" class="max-w-full max-h-full object-contain">
-        <p class="absolute bottom-10 text-[9px] font-black uppercase opacity-50 italic">Appuie pour fermer</p>
+    <div id="zoom-modal" class="fixed inset-0 bg-black/90 z- flex items-center justify-center hidden" onclick="this.classList.add('hidden')">
+        <img id="zoom-img-src" src="" class="max-w-full max-h-full object-contain p-4 shadow-2xl">
+        <p class="absolute bottom-10 text-[9px] font-black uppercase text-white/50 italic">Appuie pour fermer</p>
     </div>
 
     <div id="checkout-modal" class="fixed inset-0 bg-black z-50 p-4 flex items-center justify-center hidden">
         <div class="w-full max-w-sm bg-gray-900 p-6 rounded-[2.5rem] border border-white/10 space-y-4 overflow-y-auto max-h-[90vh]">
             <h2 class="text-xl font-black italic uppercase text-center text-orange-500 tracking-tighter">Mon Panier</h2>
             
-            <div id="cart-items-list" class="max-h-48 overflow-y-auto pr-1">
-                </div>
+            <div id="cart-items-list" class="max-h-48 overflow-y-auto pr-1"></div>
 
             <div class="grid grid-cols-2 gap-2">
-                <button onclick="setShipping(500)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition">🚲 Standard (+500)</button>
-                <button onclick="setShipping(800)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition">🚀 Express (+800)</button>
+                <button onclick="setShipping(500)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition text-white">🚲 Standard (+500)</button>
+                <button onclick="setShipping(800)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition text-white">🚀 Express (+800)</button>
             </div>
 
             <div class="bg-orange-500 p-4 rounded-2xl text-center">
@@ -252,9 +245,9 @@
             </div>
 
             <div class="space-y-2">
-                <input id="c-name" placeholder="Nom Complet" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold">
-                <input id="c-phone" placeholder="WhatsApp (ex: 229...)" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold">
-                <textarea id="c-addr" placeholder="Adresse de livraison" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold h-16"></textarea>
+                <input id="c-name" placeholder="Nom Complet" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold text-white">
+                <input id="c-phone" placeholder="WhatsApp (ex: 229...)" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold text-white">
+                <textarea id="c-addr" placeholder="Adresse de livraison" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold h-16 text-white"></textarea>
             </div>
 
             <button onclick="confirmOrder()" class="w-full bg-white text-black py-4 rounded-[1.5rem] font-black uppercase italic active:scale-95 transition text-xs">Confirmer & Payer ✅</button>
