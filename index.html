@@ -80,7 +80,6 @@
 
         const updateCartUI = () => {
             document.getElementById('cart-count').innerText = cart.length;
-            // Affiche la barre seulement si panier non vide ET checkout fermé
             const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
             document.getElementById('cart-bar').classList.toggle('hidden', cart.length === 0 || !isCheckoutHidden);
             let total = 0; cart.forEach(i => total += parseInt(i.price));
@@ -95,34 +94,59 @@
             event.target.classList.add('border-orange-500', 'text-orange-500', 'bg-orange-500/10');
         };
 
+        // MODIFICATION ICI : Gestion du bouton et confirmation
         window.confirmOrder = () => {
             const name = document.getElementById('c-name').value;
             const phone = document.getElementById('c-phone').value;
             const addr = document.getElementById('c-addr').value;
             if(!name || !phone || !addr || deliveryFee === 0) return alert("Infos manquantes !");
 
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "CONNEXION GPS... ⏳";
+            btn.disabled = true;
+
             navigator.geolocation.getCurrentPosition((pos) => {
                 const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                saveOrder(name, phone, addr, gps);
-            }, () => saveOrder(name, phone, addr, "GPS Refusé"));
+                saveOrder(name, phone, addr, gps, btn, originalText);
+            }, () => {
+                saveOrder(name, phone, addr, "GPS Refusé", btn, originalText);
+            }, { timeout: 8000 });
         };
 
-        const saveOrder = (name, phone, addr, gps) => {
+        // MODIFICATION ICI : Correction shopName/shopGPS et alerte de fin
+        const saveOrder = (name, phone, addr, gps, btn, originalText) => {
             let subtotal = 0; cart.forEach(i => subtotal += parseInt(i.price));
+            
+            // On récupère les infos de la boutique du premier article du panier
+            const sName = cart.shop || "Inconnue";
+            const sGPS = cart.shopGPS || "";
+
             const orderRef = push(ref(db, 'driprush_orders'));
             set(orderRef, {
-                clientName: name, phone, address: addr, clientGPS: gps,
+                clientName: name, 
+                phone, 
+                address: addr, 
+                clientGPS: gps,
                 items: cart.map(i => `${i.name} [${i.size}]`).join(', '),
                 total: subtotal + deliveryFee,
-                shopName: cart.shop, shopGPS: cart.shopGPS || "",
-                status: 'Attente Dépôt', timestamp: Date.now()
+                shopName: sName, 
+                shopGPS: sGPS,
+                status: 'Attente Dépôt', 
+                timestamp: Date.now()
+            }).then(() => {
+                alert("🔥 Commande envoyée avec succès !");
+                cart = []; 
+                updateCartUI();
+                document.getElementById('checkout-modal').classList.add('hidden');
+            }).catch((err) => {
+                alert("Erreur: " + err.message);
+            }).finally(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
             });
-            alert("Commande envoyée ! 🔥");
-            cart = []; updateCartUI();
-            document.getElementById('checkout-modal').classList.add('hidden');
         };
 
-        // Gérer la visibilité de la barre de panier lors de l'ouverture du checkout
         window.toggleCheckout = (show) => {
             document.getElementById('checkout-modal').classList.toggle('hidden', !show);
             updateCartUI(); 
