@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRIPRUSH - Gestion Stock</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // TA CONFIGURATION (La même que Vroomiam)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
+            authDomain: "vroomiam.firebaseapp.com",
+            databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "vroomiam",
+            storageBucket: "vroomiam.firebasestorage.app",
+            messagingSenderId: "13433812189",
+            appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.addProduct = () => {
+            const name = document.getElementById('p-name').value;
+            const price = parseInt(document.getElementById('p-price').value);
+            const image = document.getElementById('p-img').value;
+            const type = document.getElementById('p-type').value; 
+            const sizes = document.getElementById('p-sizes').value;
+            const shop = document.getElementById('p-shop').value;
+
+            if(!name || !price || !image) return alert("Remplis au moins Nom, Prix et Image !");
+
+            // ON ENVOIE DANS LE TIROIR 'driprush_products'
+            const productRef = push(ref(db, 'driprush_products'));
+            set(productRef, { name, price, image, type, sizes, shop, timestamp: Date.now() });
+            
+            alert("Article ajouté au catalogue Driprush ! ✅");
+            document.getElementById('p-form').reset();
+        };
+    </script>
+</head>
+<body class="bg-black text-white p-6 font-sans">
+    <div class="max-w-md mx-auto">
+        <h1 class="text-3xl font-black text-orange-500 italic mb-8">DRIPRUSH STOCK</h1>
+        
+        <form id="p-form" class="space-y-4 bg-gray-900 p-6 rounded-[2rem] border border-white/5 shadow-2xl">
+            <div>
+                <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Nom du produit</label>
+                <input id="p-name" type="text" placeholder="ex: Jordan 4 Black Cat" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500">
+            </div>
+            
+            <div>
+                <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Prix (F)</label>
+                <input id="p-price" type="number" placeholder="ex: 85000" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 text-orange-500 font-bold">
+            </div>
+
+            <div>
+                <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Lien Photo (URL)</label>
+                <input id="p-img" type="text" placeholder="Colle le lien ImgBB ici" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 text-xs">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Catégorie</label>
+                    <select id="p-type" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none">
+                        <option value="vetement">👕 Vêtement</option>
+                        <option value="chaussure">👟 Chaussure</option>
+                        <option value="accessoire">✨ Accessoire</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Boutique</label>
+                    <input id="p-shop" type="text" placeholder="ex: Drip Corner" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none">
+                </div>
+            </div>
+
+            <div>
+                <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Tailles / Pointures (séparées par virgule)</label>
+                <input id="p-sizes" type="text" placeholder="ex: S,M,L ou 40,41,42" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500">
+            </div>
+
+            <button type="button" onclick="addProduct()" class="w-full bg-orange-500 text-black py-5 rounded-2xl font-black uppercase italic shadow-lg active:scale-95 transition mt-4">
+                Ajouter au catalogue 🚀
+            </button>
+        </form>
+    </div>
+</body>
+</html>
