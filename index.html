@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DRIPRUSH - Premium Store</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8f8f8; color: #1a1a1a; }
+        .active-cat { background-color: #000 !important; color: #fff !important; transform: scale(1.05); }
+        .product-card { transition: all 0.3s ease; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .animate-marquee { display: inline-block; animation: marquee 20s linear infinite; }
+    </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -25,35 +35,38 @@
         let cart = [];
         let selectedItem = null;
         let deliveryFee = 0;
-        let allProducts = []; // Stockage local pour la recherche
+        let allProducts = [];
 
         // 1. CHARGEMENT PRODUITS
         onValue(ref(db, 'driprush_products'), (snapshot) => {
             const data = snapshot.val();
-            const grid = document.getElementById('products-grid');
-            grid.innerHTML = '';
-            allProducts = []; // Reset du stock local
+            allProducts = []; 
             
             if (data) {
-                // On transforme l'objet en tableau pour pouvoir filtrer plus facilement
                 allProducts = Object.keys(data).map(id => ({ id, ...data[id] })).reverse();
                 renderProducts(allProducts);
             }
         });
 
-        // FONCTION POUR AFFICHER LES PRODUITS (Utilisée par le chargement et la recherche)
+        // FONCTION POUR AFFICHER LES PRODUITS (STYLE SHEIN)
         window.renderProducts = (products) => {
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
             products.forEach(p => {
                 grid.innerHTML += `
-                    <div onclick="openModal('${p.id}', '${p.name}', '${p.price}', '${p.image}', '${p.sizes}', '${p.shop}', '${p.shopGPS || ''}')" class="bg-gray-900 rounded-[2rem] p-2 border border-white/5 active:scale-95 transition">
-                        <img src="${p.image}" class="w-full h-40 object-cover rounded-[1.5rem] mb-2 shadow-lg">
-                        <div class="px-1">
-                            <h3 class="text-white font-bold text-[10px] truncate uppercase italic">${p.name}</h3>
-                            <div class="flex justify-between items-center mt-1">
-                                <span class="text-orange-500 font-black text-[11px]">${parseInt(p.price).toLocaleString()} F</span>
-                                <span class="bg-white/10 p-1.5 rounded-lg text-[8px]">➕</span>
+                    <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition" onclick="openModal('${p.id}', '${p.name}', '${p.price}', '${p.image}', '${p.sizes}', '${p.shop}', '${p.shopGPS || ''}')">
+                        <button class="absolute top-3 right-3 z-10 text-gray-300 hover:text-red-500 transition">
+                            <i class="fa-solid fa-heart text-lg"></i>
+                        </button>
+                        <img src="${p.image}" class="w-full h-52 object-cover">
+                        <div class="p-3">
+                            <p class="text-[9px] text-gray-400 font-black uppercase mb-1">${p.shop || 'Driprush'}</p>
+                            <h3 class="text-[11px] font-bold text-gray-800 leading-tight h-8 line-clamp-2 uppercase">${p.name}</h3>
+                            <div class="mt-3 flex items-center justify-between">
+                                <span class="text-[13px] font- text-black">${parseInt(p.price).toLocaleString()} F</span>
+                                <div class="bg-black text-white w-7 h-7 rounded-full flex items-center justify-center">
+                                    <i class="fa-solid fa-plus text-[10px]"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -61,11 +74,24 @@
             });
             
             if(products.length === 0) {
-                grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-800 font-black italic uppercase">Aucun article trouvé...</div>';
+                grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-400 font-bold italic uppercase">Aucun article trouvé...</div>';
             }
         };
 
-        // FONCTION DE RECHERCHE
+        // FILTRAGE PAR GENRE
+        window.filterByGenre = (genre) => {
+            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active-cat'));
+            document.getElementById(`btn-${genre}`).classList.add('active-cat');
+
+            if (genre === 'tout') {
+                renderProducts(allProducts);
+            } else {
+                const filtered = allProducts.filter(p => p.genre && p.genre.toLowerCase() === genre.toLowerCase());
+                renderProducts(filtered);
+            }
+        };
+
+        // RECHERCHE
         window.searchProducts = (query) => {
             const searchTerm = query.toLowerCase().trim();
             const filtered = allProducts.filter(p => 
@@ -83,7 +109,7 @@
             container.innerHTML = '';
             if(sizes) {
                 sizes.split(',').forEach(s => {
-                    container.innerHTML += `<button onclick="selectSize('${s.trim()}')" class="size-btn border border-white/10 px-4 py-2 rounded-xl text-[9px] font-black text-white uppercase transition">${s.trim()}</button>`;
+                    container.innerHTML += `<button onclick="selectSize('${s.trim()}')" class="size-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black">${s.trim()}</button>`;
                 });
             }
             document.getElementById('product-modal').classList.remove('hidden');
@@ -91,8 +117,8 @@
 
         window.selectSize = (size) => {
             selectedItem.size = size;
-            document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('bg-orange-500', 'text-black', 'border-orange-500'));
-            event.target.classList.add('bg-orange-500', 'text-black', 'border-orange-500');
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('bg-black', 'text-white', 'border-black'));
+            event.target.classList.add('bg-black', 'text-white', 'border-black');
         };
 
         window.addToCart = () => {
@@ -110,6 +136,8 @@
 
         const updateCartUI = () => {
             document.getElementById('cart-count').innerText = cart.length;
+            document.getElementById('nav-cart-count').innerText = cart.length;
+            
             const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
             const hasPending = cart.some(i => !i.validated);
             document.getElementById('cart-bar').classList.toggle('hidden', !hasPending || !isCheckoutHidden);
@@ -121,15 +149,15 @@
             cart.forEach((item, index) => {
                 if(!item.validated) total += parseInt(item.price);
                 listContainer.innerHTML += `
-                    <div class="flex items-center gap-3 bg-black/40 p-3 rounded-2xl border border-white/5 mb-2">
-                        <img src="${item.image}" class="w-10 h-10 object-cover rounded-lg">
+                    <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-100 mb-2">
+                        <img src="${item.image}" class="w-12 h-12 object-cover rounded-lg">
                         <div class="flex-1">
-                            <p class="text-[9px] font-black uppercase text-white">${item.name} (${item.size})</p>
-                            <p class="text-orange-500 text-[10px] font-black">${parseInt(item.price).toLocaleString()} F</p>
+                            <p class="text-[10px] font-bold uppercase">${item.name} (${item.size})</p>
+                            <p class="text-black text-[11px] font-black">${parseInt(item.price).toLocaleString()} F</p>
                         </div>
                         ${item.validated ? 
-                            '<span class="text-[7px] font-black text-green-500 bg-green-500/10 px-2 py-1 rounded-full uppercase">Validée ✅</span>' : 
-                            `<button onclick="removeFromCart(${index})" class="text-red-500 text-xs px-2">✕</button>`
+                            '<span class="text-[7px] font-black text-green-500 bg-green-500/10 px-2 py-1 rounded-full uppercase">Validée</span>' : 
+                            `<button onclick="removeFromCart(${index})" class="text-red-500 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>`
                         }
                     </div>
                 `;
@@ -147,8 +175,8 @@
             let subtotal = 0; 
             cart.filter(i => !i.validated).forEach(i => subtotal += parseInt(i.price));
             document.getElementById('final-total-display').innerText = (subtotal + fee).toLocaleString() + " F";
-            document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('border-orange-500', 'text-orange-500', 'bg-orange-500/10'));
-            event.target.classList.add('border-orange-500', 'text-orange-500', 'bg-orange-500/10');
+            document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('bg-black', 'text-white'));
+            event.target.classList.add('bg-black', 'text-white');
         };
 
         window.confirmOrder = () => {
@@ -166,7 +194,7 @@
             btn.disabled = true;
 
             navigator.geolocation.getCurrentPosition((pos) => {
-                const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                const gps = `http://maps.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 saveOrder(name, phone, addr, gps, btn, originalText);
             }, () => {
                 saveOrder(name, phone, addr, "GPS Refusé", btn, originalText);
@@ -189,7 +217,7 @@
                 shopName: sName, shopGPS: sGPS,
                 status: 'Attente Dépôt', timestamp: Date.now()
             }).then(() => {
-                alert("🔥 Commande envoyée avec succès !");
+                alert("🔥 Commande envoyée ! Veuillez effectuer le dépôt sur l'un des numéros affichés pour valider.");
                 cart.forEach(item => item.validated = true);
                 updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
@@ -207,89 +235,138 @@
         };
     </script>
 </head>
-<body class="bg-[#050505] text-white p-4 font-sans selection:bg-orange-500">
+<body class="pb-24">
 
-    <header class="flex justify-between items-center mb-6 sticky top-0 bg-[#050505]/90 backdrop-blur-md py-4 z-40">
-        <div>
-            <h1 class="text-3xl font-black italic tracking-tighter text-orange-500 uppercase">DRIPRUSH</h1>
-            <p class="text-[8px] text-gray-500 font-bold uppercase tracking-[0.2em]">Premium Delivery</p>
+    <div class="bg-black text-white py-1.5 overflow-hidden whitespace-nowrap">
+        <div class="inline-block animate-marquee">
+            <span class="mx-4 text-[9px] font-black uppercase italic tracking-widest">🔥 LIVRAISON EN 15MIN CHRONO</span>
+            <span class="mx-4 text-[9px] font-black uppercase italic tracking-widest">✨ NOUVEAUTÉS CHAQUE SEMAINE</span>
+            <span class="mx-4 text-[9px] font-black uppercase italic tracking-widest">💎 QUALITÉ PREMIUM UNIQUEMENT</span>
         </div>
-        <div onclick="toggleCheckout(true)" class="relative bg-gray-900 p-3 rounded-2xl border border-white/5 active:scale-90 transition cursor-pointer">
-            <span class="text-lg">🛍️</span>
-            <span id="cart-count" class="absolute -top-1 -right-1 bg-orange-500 text-black text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full">0</span>
+    </div>
+
+    <header class="bg-white px-4 pt-4 pb-2 sticky top-0 z-50 shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font- italic tracking-tighter text-black">DRIPRUSH</h1>
+            <div class="flex items-center gap-5 text-xl">
+                <i class="fa-solid fa-heart text-gray-200"></i>
+                <div onclick="toggleCheckout(true)" class="relative">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                    <span id="cart-count" class="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] font-bold px-1.5 rounded-full border-2 border-white">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative mb-4">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+            <input type="text" oninput="searchProducts(this.value)" placeholder="Rechercher un article..." class="w-full bg-gray-100 py-3.5 pl-12 pr-4 rounded-2xl text-xs font-bold outline-none border border-transparent focus:border-black transition uppercase tracking-tight">
+        </div>
+
+        <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+            <button onclick="filterByGenre('tout')" id="btn-tout" class="cat-btn active-cat bg-white border border-gray-100 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-tight shadow-sm transition-all">Tout</button>
+            <button onclick="filterByGenre('homme')" id="btn-homme" class="cat-btn bg-white border border-gray-100 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-tight shadow-sm transition-all">Homme</button>
+            <button onclick="filterByGenre('femme')" id="btn-femme" class="cat-btn bg-white border border-gray-100 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-tight shadow-sm transition-all">Femme</button>
+            <button onclick="filterByGenre('mixte')" id="btn-mixte" class="cat-btn bg-white border border-gray-100 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-tight shadow-sm transition-all">Mixte</button>
+            <button onclick="filterByGenre('enfant')" id="btn-enfant" class="cat-btn bg-white border border-gray-100 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-tight shadow-sm transition-all">Enfant</button>
         </div>
     </header>
 
-    <div class="mb-8">
-        <div class="relative group">
-            <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <span class="text-gray-500 text-xs">🔍</span>
-            </div>
-            <input 
-                type="text" 
-                oninput="searchProducts(this.value)"
-                placeholder="RECHERCHER UN ARTICLE..." 
-                class="w-full bg-gray-900/50 border border-white/5 p-4 pl-12 rounded-2xl outline-none focus:border-orange-500/30 transition font-black text-[10px] uppercase tracking-widest text-white"
-            >
-        </div>
-    </div>
+    <main class="p-3">
+        <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
+    </main>
 
-    <div id="products-grid" class="grid grid-cols-2 gap-3 pb-28"></div>
-
-    <div id="cart-bar" class="fixed bottom-6 left-4 right-4 bg-white text-black p-4 rounded-[1.8rem] flex justify-between items-center hidden shadow-2xl z-40 animate-bounce-in">
+    <div id="cart-bar" class="fixed bottom-20 left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-40 border border-gray-100 animate-bounce-in">
         <div>
-            <p class="text-[8px] font-black uppercase opacity-40">Total</p>
+            <p class="text-[8px] font-black uppercase opacity-40">Sous-total</p>
             <p id="cart-total" class="text-lg font-black italic tracking-tighter">0 F</p>
         </div>
-        <button onclick="toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-xl font-black uppercase text-[9px] italic">Valider 🚀</button>
+        <button onclick="toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] italic active:scale-95 transition">Commander 🚀</button>
     </div>
 
-    <div id="product-modal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-end hidden">
-        <div class="w-full bg-gray-950 rounded-t-[3rem] p-6 border-t border-white/10 space-y-6">
-            <div class="flex flex-col items-center">
-                <img id="modal-img" onclick="zoomImage()" src="" class="w-full h-64 object-cover rounded-[2rem] border border-white/10 shadow-2xl mb-4 active:scale-95 transition cursor-zoom-in">
-                <div class="text-center">
-                    <h2 id="modal-name" class="text-xl font-black italic uppercase text-white leading-tight"></h2>
-                    <p id="modal-price" class="text-2xl font-black text-orange-500 mt-1"></p>
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 px-8 py-3 flex justify-between items-center z-50">
+        <div class="flex flex-col items-center text-black">
+            <i class="fa-solid fa-house-chimney text-lg"></i>
+            <span class="text-[8px] font-black uppercase mt-1">Shop</span>
+        </div>
+        <div class="flex flex-col items-center text-gray-300">
+            <i class="fa-solid fa-bolt text-lg"></i>
+            <span class="text-[8px] font-black uppercase mt-1">New</span>
+        </div>
+        <div class="flex flex-col items-center text-gray-300 relative" onclick="toggleCheckout(true)">
+            <i class="fa-solid fa-cart-shopping text-lg"></i>
+            <span id="nav-cart-count" class="absolute -top-1 -right-2 bg-black text-white text-[7px] w-3.5 h-3.5 flex items-center justify-center rounded-full">0</span>
+            <span class="text-[8px] font-black uppercase mt-1">Panier</span>
+        </div>
+    </nav>
+
+    <div id="product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z- flex items-end hidden" onclick="if(event.target == this) this.classList.add('hidden')">
+        <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2"></div>
+            <div class="flex gap-4">
+                <img id="modal-img" onclick="zoomImage()" src="" class="w-32 h-32 object-cover rounded-2xl shadow-lg border border-gray-100">
+                <div class="flex-1 py-2">
+                    <h2 id="modal-name" class="text-sm font-black uppercase text-gray-800 leading-tight mb-1"></h2>
+                    <p id="modal-price" class="text-xl font-black text-black italic"></p>
                 </div>
             </div>
             <div>
-                <p class="text-[9px] font-black text-gray-500 uppercase mb-3">Taille / Pointure</p>
+                <p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Taille / Pointure</p>
                 <div id="size-container" class="flex flex-wrap gap-2"></div>
             </div>
-            <button onclick="addToCart()" class="w-full bg-orange-500 text-black py-4 rounded-[1.5rem] font-black uppercase italic shadow-lg active:scale-95 transition">Ajouter au panier</button>
-            <button onclick="document.getElementById('product-modal').classList.add('hidden')" class="w-full text-gray-600 font-bold py-1 text-[9px] uppercase tracking-widest">Annuler</button>
+            <button onclick="addToCart()" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase italic shadow-xl active:scale-95 transition text-sm">Ajouter au panier</button>
+            <button onclick="document.getElementById('product-modal').classList.add('hidden')" class="w-full text-gray-400 font-bold py-1 text-[10px] uppercase">Fermer</button>
         </div>
     </div>
 
-    <div id="zoom-modal" class="fixed inset-0 bg-black/90 z- flex items-center justify-center hidden" onclick="this.classList.add('hidden')">
-        <img id="zoom-img-src" src="" class="max-w-full max-h-full object-contain p-4 shadow-2xl">
-        <p class="absolute bottom-10 text-[9px] font-black uppercase text-white/50 italic">Appuie pour fermer</p>
+    <div id="zoom-modal" class="fixed inset-0 bg-black z- flex items-center justify-center hidden" onclick="this.classList.add('hidden')">
+        <img id="zoom-img-src" src="" class="max-w-full max-h-full object-contain">
     </div>
 
-    <div id="checkout-modal" class="fixed inset-0 bg-black z-50 p-4 flex items-center justify-center hidden">
-        <div class="w-full max-w-sm bg-gray-900 p-6 rounded-[2.5rem] border border-white/10 space-y-4 overflow-y-auto max-h-[90vh]">
-            <h2 class="text-xl font-black italic uppercase text-center text-orange-500 tracking-tighter">Mon Panier</h2>
-            
-            <div id="cart-items-list" class="max-h-48 overflow-y-auto pr-1"></div>
+    <div id="checkout-modal" class="fixed inset-0 bg-white z- p-4 flex flex-col hidden overflow-y-auto">
+        <div class="flex items-center justify-between mb-6 pt-4 shrink-0">
+            <button onclick="toggleCheckout(false)" class="text-xl"><i class="fa-solid fa-chevron-left"></i></button>
+            <h2 class="text-lg font-black uppercase italic tracking-tighter">Mon Panier</h2>
+            <div class="w-5"></div>
+        </div>
+        
+        <div id="cart-items-list" class="flex-1 px-2 mb-4"></div>
 
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="setShipping(500)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition text-white">🚲 Standard (+500)</button>
-                <button onclick="setShipping(800)" class="ship-btn bg-black border border-white/5 p-3 rounded-xl text-[8px] font-black uppercase transition text-white">🚀 Express (+800)</button>
+        <div class="space-y-6 pb-10">
+            <div class="bg-orange-50 border border-orange-200 rounded-[2rem] p-5">
+                <p class="text-[10px] font-black text-orange-800 uppercase tracking-[0.2em] mb-4 text-center">📱 PAIEMENT MOBILE MONEY</p>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center bg-white p-3 rounded-2xl border border-orange-100">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">MTN Bénin</span>
+                        <span class="text-sm font-black text-black tracking-widest">53 82 81 83</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-white p-3 rounded-2xl border border-orange-100">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">MOOV Bénin</span>
+                        <span class="text-sm font-black text-black tracking-widest">62 05 54 84</span>
+                    </div>
+                </div>
+                <p class="text-[9px] text-orange-600 font-black text-center mt-4 italic uppercase leading-tight">
+                    ⚠️ Le système attend votre dépôt pour la validation de la cmd
+                </p>
             </div>
 
-            <div class="bg-orange-500 p-4 rounded-2xl text-center">
-                <p id="final-total-display" class="text-2xl font-black text-black italic">Choisir livraison</p>
+            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Mode de Livraison</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="setShipping(500)" class="ship-btn border border-gray-200 p-4 rounded-2xl text-[10px] font-black uppercase transition shadow-sm">🚲 15-30min (+500)</button>
+                <button onclick="setShipping(800)" class="ship-btn border border-gray-200 p-4 rounded-2xl text-[10px] font-black uppercase transition shadow-sm">🚀 Prioritaire (+800)</button>
             </div>
 
-            <div class="space-y-2">
-                <input id="c-name" placeholder="Nom Complet" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold text-white">
-                <input id="c-phone" placeholder="WhatsApp (ex: 229...)" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold text-white">
-                <textarea id="c-addr" placeholder="Adresse de livraison" class="w-full bg-black p-3.5 rounded-xl border border-white/5 outline-none text-sm font-bold h-16 text-white"></textarea>
+            <div class="bg-gray-100 p-5 rounded-3xl flex justify-between items-center">
+                <span class="text-[10px] font-black uppercase opacity-50">Total à payer</span>
+                <span id="final-total-display" class="text-xl font-black italic">Choisir livraison</span>
             </div>
 
-            <button onclick="confirmOrder()" class="w-full bg-white text-black py-4 rounded-[1.5rem] font-black uppercase italic active:scale-95 transition text-xs">Confirmer & Payer ✅</button>
-            <button onclick="toggleCheckout(false)" class="w-full text-gray-600 font-bold py-1 text-[9px] uppercase">Retourner à la boutique</button>
+            <div class="space-y-3">
+                <input id="c-name" placeholder="NOM COMPLET" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase border border-transparent focus:border-black transition">
+                <input id="c-phone" placeholder="NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase border border-transparent focus:border-black transition">
+                <textarea id="c-addr" placeholder="ADRESSE DE LIVRAISON (Quartier, Maison...)" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase h-20 border border-transparent focus:border-black transition"></textarea>
+            </div>
+
+            <button onclick="confirmOrder()" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase italic shadow-2xl active:scale-95 transition text-sm">Confirmer la commande ✅</button>
         </div>
     </div>
 
