@@ -194,7 +194,7 @@
             btn.disabled = true;
 
             navigator.geolocation.getCurrentPosition((pos) => {
-                const gps = `http://maps.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                const gps = `http://googleusercontent.com/maps.google.com/q=${pos.coords.latitude},${pos.coords.longitude}`;
                 saveOrder(name, phone, addr, gps, btn, originalText);
             }, () => {
                 saveOrder(name, phone, addr, "GPS Refusé", btn, originalText);
@@ -245,7 +245,7 @@
         </div>
     </div>
 
-    <header class="bg-white px-4 pt-4 pb-2 sticky top-0 z-50 shadow-sm">
+    <header class="bg-white px-4 pt-4 pb-2 sticky top-0 z-40 shadow-sm">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-2xl font- italic tracking-tighter text-black">DRIPRUSH</h1>
             <div class="flex items-center gap-5 text-xl">
@@ -275,7 +275,7 @@
         <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
     </main>
 
-    <div id="cart-bar" class="fixed bottom-20 left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-40 border border-gray-100 animate-bounce-in">
+    <div id="cart-bar" class="fixed bottom-20 left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-30 border border-gray-100 animate-bounce-in">
         <div>
             <p class="text-[8px] font-black uppercase opacity-40">Sous-total</p>
             <p id="cart-total" class="text-lg font-black italic tracking-tighter">0 F</p>
@@ -283,7 +283,7 @@
         <button onclick="toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] italic active:scale-95 transition">Commander 🚀</button>
     </div>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 px-8 py-3 flex justify-between items-center z-50">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 px-8 py-3 flex justify-between items-center z-30">
         <div class="flex flex-col items-center text-black">
             <i class="fa-solid fa-house-chimney text-lg"></i>
             <span class="text-[8px] font-black uppercase mt-1">Shop</span>
