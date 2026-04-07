@@ -32,7 +32,7 @@
                 navigator.geolocation.getCurrentPosition((pos) => {
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
-                    const link = `https://www.google.com/maps?q=${lat},${lon}`;
+                    const link = `http://googleusercontent.com/maps.google.com/q=${lat},${lon}`;
                     
                     document.getElementById('p-shop-gps').value = link;
                     btn.innerText = "📍 GPS Boutique OK !";
@@ -52,9 +52,10 @@
             const price = parseInt(document.getElementById('p-price').value);
             const image = document.getElementById('p-img').value;
             const type = document.getElementById('p-type').value; 
+            const genre = document.getElementById('p-genre').value; // Nouveau : Genre pour le filtrage
             const sizes = document.getElementById('p-sizes').value;
             const shop = document.getElementById('p-shop').value;
-            const shopPhone = document.getElementById('p-shop-phone').value; // Nouveau : Numéro boutique
+            const shopPhone = document.getElementById('p-shop-phone').value; 
             const shopGPS = document.getElementById('p-shop-gps').value;
 
             if(!name || !price || !image) return alert("Remplis au moins Nom, Prix et Image !");
@@ -68,10 +69,11 @@
                 price, 
                 image, 
                 type, 
+                genre, // Ajout du genre pour que le filtrage "Homme/Femme" fonctionne sur l'app
                 sizes, 
                 shop, 
-                shopPhone, // Enregistre le numéro de la boutique
-                shopGPS, // Enregistre le lien maps de la boutique
+                shopPhone, 
+                shopGPS, 
                 timestamp: Date.now() 
             });
             
@@ -117,14 +119,25 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Boutique (Nom)</label>
-                    <input id="p-shop" type="text" placeholder="Nom boutique" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none text-xs font-bold uppercase">
+                    <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Genre (Filtrage)</label>
+                    <select id="p-genre" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none text-xs font-bold">
+                        <option value="homme">HOMME</option>
+                        <option value="femme">FEMME</option>
+                        <option value="mixte">MIXTE</option>
+                        <option value="enfant">ENFANT</option>
+                    </select>
                 </div>
             </div>
 
-            <div>
-                <label class="text-[10px] font-black text-gray-500 uppercase ml-2">WhatsApp Boutique (ex: 229...)</label>
-                <input id="p-shop-phone" type="text" placeholder="Numéro du vendeur" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 font-bold">
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Boutique (Nom)</label>
+                    <input id="p-shop" type="text" placeholder="Nom boutique" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none text-xs font-bold uppercase">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-gray-500 uppercase ml-2">WhatsApp Boutique</label>
+                    <input id="p-shop-phone" type="text" placeholder="229XXXXXXXX" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 font-bold">
+                </div>
             </div>
 
             <div>
