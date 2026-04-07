@@ -250,7 +250,7 @@
             <h1 class="text-2xl font- italic tracking-tighter text-black">DRIPRUSH</h1>
             <div class="flex items-center gap-5 text-xl">
                 <i class="fa-solid fa-heart text-gray-200"></i>
-                <div onclick="toggleCheckout(true)" class="relative">
+                <div onclick="toggleCheckout(true)" class="relative cursor-pointer">
                     <i class="fa-solid fa-bag-shopping"></i>
                     <span id="cart-count" class="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] font-bold px-1.5 rounded-full border-2 border-white">0</span>
                 </div>
@@ -283,8 +283,8 @@
         <button onclick="toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] italic active:scale-95 transition">Commander 🚀</button>
     </div>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 px-8 py-3 flex justify-between items-center z-30">
-        <div class="flex flex-col items-center text-black">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-gray-100 px-8 py-3 flex justify-between items-center z-50">
+        <div class="flex flex-col items-center text-black cursor-pointer" onclick="toggleCheckout(false)">
             <i class="fa-solid fa-house-chimney text-lg"></i>
             <span class="text-[8px] font-black uppercase mt-1">Shop</span>
         </div>
@@ -292,7 +292,7 @@
             <i class="fa-solid fa-bolt text-lg"></i>
             <span class="text-[8px] font-black uppercase mt-1">New</span>
         </div>
-        <div class="flex flex-col items-center text-gray-300 relative" onclick="toggleCheckout(true)">
+        <div class="flex flex-col items-center text-gray-300 relative cursor-pointer" onclick="toggleCheckout(true)">
             <i class="fa-solid fa-cart-shopping text-lg"></i>
             <span id="nav-cart-count" class="absolute -top-1 -right-2 bg-black text-white text-[7px] w-3.5 h-3.5 flex items-center justify-center rounded-full">0</span>
             <span class="text-[8px] font-black uppercase mt-1">Panier</span>
