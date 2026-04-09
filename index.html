@@ -29,7 +29,6 @@
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .animate-marquee { display: inline-block; animation: marquee 20s linear infinite; }
         
-        /* Animations fluides */
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.3s ease-out; }
     </style>
@@ -55,22 +54,22 @@
         let deliveryFee = 0;
         let allProducts = [];
 
-        // 1. CHARGEMENT PRODUITS
         onValue(ref(db, 'driprush_products'), (snapshot) => {
             const data = snapshot.val();
             allProducts = []; 
-            
             if (data) {
                 allProducts = Object.keys(data).map(id => ({ id, ...data[id] })).reverse();
                 renderProducts(allProducts);
             }
         });
 
-        // FONCTIONS NOUVELLES : ACCUEIL ET PARTENARIAT
+        // CORRECTION DE LA FONCTION POUR CACHER LA BARRE DE RECHERCHE
         window.enterSite = (mode) => {
-            document.getElementById('welcome-screen').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden'); // Affiche le site
-            if(mode === 'partner') {
+            if(mode === 'shop') {
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+            } else if(mode === 'partner') {
+                // On n'affiche PAS main-content, donc pas de barre de recherche
                 document.getElementById('partner-modal').classList.remove('hidden');
             }
         };
@@ -89,7 +88,6 @@
             document.getElementById('partner-modal').classList.add('hidden');
         };
 
-        // FONCTION POUR AFFICHER LES PRODUITS
         window.renderProducts = (products) => {
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
@@ -110,16 +108,13 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             });
-            
             if(products.length === 0) {
                 grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-400 font-bold italic uppercase">Aucun article trouvé...</div>';
             }
         };
 
-        // FILTRAGE ET RECHERCHE
         window.filterByGenre = (genre) => {
             document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active-cat'));
             document.getElementById(`btn-${genre}`).classList.add('active-cat');
@@ -132,7 +127,6 @@
             renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(searchTerm)));
         };
 
-        // GESTION PANIER ET MODALES
         window.openModal = (id, name, price, image, sizes, shop, shopGPS) => {
             selectedItem = { id, name, price, image, shop, shopGPS };
             document.getElementById('modal-img').src = image;
@@ -190,8 +184,7 @@
                             '<span class="text-[7px] font-black text-green-500 bg-green-500/10 px-2 py-1 rounded-full uppercase">Validée</span>' : 
                             `<button onclick="removeFromCart(${index})" class="text-red-500 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>`
                         }
-                    </div>
-                `;
+                    </div>`;
             });
             document.getElementById('cart-total').innerText = total.toLocaleString() + " F";
         };
