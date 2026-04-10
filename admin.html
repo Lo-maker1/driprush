@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DRIPRUSH - Admin Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -22,39 +23,83 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- LISTE DES LIVREURS (Modifie les numéros ici) ---
-        const RIDERS = [
-            { name: "Boris", phone: "2290195480000" },
-            { name: "LIVREUR 2", phone: "229XXXXXXXX" },
-            { name: "LIVREUR 3", phone: "229XXXXXXXX" }
-        ];
+        // --- VARIABLES GLOBALES ---
+        let currentRiders = []; // Liste dynamique des livreurs connectés
+
+        // FONCTION DE CALCUL DE DISTANCE (HAVERSINE)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; 
+        }
+
+        // RÉCUPÉRATION DES LIVREURS EN TEMPS RÉEL
+        const ridersRef = ref(db, 'livreurs');
+        onValue(ridersRef, (snapshot) => {
+            const data = snapshot.val();
+            const statsContainer = document.getElementById('rider-stats');
+            statsContainer.innerHTML = '';
+            currentRiders = [];
+
+            if (data) {
+                Object.keys(data).forEach(id => {
+                    const r = data[id];
+                    currentRiders.push({ id, ...r });
+
+                    // Affichage dans la barre de stats avec bouton de suppression
+                    statsContainer.innerHTML += `
+                        <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex flex-col gap-2 relative group">
+                            <button onclick="deleteRider('${id}')" class="absolute -top-1 -right-1 bg-red-600 text-white w-5 h-5 rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">X</button>
+                            <div class="flex justify-between items-center">
+                                <span class="text-[9px] font-black uppercase text-orange-500 truncate mr-1">${r.nom}</span>
+                                <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                            </div>
+                            <span class="text-[8px] text-gray-500 font-bold">${r.lastSeen || 'Actif'}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                statsContainer.innerHTML = '<p class="col-span-3 text-center text-[10px] text-gray-600 uppercase italic">Aucun livreur en ligne</p>';
+            }
+        });
 
         // RÉCUPÉRATION DES COMMANDES
         const ordersRef = ref(db, 'driprush_orders');
-        
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
             const container = document.getElementById('orders-list');
-            const statsContainer = document.getElementById('rider-stats');
             container.innerHTML = '';
-            
-            // Initialisation des compteurs
-            let counts = {};
-            RIDERS.forEach(r => counts[r.name] = 0);
 
             if (data) {
                 const ordersArray = Object.keys(data).map(key => ({ id: key, ...data[key] }));
                 ordersArray.sort((a, b) => b.timestamp - a.timestamp);
 
                 ordersArray.forEach(o => {
-                    // On compte si la commande a été assignée à un livreur
-                    if(o.riderName && counts[o.riderName] !== undefined) {
-                        counts[o.riderName]++;
-                    }
-
                     const date = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : "Heure inconnue";
                     const isLivree = o.status === 'Livrée';
                     
+                    // Analyse du livreur le plus proche si les coordonnées boutique existent
+                    let suggestText = "";
+                    if (o.shopGPS && currentRiders.length > 0) {
+                        const [sLat, sLng] = o.shopGPS.split(',').map(Number);
+                        let bestDist = Infinity;
+                        let bestName = "";
+                        
+                        currentRiders.forEach(r => {
+                            const d = calculateDistance(sLat, sLng, r.lat, r.lng);
+                            if (d < bestDist) {
+                                bestDist = d;
+                                bestName = r.nom;
+                            }
+                        });
+                        suggestText = `<p class="text-[9px] text-green-400 font-bold uppercase mt-1 italic">✨ Proche : ${bestName} (${bestDist.toFixed(1)}km)</p>`;
+                    }
+
                     container.innerHTML += `
                         <div class="bg-gray-900 border ${isLivree ? 'border-green-500/20 opacity-60' : (o.status === 'En livraison' ? 'border-blue-500/30' : 'border-white/5')} p-6 rounded-[2.5rem] mb-6 shadow-2xl relative">
                             <div class="flex justify-between items-start mb-4">
@@ -63,6 +108,7 @@
                                         ${o.status || 'Nouveau'} ${o.riderName ? '• ' + o.riderName : ''}
                                     </span>
                                     <p class="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">${date}</p>
+                                    ${!isLivree ? suggestText : ''}
                                 </div>
                                 <button onclick="deleteOrder('${o.id}')" class="bg-red-500/10 text-red-500 p-2 rounded-xl text-[9px] font-black uppercase">Supprimer</button>
                             </div>
@@ -86,7 +132,7 @@
                                     ${!isLivree ? `
                                         <select id="select-${o.id}" class="bg-black border border-white/10 text-white text-[10px] font-bold p-3 rounded-xl outline-none uppercase italic">
                                             <option value="">-- CHOISIR LIVREUR --</option>
-                                            ${RIDERS.map(r => `<option value="${r.name}" ${o.riderName === r.name ? 'selected' : ''}>${r.name}</option>`).join('')}
+                                            ${currentRiders.map(r => `<option value="${r.whatsapp}">${r.nom} (${r.whatsapp})</option>`).join('')}
                                         </select>
                                         <button onclick="sendWhatsAppRider('${o.id}')" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
                                             🚀 ENVOYER AU LIVREUR & BOUTIQUE
@@ -110,82 +156,74 @@
             } else {
                 container.innerHTML = '<div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase">Aucune commande en attente...</div>';
             }
-
-            // MISE À JOUR DU COMPTEUR (STATS)
-            statsContainer.innerHTML = RIDERS.map(r => `
-                <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex justify-between items-center">
-                    <span class="text-[9px] font-black uppercase text-gray-400">${r.name}</span>
-                    <span class="text-orange-500 font-black italic">${counts[r.name]}</span>
-                </div>
-            `).join('');
         });
 
-        window.sendWhatsAppRider = (id) => {
-            const riderName = document.getElementById(`select-${id}`).value;
-            if(!riderName) return alert("Sélectionne un livreur d'abord !");
+        // --- ACTIONS ---
 
-            const rider = RIDERS.find(r => r.name === riderName);
+        window.sendWhatsAppRider = (id) => {
+            const riderPhone = document.getElementById(`select-${id}`).value;
+            if(!riderPhone) return alert("Sélectionne un livreur d'abord !");
+
+            const rider = currentRiders.find(r => r.whatsapp === riderPhone);
             const orderRef = ref(db, `driprush_orders/${id}`);
 
             get(orderRef).then((snapshot) => {
                 const o = snapshot.val();
                 if(!o) return;
 
-                // 1. MESSAGE POUR LE LIVREUR
                 const messageLivreur = `✨ *COURSE DRIPRUSH*%0A%0A` +
                                 `🏪 *RECUPÉRATION*%0A` +
                                 `Boutique : ${o.shopName}%0A` +
-                                `📍 GPS : ${o.shopGPS}%0A%0A` +
+                                `📍 GPS : ${o.shopGPS || 'Non fourni'}%0A%0A` +
                                 `👤 *LIVRAISON*%0A` +
                                 `Client : ${o.clientName}%0A` +
                                 `Articles : ${o.items}%0A` +
                                 `Tel : ${o.phone}%0A` +
-                                `📍 GPS : ${o.clientGPS}%0A%0A` +
+                                `📍 GPS : ${o.clientGPS || 'Non fourni'}%0A%0A` +
                                 `💰 *MONTANT : ${o.total} F*`;
 
-                // 2. MESSAGE POUR LA BOUTIQUE
                 const messageBoutique = `✨ *COMMANDE À PRÉPARER*%0A%0A` +
                                  `📦 *ARTICLES :* ${o.items}%0A` +
                                  `👤 *CLIENT :* ${o.clientName}%0A%0A` +
-                                 `⚠️ *NB : Le livreur arrive dans 15min max, préparez la commande.*`;
+                                 `⚠️ *NB : Le livreur (${rider.nom}) arrive dans 15min max.*`;
 
-                // Ouvrir d'abord le WhatsApp du Livreur
-                window.open(`https://wa.me/${rider.phone}?text=${messageLivreur}`, '_blank');
+                // Envoi WhatsApp Livreur
+                window.open(`https://wa.me/${rider.whatsapp.replace(/\+/g,'')}?text=${messageLivreur}`, '_blank');
 
-                // Si un numéro de boutique existe, proposer l'envoi après un petit délai
                 if(o.shopPhone) {
                     setTimeout(() => {
-                        if(confirm("Voulez-vous envoyer le message de préparation à la boutique ?")) {
-                            window.open(`https://wa.me/${o.shopPhone}?text=${messageBoutique}`, '_blank');
+                        if(confirm("Envoyer le message de préparation à la boutique ?")) {
+                            window.open(`https://wa.me/${o.shopPhone.replace(/\+/g,'')}?text=${messageBoutique}`, '_blank');
                         }
                     }, 2500);
-                } else {
-                    alert("Numéro de boutique manquant pour cette commande.");
                 }
 
-                update(orderRef, { status: 'En livraison', riderName: rider.name });
+                update(orderRef, { status: 'En livraison', riderName: rider.nom });
             });
         };
 
         window.markAsDelivered = (id) => {
             if(confirm("Confirmer que cette commande est livrée ?")) {
                 const orderRef = ref(db, `driprush_orders/${id}`);
-                update(orderRef, { status: 'Livrée' })
-                .then(() => {
-                    alert("Statut mis à jour ! ✅");
-                });
-            }
-        };
-
-        window.closeDay = () => {
-            if(confirm("Clôturer la journée ? Cela videra toutes les commandes.")) {
-                remove(ref(db, 'driprush_orders'));
+                update(orderRef, { status: 'Livrée' });
             }
         };
 
         window.deleteOrder = (id) => {
             if(confirm("Supprimer cette commande ?")) {
                 remove(ref(db, `driprush_orders/${id}`));
+            }
+        };
+
+        window.deleteRider = (phone) => {
+            if(confirm("Supprimer ce livreur du système ?")) {
+                remove(ref(db, `livreurs/${phone}`));
+            }
+        };
+
+        window.closeDay = () => {
+            if(confirm("Clôturer la journée ? Cela videra toutes les commandes.")) {
+                remove(ref(db, 'driprush_orders'));
             }
         };
 
@@ -205,15 +243,16 @@
         </header>
 
         <div id="rider-stats" class="grid grid-cols-3 gap-2 mb-8">
-            </div>
+            <div class="col-span-3 text-center py-4 text-gray-800 animate-pulse font-black italic uppercase text-[10px]">Recherche livreurs...</div>
+        </div>
 
         <div class="flex items-center gap-2 mb-6">
             <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span class="text-[9px] font-black italic uppercase tracking-widest text-gray-400">Flux en direct</span>
+            <span class="text-[9px] font-black italic uppercase tracking-widest text-gray-400">Flux de commandes en direct</span>
         </div>
 
         <div id="orders-list">
-            <div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase">Chargement du flux...</div>
+            <div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase text-[10px]">Chargement du flux...</div>
         </div>
     </div>
 
