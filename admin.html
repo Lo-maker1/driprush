@@ -208,31 +208,34 @@
                 // Fonction de nettoyage strict pour WhatsApp
                 const cleanPhone = (phone) => phone.replace(/\D/g, '');
 
-                const messageLivreur = `✨ *COURSE DRIPRUSH*%0A%0A` +
-                                `🏪 *RECUPÉRATION*%0A` +
-                                `Boutique : ${o.shopName}%0A` +
-                                `📍 GPS : ${o.shopGPS || 'Non fourni'}%0A%0A` +
-                                `👤 *LIVRAISON*%0A` +
-                                `Client : ${o.clientName}%0A` +
-                                `Articles : ${o.items}%0A` +
-                                `Tel : ${o.phone}%0A` +
-                                `📍 GPS : ${o.clientGPS || 'Non fourni'}%0A%0A` +
+                // Construction des messages avec \n (encodés plus bas par encodeURIComponent)
+                const texteLivreur = `✨ *COURSE DRIPRUSH*\n\n` +
+                                `🏪 *RECUPÉRATION*\n` +
+                                `Boutique : ${o.shopName}\n` +
+                                `📍 GPS : ${o.shopGPS || 'Non précisé'}\n\n` +
+                                `👤 *LIVRAISON*\n` +
+                                `Client : ${o.clientName}\n` +
+                                `Articles : ${o.items}\n` +
+                                `Tel : ${o.phone}\n` +
+                                `📍 GPS : ${o.clientGPS || 'Non fourni'}\n\n` +
                                 `💰 *MONTANT : ${o.total} F*`;
 
-                const messageBoutique = `✨ *COMMANDE À PRÉPARER*%0A%0A` +
-                                 `📦 *ARTICLES :* ${o.items}%0A` +
-                                 `👤 *CLIENT :* ${o.clientName}%0A%0A` +
+                const texteBoutique = `✨ *COMMANDE À PRÉPARER*\n\n` +
+                                 `📦 *ARTICLES :* ${o.items}\n` +
+                                 `👤 *CLIENT :* ${o.clientName}\n\n` +
                                  `⚠️ *NB : Le livreur (${rider.nom}) arrive dans 15min max.*`;
 
-                // Envoi WhatsApp Livreur (Lien API plus stable)
-                window.open(`https://api.whatsapp.com/send?phone=${cleanPhone(rider.whatsapp)}&text=${messageLivreur}`, '_blank');
+                // Envoi WhatsApp Livreur avec encodage sécurisé
+                const riderLink = `https://api.whatsapp.com/send?phone=${cleanPhone(rider.whatsapp)}&text=${encodeURIComponent(texteLivreur)}`;
+                window.open(riderLink, '_blank');
 
                 if(o.shopPhone) {
                     setTimeout(() => {
                         if(confirm("Envoyer le message de préparation à la boutique ?")) {
-                            window.open(`https://api.whatsapp.com/send?phone=${cleanPhone(o.shopPhone)}&text=${messageBoutique}`, '_blank');
+                            const shopLink = `https://api.whatsapp.com/send?phone=${cleanPhone(o.shopPhone)}&text=${encodeURIComponent(texteBoutique)}`;
+                            window.open(shopLink, '_blank');
                         }
-                    }, 2500);
+                    }, 2000);
                 }
 
                 update(orderRef, { status: 'En livraison', riderName: rider.nom });
