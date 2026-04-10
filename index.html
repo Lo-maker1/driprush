@@ -22,7 +22,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8f8f8; color: #1a1a1a; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8f8f8; color: #1a1a1a; overflow-x: hidden; }
         .active-cat { background-color: #000 !important; color: #fff !important; transform: scale(1.05); }
         .product-card { transition: all 0.3s ease; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -31,6 +31,9 @@
         
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.3s ease-out; }
+
+        /* Correction pour les modales sur mobile */
+        .modal-height-fix { max-height: 90vh; overflow-y: auto; }
     </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -63,13 +66,11 @@
             }
         });
 
-        // CORRECTION DE LA FONCTION POUR CACHER LA BARRE DE RECHERCHE
         window.enterSite = (mode) => {
             if(mode === 'shop') {
                 document.getElementById('welcome-screen').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
             } else if(mode === 'partner') {
-                // On n'affiche PAS main-content, donc pas de barre de recherche
                 document.getElementById('partner-modal').classList.remove('hidden');
             }
         };
@@ -249,6 +250,7 @@
 
         window.toggleCheckout = (show) => {
             document.getElementById('checkout-modal').classList.toggle('hidden', !show);
+            if(!show) window.scrollTo(0,0);
             updateCartUI(); 
         };
     </script>
@@ -350,8 +352,8 @@
         </div>
     </div>
 
-    <div id="product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z- flex items-end hidden" onclick="if(event.target == this) this.classList.add('hidden')">
-        <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up">
+    <div id="product-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z- flex items-end hidden" onclick="if(event.target == this) this.classList.add('hidden')">
+        <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up modal-height-fix pb-10">
             <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2"></div>
             <div class="flex gap-4">
                 <img id="modal-img" onclick="zoomImage()" src="" class="w-32 h-32 object-cover rounded-2xl shadow-lg border border-gray-100">
@@ -364,7 +366,8 @@
                 <p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Taille / Pointure</p>
                 <div id="size-container" class="flex flex-wrap gap-2"></div>
             </div>
-            <button onclick="addToCart()" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase italic shadow-xl active:scale-95 transition text-sm">Ajouter au panier</button>
+            <button onclick="addToCart()" class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase italic shadow-xl active:scale-95 transition text-sm">Ajouter au panier 🛍️</button>
+            <button onclick="document.getElementById('product-modal').classList.add('hidden')" class="w-full text-gray-400 font-bold py-1 text-[10px] uppercase text-center">Retour au shop</button>
         </div>
     </div>
 
@@ -374,7 +377,7 @@
 
     <div id="checkout-modal" class="fixed inset-0 bg-white z- p-4 flex flex-col hidden overflow-y-auto">
         <div class="flex items-center justify-between mb-6 pt-4 shrink-0">
-            <button onclick="toggleCheckout(false)" class="text-xl"><i class="fa-solid fa-chevron-left"></i></button>
+            <button onclick="toggleCheckout(false)" class="flex items-center gap-2 font-bold text-xs uppercase"><i class="fa-solid fa-chevron-left text-xl"></i> Retour au Shop</button>
             <h2 class="text-lg font-black uppercase italic tracking-tighter">Mon Panier</h2>
             <div class="w-5"></div>
         </div>
@@ -406,9 +409,9 @@
             </div>
 
             <div class="space-y-3">
-                <input id="c-name" placeholder="NOM COMPLET" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase">
-                <input id="c-phone" placeholder="NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase">
-                <textarea id="c-addr" placeholder="ADRESSE DE LIVRAISON" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase h-20"></textarea>
+                <input id="c-name" placeholder="NOM COMPLET" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase border focus:border-black">
+                <input id="c-phone" placeholder="NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase border focus:border-black">
+                <textarea id="c-addr" placeholder="ADRESSE DE LIVRAISON" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase h-20 border focus:border-black"></textarea>
             </div>
             <button onclick="confirmOrder()" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase italic shadow-2xl transition text-sm">Confirmer la commande ✅</button>
         </div>
