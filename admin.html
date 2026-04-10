@@ -38,7 +38,7 @@
             return R * c; 
         }
 
-        // RÉCUPÉRATION DES LIVREURS EN TEMPS RÉEL
+        // RÉCUPÉRATION DES LIVREURS EN TEMPS RÉEL (AVEC FILTRE D'ACTIVITÉ)
         const ridersRef = ref(db, 'livreurs');
         onValue(ridersRef, (snapshot) => {
             const data = snapshot.val();
@@ -46,27 +46,63 @@
             statsContainer.innerHTML = '';
             currentRiders = [];
 
+            const maintenant = Date.now();
+            const CINQ_MINUTES = 5 * 60 * 1000; // Seuil d'inactivité
+
             if (data) {
                 Object.keys(data).forEach(id => {
                     const r = data[id];
-                    currentRiders.push({ id, ...r });
+                    
+                    // FILTRE : On n'affiche que ceux qui ont été vus il y a moins de 5 min
+                    // On vérifie r.timestamp (qu'on va ajouter dans le fichier livreur)
+                    if (r.timestamp && (maintenant - r.timestamp) < CINQ_MINUTES) {
+                        currentRiders.push({ id, ...r });
 
-                    // Affichage dans la barre de stats avec bouton de suppression
-                    statsContainer.innerHTML += `
-                        <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex flex-col gap-2 relative group">
-                            <button onclick="deleteRider('${id}')" class="absolute -top-1 -right-1 bg-red-600 text-white w-5 h-5 rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">X</button>
-                            <div class="flex justify-between items-center">
-                                <span class="text-[9px] font-black uppercase text-orange-500 truncate mr-1">${r.nom}</span>
-                                <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                        // Affichage dans la barre de stats
+                        statsContainer.innerHTML += `
+                            <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex flex-col gap-2 relative group">
+                                <button onclick="deleteRider('${id}')" class="absolute -top-1 -right-1 bg-red-600 text-white w-5 h-5 rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">X</button>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[9px] font-black uppercase text-orange-500 truncate mr-1">${r.nom}</span>
+                                    <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                                </div>
+                                <span class="text-[8px] text-gray-500 font-bold">${r.lastSeen || 'Actif'}</span>
                             </div>
-                            <span class="text-[8px] text-gray-500 font-bold">${r.lastSeen || 'Actif'}</span>
-                        </div>
-                    `;
+                        `;
+                    } else if (!r.timestamp) {
+                        // Si le livreur n'a pas de timestamp (ancien code), on l'affiche quand même par défaut
+                        currentRiders.push({ id, ...r });
+                        statsContainer.innerHTML += `
+                            <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex flex-col gap-2 relative group">
+                                <button onclick="deleteRider('${id}')" class="absolute -top-1 -right-1 bg-red-600 text-white w-5 h-5 rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">X</button>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[9px] font-black uppercase text-orange-500 truncate mr-1">${r.nom}</span>
+                                    <div class="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
+                                </div>
+                                <span class="text-[8px] text-gray-500 font-bold">Inactif</span>
+                            </div>
+                        `;
+                    }
                 });
-            } else {
-                statsContainer.innerHTML = '<p class="col-span-3 text-center text-[10px] text-gray-600 uppercase italic">Aucun livreur en ligne</p>';
             }
+            
+            if (currentRiders.length === 0) {
+                statsContainer.innerHTML = '<p class="col-span-3 text-center text-[10px] text-gray-600 uppercase italic">Aucun livreur actif</p>';
+            }
+            
+            // Forcer la mise à jour des listes déroulantes dans les commandes
+            updateAllSelects();
         });
+
+        // Fonction pour rafraîchir les menus déroulants quand la liste des livreurs change
+        function updateAllSelects() {
+            const selects = document.querySelectorAll('select[id^="select-"]');
+            selects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">-- CHOISIR LIVREUR --</option>' + 
+                    currentRiders.map(r => `<option value="${r.whatsapp}" ${currentValue === r.whatsapp ? 'selected' : ''}>${r.nom} (${r.whatsapp})</option>`).join('');
+            });
+        }
 
         // RÉCUPÉRATION DES COMMANDES
         const ordersRef = ref(db, 'driprush_orders');
@@ -91,13 +127,17 @@
                         let bestName = "";
                         
                         currentRiders.forEach(r => {
-                            const d = calculateDistance(sLat, sLng, r.lat, r.lng);
-                            if (d < bestDist) {
-                                bestDist = d;
-                                bestName = r.nom;
+                            if(r.lat && r.lng) {
+                                const d = calculateDistance(sLat, sLng, r.lat, r.lng);
+                                if (d < bestDist) {
+                                    bestDist = d;
+                                    bestName = r.nom;
+                                }
                             }
                         });
-                        suggestText = `<p class="text-[9px] text-green-400 font-bold uppercase mt-1 italic">✨ Proche : ${bestName} (${bestDist.toFixed(1)}km)</p>`;
+                        if (bestDist !== Infinity) {
+                            suggestText = `<p class="text-[9px] text-green-400 font-bold uppercase mt-1 italic">✨ Proche : ${bestName} (${bestDist.toFixed(1)}km)</p>`;
+                        }
                     }
 
                     container.innerHTML += `
@@ -211,7 +251,8 @@
 
         window.deleteOrder = (id) => {
             if(confirm("Supprimer cette commande ?")) {
-                remove(ref(db, `driprush_orders/${id}`));
+                const orderRef = ref(db, `driprush_orders/${id}`);
+                remove(orderRef);
             }
         };
 
