@@ -54,7 +54,6 @@
                     const r = data[id];
                     
                     // FILTRE : On n'affiche que ceux qui ont été vus il y a moins de 5 min
-                    // On vérifie r.timestamp (qu'on va ajouter dans le fichier livreur)
                     if (r.timestamp && (maintenant - r.timestamp) < CINQ_MINUTES) {
                         currentRiders.push({ id, ...r });
 
@@ -70,7 +69,6 @@
                             </div>
                         `;
                     } else if (!r.timestamp) {
-                        // Si le livreur n'a pas de timestamp (ancien code), on l'affiche quand même par défaut
                         currentRiders.push({ id, ...r });
                         statsContainer.innerHTML += `
                             <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex flex-col gap-2 relative group">
@@ -90,11 +88,9 @@
                 statsContainer.innerHTML = '<p class="col-span-3 text-center text-[10px] text-gray-600 uppercase italic">Aucun livreur actif</p>';
             }
             
-            // Forcer la mise à jour des listes déroulantes dans les commandes
             updateAllSelects();
         });
 
-        // Fonction pour rafraîchir les menus déroulants quand la liste des livreurs change
         function updateAllSelects() {
             const selects = document.querySelectorAll('select[id^="select-"]');
             selects.forEach(select => {
@@ -104,7 +100,6 @@
             });
         }
 
-        // RÉCUPÉRATION DES COMMANDES
         const ordersRef = ref(db, 'driprush_orders');
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
@@ -119,7 +114,6 @@
                     const date = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : "Heure inconnue";
                     const isLivree = o.status === 'Livrée';
                     
-                    // Analyse du livreur le plus proche si les coordonnées boutique existent
                     let suggestText = "";
                     if (o.shopGPS && currentRiders.length > 0) {
                         const [sLat, sLng] = o.shopGPS.split(',').map(Number);
@@ -211,6 +205,9 @@
                 const o = snapshot.val();
                 if(!o) return;
 
+                // Fonction de nettoyage strict pour WhatsApp
+                const cleanPhone = (phone) => phone.replace(/\D/g, '');
+
                 const messageLivreur = `✨ *COURSE DRIPRUSH*%0A%0A` +
                                 `🏪 *RECUPÉRATION*%0A` +
                                 `Boutique : ${o.shopName}%0A` +
@@ -227,13 +224,13 @@
                                  `👤 *CLIENT :* ${o.clientName}%0A%0A` +
                                  `⚠️ *NB : Le livreur (${rider.nom}) arrive dans 15min max.*`;
 
-                // Envoi WhatsApp Livreur
-                window.open(`https://wa.me/${rider.whatsapp.replace(/\+/g,'')}?text=${messageLivreur}`, '_blank');
+                // Envoi WhatsApp Livreur (Lien API plus stable)
+                window.open(`https://api.whatsapp.com/send?phone=${cleanPhone(rider.whatsapp)}&text=${messageLivreur}`, '_blank');
 
                 if(o.shopPhone) {
                     setTimeout(() => {
                         if(confirm("Envoyer le message de préparation à la boutique ?")) {
-                            window.open(`https://wa.me/${o.shopPhone.replace(/\+/g,'')}?text=${messageBoutique}`, '_blank');
+                            window.open(`https://api.whatsapp.com/send?phone=${cleanPhone(o.shopPhone)}&text=${messageBoutique}`, '_blank');
                         }
                     }, 2500);
                 }
