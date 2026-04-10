@@ -114,6 +114,9 @@
                     const date = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : "Heure inconnue";
                     const isLivree = o.status === 'Livrée';
                     
+                    // Sécurité affichage écran
+                    const displayShopName = o.shopName || o.boutiqueName || o.nomBoutique || 'Boutique non précisée';
+
                     let suggestText = "";
                     if (o.shopGPS && currentRiders.length > 0) {
                         const [sLat, sLng] = o.shopGPS.split(',').map(Number);
@@ -152,7 +155,7 @@
                                 
                                 <div class="bg-black/40 p-5 rounded-[2rem] border border-white/5 space-y-3 text-white">
                                     <p class="text-xs font-bold"><span class="text-orange-500">🛍️ ARTICLES :</span> ${o.items || 'Aucun'}</p>
-                                    <p class="text-xs font-bold"><span class="text-orange-500">🏪 BOUTIQUE :</span> ${o.shopName || 'Non précisé'}</p>
+                                    <p class="text-xs font-bold"><span class="text-orange-500">🏪 BOUTIQUE :</span> ${displayShopName}</p>
                                     <p class="text-xs font-bold"><span class="text-orange-500">📍 ADRESSE :</span> ${o.address || 'Non fournie'}</p>
                                     <p class="text-xs font-bold"><span class="text-orange-500">📞 TEL :</span> ${o.phone || 'N/A'}</p>
                                 </div>
@@ -207,15 +210,20 @@
 
                 const cleanPhone = (phone) => phone.replace(/\D/g, '');
 
+                // --- MODIFICATION ICI : Sécurisation des noms et du GPS ---
+                const safeShopName = o.shopName || o.boutiqueName || o.nomBoutique || "Non précisé";
+                const safeShopGPS = o.shopGPS || o.shopLocation || o.boutiqueGPS || 'Non précisé';
+                const safeClientGPS = o.clientGPS || o.gpsClient || o.coordsClient || 'Non fourni';
+
                 const texteLivreur = `✨ *COURSE DRIPRUSH*\n\n` +
                                 `🏪 *RECUPÉRATION*\n` +
-                                `Boutique : ${o.shopName}\n` +
-                                `📍 GPS : ${o.shopGPS || 'Non précisé'}\n\n` +
+                                `Boutique : ${safeShopName}\n` +
+                                `📍 GPS : ${safeShopGPS}\n\n` +
                                 `👤 *LIVRAISON*\n` +
                                 `Client : ${o.clientName}\n` +
                                 `Articles : ${o.items}\n` +
                                 `Tel : ${o.phone}\n` +
-                                `📍 GPS : ${o.clientGPS || 'Non fourni'}\n\n` +
+                                `📍 GPS : ${safeClientGPS}\n\n` +
                                 `💰 *MONTANT : ${o.total} F*`;
 
                 const texteBoutique = `✨ *COMMANDE À PRÉPARER*\n\n` +
@@ -223,7 +231,7 @@
                                  `👤 *CLIENT :* ${o.clientName}\n\n` +
                                  `⚠️ *NB : Le livreur (${rider.nom}) arrive.*`;
 
-                // --- MODIFICATION ICI : Utilisation de window.location.href et wa.me ---
+                // Envoi au livreur
                 const riderLink = `https://wa.me/${cleanPhone(rider.whatsapp)}?text=${encodeURIComponent(texteLivreur)}`;
                 window.location.href = riderLink;
 
