@@ -25,10 +25,10 @@
 
         <div class="space-y-4 mb-6">
             <input type="text" id="driver-name" placeholder="Votre Nom complet" class="w-full bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 text-white focus:border-orange-500 outline-none transition">
-            <input type="tel" id="driver-phone" placeholder="Numéro WhatsApp (ex: 97000000)" class="w-full bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 text-white focus:border-orange-500 outline-none transition">
+            <input type="tel" id="driver-phone" placeholder="Numéro WhatsApp (ex: 22900000000)" class="w-full bg-gray-900 border border-gray-700 rounded-2xl px-5 py-4 text-white focus:border-orange-500 outline-none transition">
         </div>
 
-        <button onclick="saveAndShowTracking()" class="w-full bg-orange-500 text-white font-black py-5 rounded-2xl text-xl transition active:scale-95 shadow-xl">
+        <button id="validate-btn" class="w-full bg-orange-500 text-white font-black py-5 rounded-2xl text-xl transition active:scale-95 shadow-xl">
             VALIDER MES INFOS
         </button>
     </div>
@@ -45,20 +45,37 @@
             <p id="phone-display" class="text-[10px] text-gray-500 mt-2"></p>
         </div>
 
-        <button id="toggle-btn" onclick="toggleTracking()" class="w-full bg-white text-black font-black py-5 rounded-2xl text-xl transition active:scale-95 shadow-xl">
+        <button id="toggle-btn" class="w-full bg-white text-black font-black py-5 rounded-2xl text-xl transition active:scale-95 shadow-xl">
             PRENDRE LE SERVICE
         </button>
 
         <button onclick="location.reload()" class="mt-4 text-gray-500 text-xs underline">Changer d'utilisateur</button>
     </div>
 
-    <script>
+    <script type="module">
+        // --- CONFIGURATION FIREBASE ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
+            authDomain: "vroomiam.firebaseapp.com",
+            databaseURL: "https://vroomiam-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "vroomiam",
+            storageBucket: "vroomiam.firebasestorage.app",
+            messagingSenderId: "13433812189",
+            appId: "1:13433812189:web:40b8ba4b14cb0a4deb9734"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
         let isTracking = false;
         let watchID = null;
         let driverData = { name: "", phone: "" };
 
         // 1. Enregistrer les infos et afficher l'interface de service
-        function saveAndShowTracking() {
+        window.saveAndShowTracking = function() {
             const nameInput = document.getElementById('driver-name').value;
             const phoneInput = document.getElementById('driver-phone').value;
 
@@ -68,16 +85,16 @@
             }
 
             driverData.name = nameInput;
-            driverData.phone = phoneInput;
+            driverData.phone = phoneInput.replace(/\s/g, ''); // Enlève les espaces
 
             document.getElementById('setup-card').classList.add('hidden');
             document.getElementById('tracking-card').classList.remove('hidden');
             document.getElementById('welcome-text').innerText = "Salut, " + driverData.name;
             document.getElementById('phone-display').innerText = "WhatsApp : " + driverData.phone;
-        }
+        };
 
         // 2. Activer/Désactiver le GPS
-        function toggleTracking() {
+        window.toggleTracking = function() {
             const btn = document.getElementById('toggle-btn');
             const dot = document.getElementById('status-dot');
             const text = document.getElementById('status-text');
@@ -100,10 +117,16 @@
                         maximumAge: 10000,
                         timeout: 15000
                     });
+                } else {
+                    alert("Le GPS n'est pas supporté par ce navigateur.");
                 }
             } else {
                 isTracking = false;
-                navigator.geolocation.clearWatch(watchID);
+                if (watchID) navigator.geolocation.clearWatch(watchID);
+                
+                // Supprimer le livreur de la base quand il arrête le service
+                remove(ref(db, 'livreurs/' + driverData.phone));
+
                 btn.innerText = "PRENDRE LE SERVICE";
                 btn.classList.replace('bg-red-500', 'bg-white');
                 btn.classList.remove('text-white');
@@ -113,14 +136,13 @@
                 text.classList.remove('text-green-400');
                 card.classList.replace('border-green-500/30', 'border-red-500/30');
             }
-        }
+        };
 
-        // 3. Envoyer les données (GPS + Nom + Tel)
+        // 3. Envoyer les données à la base de données
         function updateLocation(position) {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             
-            // Les données complètes prêtes pour Firebase
             const payload = {
                 nom: driverData.name,
                 whatsapp: driverData.phone,
@@ -129,16 +151,18 @@
                 lastSeen: new Date().toLocaleTimeString()
             };
 
-            console.log("Données envoyées à la base :", payload);
-
-            /* // CODE RÉEL FIREBASE :
-            firebase.database().ref('livreurs/' + driverData.phone).set(payload);
-            */
+            // ENVOI RÉEL À FIREBASE
+            set(ref(db, 'livreurs/' + driverData.phone), payload);
+            console.log("Position mise à jour sur Firebase");
         }
 
         function handleError(err) {
             console.warn('Erreur GPS: ' + err.message);
         }
+
+        // Liaison des boutons aux fonctions (nécessaire car script type="module")
+        document.getElementById('validate-btn').onclick = window.saveAndShowTracking;
+        document.getElementById('toggle-btn').onclick = window.toggleTracking;
     </script>
 </body>
 </html>
