@@ -148,12 +148,13 @@
                 whatsapp: driverData.phone,
                 lat: lat,
                 lng: lng,
-                lastSeen: new Date().toLocaleTimeString()
+                lastSeen: new Date().toLocaleTimeString(),
+                timestamp: Date.now() // AJOUT : Indispensable pour le nettoyage auto côté Admin
             };
 
             // ENVOI RÉEL À FIREBASE
             set(ref(db, 'livreurs/' + driverData.phone), payload);
-            console.log("Position mise à jour sur Firebase");
+            console.log("Position mise à jour sur Firebase avec Timestamp");
         }
 
         function handleError(err) {
