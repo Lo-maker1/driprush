@@ -188,7 +188,7 @@
                     `;
                 });
             } else {
-                container.innerHTML = '<div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase">Aucune commande en attente...</div>';
+                container.innerHTML = '<div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase text-[10px]">Aucune commande en attente...</div>';
             }
         });
 
@@ -205,10 +205,8 @@
                 const o = snapshot.val();
                 if(!o) return;
 
-                // Fonction de nettoyage strict pour WhatsApp
                 const cleanPhone = (phone) => phone.replace(/\D/g, '');
 
-                // Construction des messages avec \n (encodés plus bas par encodeURIComponent)
                 const texteLivreur = `✨ *COURSE DRIPRUSH*\n\n` +
                                 `🏪 *RECUPÉRATION*\n` +
                                 `Boutique : ${o.shopName}\n` +
@@ -223,19 +221,19 @@
                 const texteBoutique = `✨ *COMMANDE À PRÉPARER*\n\n` +
                                  `📦 *ARTICLES :* ${o.items}\n` +
                                  `👤 *CLIENT :* ${o.clientName}\n\n` +
-                                 `⚠️ *NB : Le livreur (${rider.nom}) arrive dans 15min max.*`;
+                                 `⚠️ *NB : Le livreur (${rider.nom}) arrive.*`;
 
-                // Envoi WhatsApp Livreur avec encodage sécurisé
-                const riderLink = `https://api.whatsapp.com/send?phone=${cleanPhone(rider.whatsapp)}&text=${encodeURIComponent(texteLivreur)}`;
-                window.open(riderLink, '_blank');
+                // --- MODIFICATION ICI : Utilisation de window.location.href et wa.me ---
+                const riderLink = `https://wa.me/${cleanPhone(rider.whatsapp)}?text=${encodeURIComponent(texteLivreur)}`;
+                window.location.href = riderLink;
 
                 if(o.shopPhone) {
                     setTimeout(() => {
                         if(confirm("Envoyer le message de préparation à la boutique ?")) {
-                            const shopLink = `https://api.whatsapp.com/send?phone=${cleanPhone(o.shopPhone)}&text=${encodeURIComponent(texteBoutique)}`;
-                            window.open(shopLink, '_blank');
+                            const shopLink = `https://wa.me/${cleanPhone(o.shopPhone)}?text=${encodeURIComponent(texteBoutique)}`;
+                            window.location.href = shopLink;
                         }
-                    }, 2000);
+                    }, 3000);
                 }
 
                 update(orderRef, { status: 'En livraison', riderName: rider.nom });
