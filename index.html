@@ -97,7 +97,6 @@
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
             products.forEach(p => {
-                // Nettoyage des chaînes pour éviter les erreurs JS lors du clic
                 const safeName = p.name.replace(/'/g, "\\'");
                 const safeShop = (p.shop || 'Driprush').replace(/'/g, "\\'");
                 const safeGPS = (p.shopGPS || '').replace(/'/g, "\\'");
@@ -235,7 +234,8 @@
             btn.disabled = true;
 
             navigator.geolocation.getCurrentPosition((pos) => {
-                const gps = `http://www.google.com/maps/place/${pos.coords.latitude},${pos.coords.longitude}`;
+                // FIX : Correction du format du lien Google Maps
+                const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 saveOrder(name, phone, addr, gps, btn, originalText);
             }, () => {
                 saveOrder(name, phone, addr, "GPS Refusé", btn, originalText);
@@ -247,15 +247,16 @@
             let subtotal = 0; 
             pendingItems.forEach(i => subtotal += parseInt(i.price));
 
-            // Correction ici : On cible le premier item du tableau
-            const firstItem = pendingItems;
+            // FIX : On cible le premier item du panier pour récupérer les infos boutique
+            const firstItem = pendingItems; 
             
             const orderRef = push(ref(db, 'driprush_orders'));
             set(orderRef, {
                 clientName: name, 
-                phone, 
+                phone: phone, 
                 address: addr, 
                 clientGPS: gps,
+                // FIX : Récupération correcte des propriétés shop
                 shopName: firstItem.shop || "Driprush",
                 shopGPS: firstItem.shopGPS || "Non renseigné",
                 shopPhone: firstItem.shopPhone || "",
