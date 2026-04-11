@@ -114,12 +114,13 @@
                     const date = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : "Heure inconnue";
                     const isLivree = o.status === 'Livrée';
                     
-                    // --- CORRECTION : Récupération intelligente du nom et GPS de la boutique ---
-                    const displayShopName = o.shopName || o.boutiqueName || o.nomBoutique || 'Boutique non précisée';
-                    const displayShopGPS = o.shopGPS || o.boutiqueGPS || o.shopLocation || 'Non précisé';
+                    // --- CORRECTION : Utilisation directe des clés shopName et shopGPS de ton Firebase ---
+                    const displayShopName = o.shopName || o.boutiqueName || 'Boutique non précisée';
+                    const displayShopGPS = o.shopGPS || o.boutiqueGPS || 'Non précisé';
 
                     let suggestText = "";
-                    if (displayShopGPS !== 'Non précisé' && currentRiders.length > 0) {
+                    // Vérification si le GPS est au format lat,lng (pas un lien) pour le calcul
+                    if (displayShopGPS !== 'Non précisé' && !displayShopGPS.includes('http') && displayShopGPS.includes(',') && currentRiders.length > 0) {
                         try {
                             const [sLat, sLng] = displayShopGPS.split(',').map(Number);
                             let bestDist = Infinity;
@@ -137,7 +138,7 @@
                             if (bestDist !== Infinity) {
                                 suggestText = `<p class="text-[9px] text-green-400 font-bold uppercase mt-1 italic">✨ Proche : ${bestName} (${bestDist.toFixed(1)}km)</p>`;
                             }
-                        } catch(e) { console.log("Erreur calcul GPS boutique"); }
+                        } catch(e) { console.log("Erreur calcul distance"); }
                     }
 
                     container.innerHTML += `
@@ -159,7 +160,7 @@
                                 <div class="bg-black/40 p-5 rounded-[2rem] border border-white/5 space-y-3 text-white">
                                     <p class="text-xs font-bold"><span class="text-orange-500">🛍️ ARTICLES :</span> ${o.items || 'Aucun'}</p>
                                     <p class="text-xs font-bold"><span class="text-orange-500">🏪 BOUTIQUE :</span> ${displayShopName}</p>
-                                    <p class="text-xs font-bold"><span class="text-orange-500">🗺️ GPS BOUTIQUE :</span> ${displayShopGPS}</p>
+                                    <p class="text-xs font-bold truncate"><span class="text-orange-500">🗺️ GPS BOUTIQUE :</span> ${displayShopGPS}</p>
                                     <p class="text-xs font-bold"><span class="text-orange-500">📍 ADRESSE CLIENT :</span> ${o.address || 'Non fournie'}</p>
                                     <p class="text-xs font-bold"><span class="text-orange-500">📞 TEL :</span> ${o.phone || 'N/A'}</p>
                                 </div>
@@ -212,12 +213,12 @@
                 const o = snapshot.val();
                 if(!o) return;
 
-                const cleanPhone = (phone) => phone.replace(/\D/g, '');
+                const cleanPhone = (phone) => phone.toString().replace(/\D/g, '');
 
-                // --- MODIFICATION : Sécurisation des noms et du GPS pour WhatsApp ---
-                const safeShopName = o.shopName || o.boutiqueName || o.nomBoutique || "Non précisé";
-                const safeShopGPS = o.shopGPS || o.boutiqueGPS || o.shopLocation || 'Non précisé';
-                const safeClientGPS = o.clientGPS || o.gpsClient || o.coordsClient || 'Non fourni';
+                // --- MODIFICATION : Récupération fidèle des clés ---
+                const safeShopName = o.shopName || "Non précisé";
+                const safeShopGPS = o.shopGPS || "Non précisé";
+                const safeClientGPS = o.clientGPS || "Non fourni";
 
                 const texteLivreur = `✨ *COURSE DRIPRUSH*\n\n` +
                                 `🏪 *RECUPÉRATION*\n` +
@@ -236,14 +237,13 @@
                                  `⚠️ *NB : Le livreur (${rider.nom}) arrive.*`;
 
                 // Envoi au livreur
-                const riderLink = `https://wa.me/${cleanPhone(rider.whatsapp)}?text=${encodeURIComponent(texteLivreur)}`;
-                window.location.href = riderLink;
+                window.location.href = `https://wa.me/${cleanPhone(rider.whatsapp)}?text=${encodeURIComponent(texteLivreur)}`;
 
-                if(o.shopPhone) {
+                const sPhone = o.shopPhone || o.boutiquePhone;
+                if(sPhone) {
                     setTimeout(() => {
                         if(confirm("Envoyer le message de préparation à la boutique ?")) {
-                            const shopLink = `https://wa.me/${cleanPhone(o.shopPhone)}?text=${encodeURIComponent(texteBoutique)}`;
-                            window.location.href = shopLink;
+                            window.location.href = `https://wa.me/${cleanPhone(sPhone)}?text=${encodeURIComponent(texteBoutique)}`;
                         }
                     }, 3000);
                 }
@@ -266,9 +266,9 @@
             }
         };
 
-        window.deleteRider = (phone) => {
+        window.deleteRider = (id) => {
             if(confirm("Supprimer ce livreur du système ?")) {
-                remove(ref(db, `livreurs/${phone}`));
+                remove(ref(db, `livreurs/${id}`));
             }
         };
 
