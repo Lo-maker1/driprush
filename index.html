@@ -97,8 +97,13 @@
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
             products.forEach(p => {
+                // Nettoyage des chaînes pour éviter les erreurs JS lors du clic
+                const safeName = p.name.replace(/'/g, "\\'");
+                const safeShop = (p.shop || 'Driprush').replace(/'/g, "\\'");
+                const safeGPS = (p.shopGPS || '').replace(/'/g, "\\'");
+
                 grid.innerHTML += `
-                    <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition" onclick="openModal('${p.id}', '${p.name.replace(/'/g, "\\'")}', '${p.price}', '${p.image}', '${p.sizes}', '${(p.shop || 'Driprush').replace(/'/g, "\\'")}', '${p.shopGPS || ''}', '${p.shopPhone || ''}')">
+                    <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition" onclick="openModal('${p.id}', '${safeName}', '${p.price}', '${p.image}', '${p.sizes}', '${safeShop}', '${safeGPS}', '${p.shopPhone || ''}')">
                         <button class="absolute top-3 right-3 z-10 text-gray-300 hover:text-red-500 transition" onclick="event.stopPropagation(); this.classList.toggle('text-red-500')">
                             <i class="fa-solid fa-heart text-lg"></i>
                         </button>
@@ -230,7 +235,7 @@
             btn.disabled = true;
 
             navigator.geolocation.getCurrentPosition((pos) => {
-                const gps = `http://googleusercontent.com/maps.google.com/q=${pos.coords.latitude},${pos.coords.longitude}`;
+                const gps = `http://www.google.com/maps/place/${pos.coords.latitude},${pos.coords.longitude}`;
                 saveOrder(name, phone, addr, gps, btn, originalText);
             }, () => {
                 saveOrder(name, phone, addr, "GPS Refusé", btn, originalText);
@@ -242,7 +247,7 @@
             let subtotal = 0; 
             pendingItems.forEach(i => subtotal += parseInt(i.price));
 
-            // Correction ici : On prend le premier article en attente pour les infos shop
+            // Correction ici : On cible le premier item du tableau
             const firstItem = pendingItems;
             
             const orderRef = push(ref(db, 'driprush_orders'));
