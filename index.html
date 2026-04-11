@@ -32,10 +32,8 @@
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.3s ease-out; }
 
-        /* Correction pour les modales sur mobile */
         .modal-height-fix { max-height: 90vh; overflow-y: auto; }
         
-        /* Ajout : Animation de pop pour le panier */
         @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
         .cart-pop { animation: pop 0.3s ease-in-out; }
     </style>
@@ -100,7 +98,7 @@
             grid.innerHTML = '';
             products.forEach(p => {
                 grid.innerHTML += `
-                    <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition" onclick="openModal('${p.id}', '${p.name}', '${p.price}', '${p.image}', '${p.sizes}', '${p.shop || 'Driprush'}', '${p.shopGPS || ''}', '${p.shopPhone || ''}')">
+                    <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition" onclick="openModal('${p.id}', '${p.name.replace(/'/g, "\\'")}', '${p.price}', '${p.image}', '${p.sizes}', '${(p.shop || 'Driprush').replace(/'/g, "\\'")}', '${p.shopGPS || ''}', '${p.shopPhone || ''}')">
                         <button class="absolute top-3 right-3 z-10 text-gray-300 hover:text-red-500 transition" onclick="event.stopPropagation(); this.classList.toggle('text-red-500')">
                             <i class="fa-solid fa-heart text-lg"></i>
                         </button>
@@ -160,11 +158,10 @@
             cart.push({...selectedItem, validated: false});
             updateCartUI();
             
-            // Animation icône panier
             const cartIcons = [document.getElementById('cart-count'), document.getElementById('nav-cart-count')];
             cartIcons.forEach(icon => {
                 icon.parentElement.classList.add('cart-pop');
-                setTimeout(() => icon.parentElement.classList.remove('cart-pop'), 300);
+                setTimeout(() => icon.parentElement.classList.remove('pop'), 300);
             });
 
             document.getElementById('product-modal').classList.add('hidden');
@@ -245,7 +242,7 @@
             let subtotal = 0; 
             pendingItems.forEach(i => subtotal += parseInt(i.price));
 
-            // On récupère les infos de la boutique du 1er article pour l'admin
+            // Correction ici : On prend le premier article en attente pour les infos shop
             const firstItem = pendingItems;
             
             const orderRef = push(ref(db, 'driprush_orders'));
@@ -255,7 +252,7 @@
                 address: addr, 
                 clientGPS: gps,
                 shopName: firstItem.shop || "Driprush",
-                shopGPS: firstItem.shopGPS || "",
+                shopGPS: firstItem.shopGPS || "Non renseigné",
                 shopPhone: firstItem.shopPhone || "",
                 items: pendingItems.map(i => `${i.name} [${i.size}]`).join(', '),
                 total: subtotal + deliveryFee,
@@ -263,7 +260,7 @@
                 timestamp: Date.now()
             }).then(() => {
                 alert("🔥 Commande envoyée !");
-                cart.forEach(item => item.validated = true);
+                cart.forEach(item => { if(!item.validated) item.validated = true; });
                 updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
             }).catch((e) => {
