@@ -165,7 +165,7 @@
             const cartIcons = [document.getElementById('cart-count'), document.getElementById('nav-cart-count')];
             cartIcons.forEach(icon => {
                 icon.parentElement.classList.add('cart-pop');
-                setTimeout(() => icon.parentElement.classList.remove('pop'), 300);
+                setTimeout(() => icon.parentElement.classList.remove('cart-pop'), 300);
             });
 
             document.getElementById('product-modal').classList.add('hidden');
@@ -234,7 +234,6 @@
             btn.disabled = true;
 
             navigator.geolocation.getCurrentPosition((pos) => {
-                // FIX : Correction du format du lien Google Maps
                 const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 saveOrder(name, phone, addr, gps, btn, originalText);
             }, () => {
@@ -247,7 +246,6 @@
             let subtotal = 0; 
             pendingItems.forEach(i => subtotal += parseInt(i.price));
 
-            // FIX : On cible le premier item du panier pour récupérer les infos boutique
             const firstItem = pendingItems; 
             
             const orderRef = push(ref(db, 'driprush_orders'));
@@ -256,7 +254,6 @@
                 phone: phone, 
                 address: addr, 
                 clientGPS: gps,
-                // FIX : Récupération correcte des propriétés shop
                 shopName: firstItem.shop || "Driprush",
                 shopGPS: firstItem.shopGPS || "Non renseigné",
                 shopPhone: firstItem.shopPhone || "",
