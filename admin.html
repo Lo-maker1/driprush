@@ -114,12 +114,11 @@
                     const date = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : "Heure inconnue";
                     const isLivree = o.status === 'Livrée';
                     
-                    // --- CORRECTION : Utilisation directe des clés shopName et shopGPS de ton Firebase ---
-                    const displayShopName = o.shopName || o.boutiqueName || 'Boutique non précisée';
-                    const displayShopGPS = o.shopGPS || o.boutiqueGPS || 'Non précisé';
+                    const displayShopName = o.shopName || 'Boutique non précisée';
+                    const displayShopGPS = o.shopGPS || 'Non précisé';
+                    const displayClientGPS = o.clientGPS || 'Non fourni';
 
                     let suggestText = "";
-                    // Vérification si le GPS est au format lat,lng (pas un lien) pour le calcul
                     if (displayShopGPS !== 'Non précisé' && !displayShopGPS.includes('http') && displayShopGPS.includes(',') && currentRiders.length > 0) {
                         try {
                             const [sLat, sLng] = displayShopGPS.split(',').map(Number);
@@ -159,10 +158,23 @@
                                 
                                 <div class="bg-black/40 p-5 rounded-[2rem] border border-white/5 space-y-3 text-white">
                                     <p class="text-xs font-bold"><span class="text-orange-500">🛍️ ARTICLES :</span> ${o.items || 'Aucun'}</p>
-                                    <p class="text-xs font-bold"><span class="text-orange-500">🏪 BOUTIQUE :</span> ${displayShopName}</p>
-                                    <p class="text-xs font-bold truncate"><span class="text-orange-500">🗺️ GPS BOUTIQUE :</span> ${displayShopGPS}</p>
-                                    <p class="text-xs font-bold"><span class="text-orange-500">📍 ADRESSE CLIENT :</span> ${o.address || 'Non fournie'}</p>
-                                    <p class="text-xs font-bold"><span class="text-orange-500">📞 TEL :</span> ${o.phone || 'N/A'}</p>
+                                    
+                                    <div class="border-t border-white/5 pt-2">
+                                        <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Point de Ramassage</p>
+                                        <p class="text-xs font-bold"><span class="text-blue-400 font-black">🏪 ${displayShopName}</span></p>
+                                        ${displayShopGPS !== 'Non précisé' ? 
+                                            `<a href="${displayShopGPS.includes('http') ? displayShopGPS : 'https://www.google.com/maps/search/?api=1&query=' + displayShopGPS}" target="_blank" class="text-[9px] text-blue-400 font-black underline uppercase">Ouvrir Itinéraire Boutique</a>` : ''}
+                                    </div>
+
+                                    <div class="border-t border-white/5 pt-2">
+                                        <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Destination Client</p>
+                                        <p class="text-xs font-bold"><span class="text-green-400 font-black">📍 ${o.address || 'Non fournie'}</span></p>
+                                        <div class="flex gap-3 mt-1">
+                                            ${displayClientGPS !== 'Non fourni' && displayClientGPS !== 'GPS Refusé' ? 
+                                                `<a href="${displayClientGPS}" target="_blank" class="text-[9px] text-green-400 font-black underline uppercase">Ouvrir Google Maps</a>` : ''}
+                                            <a href="tel:${o.phone}" class="text-[9px] text-orange-500 font-black underline uppercase">Appeler Client</a>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="flex justify-between items-center bg-orange-500 p-4 rounded-2xl">
@@ -215,37 +227,35 @@
 
                 const cleanPhone = (phone) => phone.toString().replace(/\D/g, '');
 
-                // --- MODIFICATION : Récupération fidèle des clés ---
                 const safeShopName = o.shopName || "Non précisé";
                 const safeShopGPS = o.shopGPS || "Non précisé";
                 const safeClientGPS = o.clientGPS || "Non fourni";
 
                 const texteLivreur = `✨ *COURSE DRIPRUSH*\n\n` +
-                                `🏪 *RECUPÉRATION*\n` +
-                                `Boutique : ${safeShopName}\n` +
-                                `📍 GPS : ${safeShopGPS}\n\n` +
-                                `👤 *LIVRAISON*\n` +
-                                `Client : ${o.clientName}\n` +
-                                `Articles : ${o.items}\n` +
-                                `Tel : ${o.phone}\n` +
-                                `📍 GPS : ${safeClientGPS}\n\n` +
-                                `💰 *MONTANT : ${o.total} F*`;
+                                     `🏪 *RECUPÉRATION*\n` +
+                                     `Boutique : ${safeShopName}\n` +
+                                     `📍 GPS : ${safeShopGPS}\n\n` +
+                                     `👤 *LIVRAISON*\n` +
+                                     `Client : ${o.clientName}\n` +
+                                     `Articles : ${o.items}\n` +
+                                     `Tel : ${o.phone}\n` +
+                                     `📍 GPS : ${safeClientGPS}\n\n` +
+                                     `💰 *MONTANT : ${o.total} F*`;
 
                 const texteBoutique = `✨ *COMMANDE À PRÉPARER*\n\n` +
-                                 `📦 *ARTICLES :* ${o.items}\n` +
-                                 `👤 *CLIENT :* ${o.clientName}\n\n` +
-                                 `⚠️ *NB : Le livreur (${rider.nom}) arrive.*`;
+                                      `📦 *ARTICLES :* ${o.items}\n` +
+                                      `👤 *CLIENT :* ${o.clientName}\n\n` +
+                                      `⚠️ *NB : Le livreur (${rider.nom}) arrive.*`;
 
-                // Envoi au livreur
-                window.location.href = `https://wa.me/${cleanPhone(rider.whatsapp)}?text=${encodeURIComponent(texteLivreur)}`;
+                window.open(`https://wa.me/${cleanPhone(rider.whatsapp)}?text=${encodeURIComponent(texteLivreur)}`, '_blank');
 
                 const sPhone = o.shopPhone || o.boutiquePhone;
                 if(sPhone) {
                     setTimeout(() => {
                         if(confirm("Envoyer le message de préparation à la boutique ?")) {
-                            window.location.href = `https://wa.me/${cleanPhone(sPhone)}?text=${encodeURIComponent(texteBoutique)}`;
+                            window.open(`https://wa.me/${cleanPhone(sPhone)}?text=${encodeURIComponent(texteBoutique)}`, '_blank');
                         }
-                    }, 3000);
+                    }, 2000);
                 }
 
                 update(orderRef, { status: 'En livraison', riderName: rider.nom });
