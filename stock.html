@@ -33,7 +33,7 @@
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
                     
-                    // CORRECTION : Format propre de l'URL Google Maps
+                    // Format propre de l'URL Google Maps
                     const link = `https://www.google.com/maps?q=${lat},${lon}`;
                     
                     document.getElementById('p-shop-gps').value = link;
@@ -55,12 +55,12 @@
             const image = document.getElementById('p-img').value;
             const type = document.getElementById('p-type').value; 
             const genre = document.getElementById('p-genre').value; 
-            const sizes = document.getElementById('p-sizes').value;
+            const sizes = document.getElementById('p-sizes').value || "N/A"; // Facultatif : "N/A" par défaut
             const shopName = document.getElementById('p-shop').value; 
             const shopPhone = document.getElementById('p-shop-phone').value; 
             const shopGPS = document.getElementById('p-shop-gps').value;
 
-            // Vérifications de sécurité
+            // Vérifications de sécurité (Tailles retirée des obligations)
             if(!name || !price || !image) return alert("Remplis au moins Nom, Prix et Image !");
             if(!shopGPS) return alert("Capture le GPS ou colle un lien Google Maps !");
             if(!shopPhone) return alert("Ajoute le numéro WhatsApp de la boutique !");
@@ -103,7 +103,7 @@
         <form id="p-form" class="space-y-4 bg-gray-900 p-6 rounded-[2.5rem] border border-white/5 shadow-2xl">
             <div>
                 <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Nom du produit</label>
-                <input id="p-name" type="text" placeholder="ex: Jordan 4 Black Cat" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 font-bold">
+                <input id="p-name" type="text" placeholder="ex: Jordan 4 ou Sauvage ML" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 font-bold">
             </div>
             
             <div>
@@ -122,6 +122,7 @@
                     <select id="p-type" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none text-xs font-bold">
                         <option value="vetement">👕 Vêtement</option>
                         <option value="chaussure">👟 Chaussure</option>
+                        <option value="parfum">🧴 Parfum</option>
                         <option value="accessoire">✨ Accessoire</option>
                     </select>
                 </div>
@@ -158,8 +159,8 @@
             </div>
 
             <div>
-                <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Tailles / Pointures (ex: S,M,L ou 40,41)</label>
-                <input id="p-sizes" type="text" placeholder="S, M, L, XL" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 font-bold">
+                <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Tailles / ML (Optionnel)</label>
+                <input id="p-sizes" type="text" placeholder="ex: S, M, L ou 100ml" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 font-bold">
             </div>
 
             <button type="button" onclick="addProduct()" class="w-full bg-orange-500 text-black py-5 rounded-[2rem] font-black uppercase italic shadow-lg active:scale-95 transition mt-4">
