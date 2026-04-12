@@ -24,9 +24,9 @@
         const db = getDatabase(app);
 
         // --- VARIABLES GLOBALES ---
-        let currentRiders = []; // Liste dynamique des livreurs connectés
+        let currentRiders = []; 
 
-        // FONCTION DE CALCUL DE DISTANCE (HAVERSINE)
+        // FONCTION DE CALCUL DE DISTANCE
         function calculateDistance(lat1, lon1, lat2, lon2) {
             if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
             const R = 6371; 
@@ -38,7 +38,7 @@
             return R * c; 
         }
 
-        // RÉCUPÉRATION DES LIVREURS EN TEMPS RÉEL (AVEC FILTRE D'ACTIVITÉ)
+        // RÉCUPÉRATION DES LIVREURS
         const ridersRef = ref(db, 'livreurs');
         onValue(ridersRef, (snapshot) => {
             const data = snapshot.val();
@@ -47,17 +47,13 @@
             currentRiders = [];
 
             const maintenant = Date.now();
-            const CINQ_MINUTES = 5 * 60 * 1000; // Seuil d'inactivité
+            const CINQ_MINUTES = 5 * 60 * 1000;
 
             if (data) {
                 Object.keys(data).forEach(id => {
                     const r = data[id];
-                    
-                    // FILTRE : On n'affiche que ceux qui ont été vus il y a moins de 5 min
                     if (r.timestamp && (maintenant - r.timestamp) < CINQ_MINUTES) {
                         currentRiders.push({ id, ...r });
-
-                        // Affichage dans la barre de stats
                         statsContainer.innerHTML += `
                             <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex flex-col gap-2 relative group">
                                 <button onclick="deleteRider('${id}')" class="absolute -top-1 -right-1 bg-red-600 text-white w-5 h-5 rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">X</button>
@@ -87,7 +83,6 @@
             if (currentRiders.length === 0) {
                 statsContainer.innerHTML = '<p class="col-span-3 text-center text-[10px] text-gray-600 uppercase italic">Aucun livreur actif</p>';
             }
-            
             updateAllSelects();
         });
 
@@ -115,30 +110,13 @@
                     const isLivree = o.status === 'Livrée';
                     
                     const displayShopName = o.shopName || 'Boutique non précisée';
-                    const displayShopGPS = o.shopGPS || 'Non précisé';
-                    const displayClientGPS = o.clientGPS || 'Non fourni';
-
-                    let suggestText = "";
-                    if (displayShopGPS !== 'Non précisé' && !displayShopGPS.includes('http') && displayShopGPS.includes(',') && currentRiders.length > 0) {
-                        try {
-                            const [sLat, sLng] = displayShopGPS.split(',').map(Number);
-                            let bestDist = Infinity;
-                            let bestName = "";
-                            
-                            currentRiders.forEach(r => {
-                                if(r.lat && r.lng) {
-                                    const d = calculateDistance(sLat, sLng, r.lat, r.lng);
-                                    if (d < bestDist) {
-                                        bestDist = d;
-                                        bestName = r.nom;
-                                    }
-                                }
-                            });
-                            if (bestDist !== Infinity) {
-                                suggestText = `<p class="text-[9px] text-green-400 font-bold uppercase mt-1 italic">✨ Proche : ${bestName} (${bestDist.toFixed(1)}km)</p>`;
-                            }
-                        } catch(e) { console.log("Erreur calcul distance"); }
+                    // GESTION DU LIEN GPS BOUTIQUE
+                    let shopLink = "#";
+                    if(o.shopGPS && o.shopGPS !== 'Non renseigné') {
+                        shopLink = o.shopGPS.includes('http') ? o.shopGPS : `https://www.google.com/maps?q=${o.shopGPS}`;
                     }
+
+                    const displayClientGPS = o.clientGPS || 'Non fourni';
 
                     container.innerHTML += `
                         <div class="bg-gray-900 border ${isLivree ? 'border-green-500/20 opacity-60' : (o.status === 'En livraison' ? 'border-blue-500/30' : 'border-white/5')} p-6 rounded-[2.5rem] mb-6 shadow-2xl relative">
@@ -148,7 +126,6 @@
                                         ${o.status || 'Nouveau'} ${o.riderName ? '• ' + o.riderName : ''}
                                     </span>
                                     <p class="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">${date}</p>
-                                    ${!isLivree ? suggestText : ''}
                                 </div>
                                 <button onclick="deleteOrder('${o.id}')" class="bg-red-500/10 text-red-500 p-2 rounded-xl text-[9px] font-black uppercase">Supprimer</button>
                             </div>
@@ -162,8 +139,9 @@
                                     <div class="border-t border-white/5 pt-2">
                                         <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Point de Ramassage</p>
                                         <p class="text-xs font-bold"><span class="text-blue-400 font-black">🏪 ${displayShopName}</span></p>
-                                        ${displayShopGPS !== 'Non précisé' ? 
-                                            `<a href="${displayShopGPS.includes('http') ? displayShopGPS : 'https://www.google.com/maps/search/?api=1&query=' + displayShopGPS}" target="_blank" class="text-[9px] text-blue-400 font-black underline uppercase">Ouvrir Itinéraire Boutique</a>` : ''}
+                                        ${shopLink !== "#" ? 
+                                            `<a href="${shopLink}" target="_blank" class="text-[9px] text-blue-400 font-black underline uppercase italic">📍 Voir Itinéraire Boutique</a>` : 
+                                            `<span class="text-[9px] text-red-500 font-black uppercase italic">GPS Boutique Non renseigné</span>`}
                                     </div>
 
                                     <div class="border-t border-white/5 pt-2">
@@ -171,8 +149,8 @@
                                         <p class="text-xs font-bold"><span class="text-green-400 font-black">📍 ${o.address || 'Non fournie'}</span></p>
                                         <div class="flex gap-3 mt-1">
                                             ${displayClientGPS !== 'Non fourni' && displayClientGPS !== 'GPS Refusé' ? 
-                                                `<a href="${displayClientGPS}" target="_blank" class="text-[9px] text-green-400 font-black underline uppercase">Ouvrir Google Maps</a>` : ''}
-                                            <a href="tel:${o.phone}" class="text-[9px] text-orange-500 font-black underline uppercase">Appeler Client</a>
+                                                `<a href="${displayClientGPS}" target="_blank" class="text-[9px] text-green-400 font-black underline uppercase italic">Voir Google Maps Client</a>` : ''}
+                                            <a href="tel:${o.phone}" class="text-[9px] text-orange-500 font-black underline uppercase italic">Appeler Client</a>
                                         </div>
                                     </div>
                                 </div>
@@ -227,26 +205,32 @@
 
                 const cleanPhone = (phone) => phone.toString().replace(/\D/g, '');
 
+                // CORRECTION GPS POUR LE MESSAGE LIVREUR
+                let finalShopGPS = "Non renseigné";
+                if(o.shopGPS && o.shopGPS !== 'Non renseigné') {
+                    finalShopGPS = o.shopGPS.includes('http') ? o.shopGPS : `https://www.google.com/maps?q=${o.shopGPS}`;
+                }
+
                 const safeShopName = o.shopName || "Non précisé";
-                const safeShopGPS = o.shopGPS || "Non précisé";
                 const safeClientGPS = o.clientGPS || "Non fourni";
 
-                const texteLivreur = `✨ *COURSE DRIPRUSH*\n\n` +
-                                     `🏪 *RECUPÉRATION*\n` +
+                const texteLivreur = `🏁 *COURSE DRIPRUSH*\n\n` +
+                                     `🏪 *1. RÉCUPÉRATION*\n` +
                                      `Boutique : ${safeShopName}\n` +
-                                     `📍 GPS : ${safeShopGPS}\n\n` +
-                                     `👤 *LIVRAISON*\n` +
+                                     `Lien GPS : ${finalShopGPS}\n\n` +
+                                     `👤 *2. LIVRAISON*\n` +
                                      `Client : ${o.clientName}\n` +
                                      `Articles : ${o.items}\n` +
                                      `Tel : ${o.phone}\n` +
-                                     `📍 GPS : ${safeClientGPS}\n\n` +
-                                     `💰 *MONTANT : ${o.total} F*`;
+                                     `Lien GPS Client : ${safeClientGPS}\n\n` +
+                                     `💰 *MONTANT À ENCAISSER : ${o.total} F*`;
 
                 const texteBoutique = `✨ *COMMANDE À PRÉPARER*\n\n` +
                                       `📦 *ARTICLES :* ${o.items}\n` +
                                       `👤 *CLIENT :* ${o.clientName}\n\n` +
                                       `⚠️ *NB : Le livreur (${rider.nom}) arrive.*`;
 
+                // Ouverture du lien livreur
                 window.open(`https://wa.me/${cleanPhone(rider.whatsapp)}?text=${encodeURIComponent(texteLivreur)}`, '_blank');
 
                 const sPhone = o.shopPhone || o.boutiquePhone;
@@ -255,7 +239,7 @@
                         if(confirm("Envoyer le message de préparation à la boutique ?")) {
                             window.open(`https://wa.me/${cleanPhone(sPhone)}?text=${encodeURIComponent(texteBoutique)}`, '_blank');
                         }
-                    }, 2000);
+                    }, 2500);
                 }
 
                 update(orderRef, { status: 'En livraison', riderName: rider.nom });
