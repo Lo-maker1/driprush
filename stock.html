@@ -33,7 +33,7 @@
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
                     
-                    // Format propre de l'URL Google Maps
+                    // CORRECTION : Utilisation de ${} pour les variables et format maps standard
                     const link = `https://www.google.com/maps?q=${lat},${lon}`;
                     
                     document.getElementById('p-shop-gps').value = link;
@@ -60,7 +60,7 @@
             const shopPhone = document.getElementById('p-shop-phone').value; 
             const shopGPS = document.getElementById('p-shop-gps').value;
 
-            // Vérifications de sécurité (Tailles retirée des obligations)
+            // Vérifications de sécurité
             if(!name || !price || !image) return alert("Remplis au moins Nom, Prix et Image !");
             if(!shopGPS) return alert("Capture le GPS ou colle un lien Google Maps !");
             if(!shopPhone) return alert("Ajoute le numéro WhatsApp de la boutique !");
