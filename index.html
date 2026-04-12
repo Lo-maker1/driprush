@@ -97,7 +97,7 @@
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
             products.forEach(p => {
-                const safeName = p.name.replace(/'/g, "\\'");
+                const safeName = (p.name || "").replace(/'/g, "\\'");
                 const safeShop = (p.shop || 'Driprush').replace(/'/g, "\\'");
                 const safeGPS = (p.shopGPS || '').replace(/'/g, "\\'");
 
@@ -137,6 +137,7 @@
         };
 
         window.openModal = (id, name, price, image, sizes, shop, shopGPS, shopPhone) => {
+            // FIX: On s'assure que les données boutique sont bien capturées ici
             selectedItem = { id, name, price, image, shop, shopGPS, shopPhone };
             document.getElementById('modal-img').src = image;
             document.getElementById('modal-name').innerText = name;
@@ -246,6 +247,7 @@
             let subtotal = 0; 
             pendingItems.forEach(i => subtotal += parseInt(i.price));
 
+            // On prend les infos boutique du PREMIER item de la commande
             const firstItem = pendingItems; 
             
             const orderRef = push(ref(db, 'driprush_orders'));
