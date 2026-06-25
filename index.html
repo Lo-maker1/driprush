@@ -12,23 +12,89 @@
     <meta property="og:image" content="https://i.ibb.co/b58wJF0B/IMG-3395.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#0B0B0C',
+                        paper: '#F7F5F2',
+                        drip: '#FF4D1C',
+                        dripdark: '#C23700',
+                        lime: '#C8FF4D'
+                    }
+                }
+            }
+        };
+    </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8f8f8; color: #1a1a1a; overflow-x: hidden; }
-        .active-cat { background-color: #000 !important; color: #fff !important; transform: scale(1.05); }
+        body { font-family: 'Inter', sans-serif; background-color: #F7F5F2; color: #0B0B0C; overflow-x: hidden; }
+        .font-display { font-family: 'Archivo Black', sans-serif; }
+        .active-cat { background-color: #0B0B0C !important; color: #fff !important; transform: scale(1.05); }
         .product-card { transition: all 0.3s ease; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
+
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        .animate-marquee { display: inline-block; animation: marquee 20s linear infinite; }
+        .animate-marquee { display: inline-block; animation: marquee 18s linear infinite; }
+
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.3s ease-out; }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+
         .modal-height-fix { max-height: 90vh; overflow-y: auto; }
         .pin-input { letter-spacing: 0.5em; }
+
+        /* --- Ajouts design --- */
+        @keyframes cardEnter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        .card-enter { animation: cardEnter 0.45s ease-out backwards; }
+
+        @keyframes cartBounce { 0%,100% { transform: scale(1); } 30% { transform: scale(1.35); } 60% { transform: scale(0.92); } }
+        .cart-bounce { animation: cartBounce 0.45s ease-out; }
+
+        @keyframes shimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
+        .skeleton { background: linear-gradient(90deg, #ececec 25%, #f6f6f6 37%, #ececec 63%); background-size: 600px 100%; animation: shimmer 1.4s infinite linear; }
+
+        .price-tag {
+            position: relative;
+            background: #0B0B0C;
+            color: #fff;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 11px;
+            padding: 6px 12px 6px 18px;
+            border-radius: 3px 10px 10px 3px;
+            transform: rotate(-3deg);
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+        }
+        .price-tag::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 5px;
+            height: 5px;
+            background: #F7F5F2;
+            border-radius: 50%;
+        }
+
+        .new-sticker {
+            background: #C8FF4D;
+            color: #0B0B0C;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 8px;
+            padding: 3px 8px;
+            border-radius: 2px 8px 8px 2px;
+            transform: rotate(3deg);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
     </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -59,13 +125,13 @@
         let deliveryTypeSelected = "";
         let allProducts = [];
 
-        // --- TOAST : remplace les alert() bloquants par une notif discrète ---
+        // --- TOAST ---
         let toastTimeout;
         window.showToast = (message, isError = false) => {
             const toast = document.getElementById('toast');
             toast.innerText = message;
-            toast.classList.remove('bg-black', 'bg-red-600', 'hidden');
-            toast.classList.add(isError ? 'bg-red-600' : 'bg-black');
+            toast.classList.remove('bg-ink', 'bg-red-600', 'hidden');
+            toast.classList.add(isError ? 'bg-red-600' : 'bg-ink');
             clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => toast.classList.add('hidden'), 2800);
         };
@@ -89,7 +155,6 @@
             }
         };
 
-        // === ESPACE BOUTIQUES : navigation entre les 3 sous-écrans du modal partenaire ===
         window.showPartnerPanel = (panel) => {
             document.getElementById('partner-choice').classList.toggle('hidden', panel !== 'choice');
             document.getElementById('partner-new').classList.toggle('hidden', panel !== 'new');
@@ -101,7 +166,6 @@
             window.showPartnerPanel('choice');
         };
 
-        // === NOUVELLE DEMANDE DE PARTENARIAT ===
         window.submitPartner = () => {
             const name = document.getElementById('p-name').value.trim();
             const phone = document.getElementById('p-phone').value.replace(/\D/g, '');
@@ -123,7 +187,6 @@
             }).catch(() => window.showToast("Erreur réseau, réessaie.", true));
         };
 
-        // === CONNEXION D'UNE BOUTIQUE DÉJÀ PARTENAIRE ===
         window.loginPartner = () => {
             const phone = document.getElementById('l-phone').value.replace(/\D/g, '');
             const pin = document.getElementById('l-pin').value.trim();
@@ -132,7 +195,6 @@
 
             get(ref(db, 'driprush_boutiques/' + phone)).then((snapshot) => {
                 if (snapshot.exists() && String(snapshot.val().pin) === pin) {
-                    // Session valable 48h, stockée localement sur cet appareil
                     localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now() }));
                     window.location.href = 'boutiques.html';
                 } else {
@@ -144,7 +206,7 @@
         window.renderProducts = (products) => {
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
-            products.forEach(p => {
+            products.forEach((p, idx) => {
                 const pShopName = p.shopName && p.shopName.trim() !== "" ? p.shopName : "Driprush";
                 const pShopPhone = p.shopPhone && p.shopPhone.trim() !== "" ? p.shopPhone : "2290147535343";
 
@@ -158,9 +220,11 @@
                 const safePhone = pShopPhone.replace(/'/g, "\\'");
                 const deliveryStd = p.deliveryStandard || 0;
                 const deliveryExp = p.deliveryExpress || 0;
+                const isNew = p.timestamp && (Date.now() - p.timestamp < 48 * 60 * 60 * 1000);
 
                 grid.innerHTML += `
-                    <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition cursor-pointer" onclick="window.openModal('${safeId}', '${safeName}', '${safePrice}', '${safeImage}', '${safeSizes}', '${safeShop}', '${safeGPS}', '${safePhone}', ${deliveryStd}, ${deliveryExp})">
+                    <div class="product-card card-enter bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition cursor-pointer" style="animation-delay: ${Math.min(idx * 0.06, 0.6)}s" onclick="window.openModal('${safeId}', '${safeName}', '${safePrice}', '${safeImage}', '${safeSizes}', '${safeShop}', '${safeGPS}', '${safePhone}', ${deliveryStd}, ${deliveryExp})">
+                        ${isNew ? '<span class="new-sticker absolute top-3 left-3 z-10">NOUVEAU</span>' : ''}
                         <button class="absolute top-3 right-3 z-10 text-gray-300 hover:text-red-500 transition" onclick="event.stopPropagation(); this.classList.toggle('text-red-500')">
                             <i class="fa-solid fa-heart text-lg"></i>
                         </button>
@@ -169,7 +233,7 @@
                             <p class="text-[9px] text-gray-400 font-black uppercase mb-1">${pShopName}</p>
                             <h3 class="text-[11px] font-bold text-gray-800 leading-tight h-8 line-clamp-2 uppercase">${p.name}</h3>
                             <div class="mt-3 flex items-center justify-between">
-                                <span class="text-[13px] font-black text-black">${parseInt(p.price).toLocaleString()} F</span>
+                                <span class="price-tag">${parseInt(p.price).toLocaleString()} F</span>
                                 <div class="bg-black text-white w-7 h-7 rounded-full flex items-center justify-center">
                                     <i class="fa-solid fa-plus text-[10px]"></i>
                                 </div>
@@ -178,7 +242,7 @@
                     </div>`;
             });
             if(products.length === 0) {
-                grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-400 font-bold italic uppercase text-xs">Aucun article trouvé...</div>';
+                grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-400 font-bold uppercase text-xs">Aucune pépite ici pour l\'instant... 👀</div>';
             }
         };
 
@@ -242,6 +306,13 @@
             element.classList.add('bg-black', 'text-white', 'border-black');
         };
 
+        window.bounceCartIcon = () => {
+            const icon = document.getElementById('nav-cart-icon');
+            icon.classList.remove('cart-bounce');
+            void icon.offsetWidth;
+            icon.classList.add('cart-bounce');
+        };
+
         window.addToCart = () => {
             if(!selectedItem || !selectedItem.size) {
                 return window.showToast("Sélectionne une taille d'abord !", true);
@@ -260,8 +331,9 @@
             }
 
             cart.push({...selectedItem, validated: false});
-            window.showToast("Ajouté au panier 🛍️");
+            window.showToast("Ajouté ✅ — direction le panier quand tu veux");
             window.updateCartUI();
+            window.bounceCartIcon();
             document.getElementById('product-modal').classList.add('hidden');
         };
 
@@ -292,7 +364,7 @@
             });
 
             if(cart.length === 0) {
-                listContainer.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Ton panier est vide</p>';
+                listContainer.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Ton panier est vide. Va dénicher ta prochaine pépite 🔥</p>';
             }
 
             document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
@@ -306,8 +378,15 @@
             }
 
             const totalDisplay = document.getElementById('final-total-display');
-            if(deliveryTypeSelected !== "") totalDisplay.innerText = (subtotal + deliveryFee).toLocaleString() + " F";
-            else totalDisplay.innerText = "Choisir livraison";
+            if(deliveryTypeSelected !== "") {
+                totalDisplay.classList.add('price-tag');
+                totalDisplay.classList.remove('text-gray-400');
+                totalDisplay.innerText = (subtotal + deliveryFee).toLocaleString() + " F";
+            } else {
+                totalDisplay.classList.remove('price-tag');
+                totalDisplay.classList.add('text-gray-400');
+                totalDisplay.innerText = "Choisir livraison";
+            }
         };
 
         window.removeFromCart = (index) => {
@@ -419,17 +498,12 @@
                 status: SIMULATION_MODE ? 'Payée (TEST)' : 'Payée', 
                 timestamp: Date.now()
             }).then(() => {
-                const itemsList = pendingItems.map(i => `- ${i.name} (Taille: ${i.size})`).join('\n');
-                const testTag = SIMULATION_MODE ? '🧪 *[COMMANDE TEST - PAS DE VRAI PAIEMENT]*\n\n' : '';
-                const whatsappMessage = `${testTag}🔥 *NOUVELLE COMMANDE DRIPRUSH PAYÉE* 🔥\n\n🏪 *Boutique:* ${firstItem.shop || 'Driprush'}\n📦 *Articles:*\n${itemsList}\n🚲 *Livraison:* ${deliveryTypeSelected.toUpperCase()}\n💰 *Total:* ${finalTotal.toLocaleString()} F CFA\n👤 *Client:* ${name}\n📞 *Contact:* ${phone}\n📍 *Adresse:* ${addr}\n🗺️ *GPS:* ${gps}`;
-                const targetPhone = firstItem.shopPhone || "2290147535343";
-                window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
                 cart = []; 
                 deliveryFee = 0;
                 deliveryTypeSelected = "";
                 window.updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
-                window.showToast("Commande envoyée à la boutique ✅");
+                window.showToast("Commande envoyée 🚀 — la boutique s'en occupe déjà");
             }).catch(() => {
                 window.showToast("Erreur réseau, réessaie.", true);
             });
@@ -448,15 +522,20 @@
         🧪 Mode Test — Paiement simulé, aucun vrai débit
     </div>
 
-    <div id="welcome-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-end pb-20 px-6 text-center">
+    <div id="welcome-screen" class="fixed inset-0 z-50 bg-ink flex flex-col items-center justify-end pb-20 px-6 text-center overflow-hidden">
         <div class="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center"></div>
-        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-transparent"></div>
+
+        <div class="absolute top-10 left-0 w-full overflow-hidden whitespace-nowrap z-10">
+            <span class="animate-marquee text-white/30 text-xs font-display uppercase tracking-widest">SNEAKERS&nbsp;&nbsp;★&nbsp;&nbsp;STREETWEAR&nbsp;&nbsp;★&nbsp;&nbsp;PARFUMS&nbsp;&nbsp;★&nbsp;&nbsp;ACCESSOIRES&nbsp;&nbsp;★&nbsp;&nbsp;SNEAKERS&nbsp;&nbsp;★&nbsp;&nbsp;STREETWEAR&nbsp;&nbsp;★&nbsp;&nbsp;PARFUMS&nbsp;&nbsp;★&nbsp;&nbsp;ACCESSOIRES&nbsp;&nbsp;★&nbsp;&nbsp;</span>
+        </div>
+
         <div class="relative z-10 w-full animate-slide-up">
-            <h1 class="text-6xl font-black italic text-white mb-2 tracking-tighter uppercase">DRIPRUSH</h1>
-            <p class="text-orange-500 text-[10px] font-black uppercase tracking-[0.3em] mb-12">Benin's Premium Streetwear</p>
+            <h1 class="text-6xl font-display text-white mb-2 tracking-tighter uppercase">DRIPRUSH</h1>
+            <p class="text-drip text-[10px] font-black uppercase tracking-[0.3em] mb-12">Benin's Premium Streetwear</p>
             <div class="space-y-4">
-                <button onclick="window.enterSite('shop')" class="w-full bg-white text-black py-5 rounded-2xl font-black uppercase italic text-sm shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 transition-all">Démarrer le Shopping 🛍️</button>
-                <button onclick="window.enterSite('partner')" class="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white py-5 rounded-2xl font-black uppercase italic text-sm active:scale-95 transition-all">Devenir Partenaire 🤝</button>
+                <button onclick="window.enterSite('shop')" class="w-full bg-white text-ink py-5 rounded-2xl font-display uppercase text-sm shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 transition-all">Démarrer le Shopping 🛍️</button>
+                <button onclick="window.enterSite('partner')" class="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white py-5 rounded-2xl font-display uppercase text-sm active:scale-95 transition-all">Devenir Partenaire 🤝</button>
             </div>
         </div>
     </div>
@@ -464,12 +543,12 @@
     <div id="main-content" class="hidden">
         <header class="bg-white px-4 pt-4 pb-2 sticky top-0 z-40 shadow-sm">
             <div class="flex justify-between items-center mb-4">
-                <h1 class="text-2xl font-black italic tracking-tighter text-black uppercase">DRIPRUSH</h1>
+                <h1 class="text-2xl font-display tracking-tighter text-ink uppercase">DRIPRUSH</h1>
                 <div class="flex items-center gap-5 text-xl">
                     <i class="fa-solid fa-heart text-gray-200"></i>
-                    <div onclick="window.toggleCheckout(true)" class="relative cursor-pointer">
+                    <div id="nav-cart-icon" onclick="window.toggleCheckout(true)" class="relative cursor-pointer">
                         <i class="fa-solid fa-bag-shopping"></i>
-                        <span id="nav-cart-count" class="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] font-bold px-1.5 rounded-full border-2 border-white">0</span>
+                        <span id="nav-cart-count" class="absolute -top-2 -right-2 bg-drip text-white text-[10px] font-bold px-1.5 rounded-full border-2 border-white">0</span>
                     </div>
                 </div>
             </div>
@@ -486,7 +565,10 @@
 
         <main class="p-3">
             <div id="products-grid" class="grid grid-cols-2 gap-3">
-                <p class="col-span-2 text-center py-20 text-gray-400 font-bold italic uppercase text-xs">Chargement des articles...</p>
+                <div class="skeleton rounded-2xl h-64"></div>
+                <div class="skeleton rounded-2xl h-64"></div>
+                <div class="skeleton rounded-2xl h-64"></div>
+                <div class="skeleton rounded-2xl h-64"></div>
             </div>
         </main>
 
@@ -508,8 +590,8 @@
                     <img id="modal-img" src="" onclick="window.toggleZoom(true)" class="w-32 h-32 object-cover rounded-2xl shadow-lg cursor-zoom-in active:scale-95 transition duration-200">
                     <div class="flex-1 py-2">
                         <h2 id="modal-name" class="text-sm font-black uppercase text-gray-800 leading-tight mb-1"></h2>
-                        <p id="modal-price" class="text-xl font-black text-black italic"></p>
-                        <p class="text-[9px] text-orange-600 font-bold uppercase mt-2 bg-orange-50 inline-block px-2 py-1 rounded-md"><i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Touche la photo pour zoomer</p>
+                        <p id="modal-price" class="price-tag text-base"></p>
+                        <p class="text-[9px] text-drip font-bold uppercase mt-2 bg-drip/10 inline-block px-2 py-1 rounded-md"><i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Touche la photo pour zoomer</p>
                     </div>
                 </div>
                 <div>
@@ -528,7 +610,7 @@
         <div id="checkout-modal" class="fixed inset-0 bg-white z-50 p-4 flex flex-col hidden overflow-y-auto">
             <div class="flex items-center justify-between mb-6 pt-4 shrink-0">
                 <button onclick="window.toggleCheckout(false)" class="flex items-center gap-2 font-bold text-xs uppercase"><i class="fa-solid fa-chevron-left text-xl"></i> Retour</button>
-                <h2 class="text-lg font-black uppercase italic tracking-tighter">Mon Panier</h2>
+                <h2 class="text-lg font-display tracking-tighter">Mon Panier</h2>
                 <div class="w-5"></div>
             </div>
             <div id="cart-items-list" class="flex-1 px-2 mb-4"></div>
@@ -542,7 +624,7 @@
 
                 <div class="bg-gray-100 p-5 rounded-3xl flex justify-between items-center">
                     <span class="text-[10px] font-black uppercase opacity-50">Total à payer</span>
-                    <span id="final-total-display" class="text-xl font-black italic text-orange-600">Choisir livraison</span>
+                    <span id="final-total-display" class="text-xl font-display text-gray-400">Choisir livraison</span>
                 </div>
 
                 <div class="space-y-3">
@@ -560,7 +642,7 @@
             <button onclick="window.closePartnerModal()" class="absolute top-4 right-5 text-gray-400 text-lg"><i class="fa-solid fa-xmark"></i></button>
 
             <div id="partner-choice">
-                <h3 class="text-sm font-black uppercase tracking-tight mb-1">Espace Boutiques</h3>
+                <h3 class="text-sm font-display tracking-tight mb-1">Espace Boutiques</h3>
                 <p class="text-[11px] text-gray-500 font-medium mb-5">Proposez vos articles premium ou accédez à votre espace.</p>
                 <div class="space-y-3">
                     <button onclick="window.showPartnerPanel('new')" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase">🆕 Devenir partenaire</button>
@@ -570,7 +652,7 @@
 
             <div id="partner-new" class="hidden space-y-3">
                 <button onclick="window.showPartnerPanel('choice')" class="text-gray-400 text-[10px] font-bold uppercase mb-1"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
-                <h3 class="text-sm font-black uppercase tracking-tight">Devenir partenaire</h3>
+                <h3 class="text-sm font-display tracking-tight">Devenir partenaire</h3>
                 <p class="text-[11px] text-gray-500 font-medium">Ta demande sera étudiée, puis tu recevras tes accès.</p>
                 <input id="p-name" placeholder="NOM DE VOTRE ENSEIGNE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
                 <input id="p-phone" placeholder="NUMÉRO WHATSAPP BOUTIQUE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
@@ -580,7 +662,7 @@
 
             <div id="partner-login" class="hidden space-y-3">
                 <button onclick="window.showPartnerPanel('choice')" class="text-gray-400 text-[10px] font-bold uppercase mb-1"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
-                <h3 class="text-sm font-black uppercase tracking-tight">Connexion Boutique</h3>
+                <h3 class="text-sm font-display tracking-tight">Connexion Boutique</h3>
                 <p class="text-[11px] text-gray-500 font-medium">Entre ton numéro et ton code PIN.</p>
                 <input id="l-phone" type="tel" placeholder="TON NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border text-center">
                 <input id="l-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="• • • •" class="w-full bg-gray-100 p-4 rounded-xl text-xl font-black outline-none border text-center pin-input">
@@ -589,7 +671,7 @@
         </div>
     </div>
 
-    <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-black text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl z-[60] max-w-[85%] text-center"></div>
+    <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-ink text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl z-[60] max-w-[85%] text-center"></div>
 
 </body>
 </html>
