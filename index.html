@@ -84,14 +84,18 @@
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
             products.forEach(p => {
+                // Sécurisation stricte des valeurs undefined ou manquantes venant de Firebase
+                const pShopName = p.shopName && p.shopName.trim() !== "" ? p.shopName : "Driprush";
+                const pShopPhone = p.shopPhone && p.shopPhone.trim() !== "" ? p.shopPhone : "2290147535343";
+
                 const safeId = (p.id || "").replace(/'/g, "\\'");
                 const safeName = (p.name || "").replace(/'/g, "\\'");
                 const safePrice = (p.price || "0").toString().replace(/'/g, "\\'");
                 const safeImage = (p.image || "").replace(/'/g, "\\'");
                 const safeSizes = (p.sizes || "").replace(/'/g, "\\'");
-                const safeShop = (p.shopName || 'Driprush').replace(/'/g, "\\'");
+                const safeShop = pShopName.replace(/'/g, "\\'");
                 const safeGPS = (p.shopGPS || '').replace(/'/g, "\\'");
-                const safePhone = (p.shopPhone || '').replace(/'/g, "\\'");
+                const safePhone = pShopPhone.replace(/'/g, "\\'");
                 const deliveryStd = p.deliveryStandard || 0;
                 const deliveryExp = p.deliveryExpress || 0;
 
@@ -102,7 +106,7 @@
                         </button>
                         <img src="${safeImage}" class="w-full h-52 object-cover" loading="lazy">
                         <div class="p-3">
-                            <p class="text-[9px] text-gray-400 font-black uppercase mb-1">${p.shopName || 'Driprush'}</p>
+                            <p class="text-[9px] text-gray-400 font-black uppercase mb-1">${pShopName}</p>
                             <h3 class="text-[11px] font-bold text-gray-800 leading-tight h-8 line-clamp-2 uppercase">${p.name}</h3>
                             <div class="mt-3 flex items-center justify-between">
                                 <span class="text-[13px] font-black text-black">${parseInt(p.price).toLocaleString()} F</span>
@@ -139,18 +143,17 @@
             const container = document.getElementById('size-container');
             container.innerHTML = '';
             
-            // CORRECTION : Sélection automatique de la taille par défaut pour éviter tout blocage au panier
             if(sizes && sizes !== "N/A" && sizes.trim() !== "") {
                 const sizeArray = sizes.split(',');
                 sizeArray.forEach((s, idx) => {
                     const cleanSize = s.trim().replace(/'/g, "\\'");
                     const isFirst = idx === 0 ? 'bg-black text-white border-black' : '';
-                    if(idx === 0) selectedItem.size = s.trim(); // Assigne la 1ère taille d'office
+                    if(idx === 0) selectedItem.size = s.trim(); 
                     
                     container.innerHTML += `<button onclick="window.selectSize(this, '${cleanSize}')" class="size-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black ${isFirst}">${s.trim()}</button>`;
                 });
             } else {
-                selectedItem.size = "Unique"; // Assigne d'office
+                selectedItem.size = "Unique"; 
                 container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn bg-black text-white border-black border px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition">Taille Unique</button>`;
             }
             document.getElementById('product-modal').classList.remove('hidden');
@@ -184,9 +187,16 @@
                 return alert("Sélectionne une taille d'abord !");
             }
             
-            if (cart.length > 0 && cart.shopPhone !== selectedItem.shopPhone) {
-                alert(`Logistique : Termine ton panier actuel avec la boutique "${cart.shop}" d'abord !`);
-                return;
+            // CORRECTION LOGISTIQUE : Si conflit de boutique, on gère les valeurs vides et on évite le blocage indéfini
+            if (cart.length > 0) {
+                const currentCartShopPhone = cart[0].shopPhone || "2290147535343";
+                const newShopPhone = selectedItem.shopPhone || "2290147535343";
+                const currentCartShopName = cart[0].shop || "Driprush";
+
+                if (currentCartShopPhone !== newShopPhone) {
+                    alert(`Logistique : Ton panier contient déjà des articles de la boutique "${currentCartShopName}". Termine cette commande ou vide ton panier actuel d'abord !`);
+                    return;
+                }
             }
 
             cart.push({...selectedItem, validated: false});
@@ -226,11 +236,11 @@
             document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
 
             if(cart.length > 0) {
-                const first = cart;
-                document.getElementById('lbl-std').innerText = `🚲 Normale (+${first.deliveryStandard} F)`;
-                document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${first.deliveryExpress} F)`;
-                if(deliveryTypeSelected === "standard") deliveryFee = first.deliveryStandard;
-                else if(deliveryTypeSelected === "express") deliveryFee = first.deliveryExpress;
+                const first = cart[0];
+                document.getElementById('lbl-std').innerText = `🚲 Normale (+${first.deliveryStandard || 0} F)`;
+                document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${first.deliveryExpress || 0} F)`;
+                if(deliveryTypeSelected === "standard") deliveryFee = first.deliveryStandard || 0;
+                else if(deliveryTypeSelected === "express") deliveryFee = first.deliveryExpress || 0;
             }
 
             const totalDisplay = document.getElementById('final-total-display');
@@ -308,18 +318,19 @@
         };
 
         window.saveAutomatedOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
-            const firstItem = pendingItems; 
+            const firstItem = pendingItems[0]; 
             const orderRef = push(ref(db, 'driprush_orders'));
 
             set(orderRef, {
                 clientName: name, phone, address: addr, clientGPS: gps,
-                shopName: firstItem.shop, shopGPS: firstItem.shopGPS, shopPhone: firstItem.shopPhone,
+                shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343',
                 items: pendingItems.map(i => `${i.name} [${i.size}]`).join(', '),
                 deliveryMode: deliveryTypeSelected, total: finalTotal, status: 'Payée', timestamp: Date.now()
             }).then(() => {
                 const itemsList = pendingItems.map(i => `- ${i.name} (Taille: ${i.size})`).join('\n');
-                const whatsappMessage = `🔥 *NOUVELLE COMMANDE DRIPRUSH PAYÉE* 🔥\n\n🏪 *Boutique:* ${firstItem.shop}\n📦 *Articles:*\n${itemsList}\n🚲 *Livraison:* ${deliveryTypeSelected.toUpperCase()}\n💰 *Total:* ${finalTotal.toLocaleString()} F CFA\n👤 *Client:* ${name}\n📞 *Contact:* ${phone}\n📍 *Adresse:* ${addr}\n🗺️ *GPS:* ${gps}`;
-                if (firstItem.shopPhone) window.open(`https://wa.me/${firstItem.shopPhone}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
+                const whatsappMessage = `🔥 *NOUVELLE COMMANDE DRIPRUSH PAYÉE* 🔥\n\n🏪 *Boutique:* ${firstItem.shop || 'Driprush'}\n📦 *Articles:*\n${itemsList}\n🚲 *Livraison:* ${deliveryTypeSelected.toUpperCase()}\n💰 *Total:* ${finalTotal.toLocaleString()} F CFA\n👤 *Client:* ${name}\n📞 *Contact:* ${phone}\n📍 *Adresse:* ${addr}\n🗺️ *GPS:* ${gps}`;
+                const targetPhone = firstItem.shopPhone || "2290147535343";
+                window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
                 cart = []; 
                 window.updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
@@ -335,6 +346,7 @@
 </head>
 <body class="pb-24">
 
+    <!-- Écran de bienvenue -->
     <div id="welcome-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-end pb-20 px-6 text-center">
         <div class="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
@@ -348,6 +360,7 @@
         </div>
     </div>
 
+    <!-- Contenu Principal -->
     <div id="main-content" class="hidden">
         <header class="bg-white px-4 pt-4 pb-2 sticky top-0 z-40 shadow-sm">
             <div class="flex justify-between items-center mb-4">
@@ -375,6 +388,7 @@
             <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
         </main>
 
+        <!-- BARRE DE PANIER FIXE -->
         <div id="cart-bar" class="fixed bottom-20 left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-30 border border-gray-100">
             <div>
                 <p class="text-[8px] font-black uppercase opacity-40">Sous-total</p>
@@ -383,6 +397,7 @@
             <button onclick="window.toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] italic active:scale-95 transition">Commander 🚀</button>
         </div>
 
+        <!-- MODAL PRODUIT -->
         <div id="product-modal" onclick="window.closeModalOutside(event)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end hidden cursor-pointer">
             <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up modal-height-fix pb-10 cursor-default relative">
                 <button id="close-modal-btn" onclick="window.closeModalOutside(null)" class="absolute top-4 right-6 text-gray-400 hover:text-black transition text-xl p-2">
@@ -390,7 +405,7 @@
                 </button>
                 <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2"></div>
                 <div class="flex gap-4">
-                    <img id="modal-img" src="" onclick="window.toggleZoom(true)" class="w-32 h-32 object-cover rounded-2xl shadow-lg cursor-zoom-in active:scale-95 transition duration-200" title="Cliquez pour agrandir">
+                    <img id="modal-img" src="" onclick="window.toggleZoom(true)" class="w-32 h-32 object-cover rounded-2xl shadow-lg cursor-zoom-in active:scale-95 transition duration-200">
                     <div class="flex-1 py-2">
                         <h2 id="modal-name" class="text-sm font-black uppercase text-gray-800 leading-tight mb-1"></h2>
                         <p id="modal-price" class="text-xl font-black text-black italic"></p>
@@ -405,11 +420,13 @@
             </div>
         </div>
 
+        <!-- MODAL DE ZOOM PHOTO -->
         <div id="zoom-modal" onclick="window.toggleZoom(false)" class="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 hidden animate-fade-in cursor-zoom-out">
             <button onclick="window.toggleZoom(false)" class="absolute top-6 right-6 text-white text-2xl opacity-70 hover:opacity-100 transition"><i class="fa-solid fa-xmark"></i></button>
             <img id="zoom-img" src="" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl">
         </div>
 
+        <!-- Checkout Modal -->
         <div id="checkout-modal" class="fixed inset-0 bg-white z-50 p-4 flex flex-col hidden overflow-y-auto">
             <div class="flex items-center justify-between mb-6 pt-4 shrink-0">
                 <button onclick="window.toggleCheckout(false)" class="flex items-center gap-2 font-bold text-xs uppercase"><i class="fa-solid fa-chevron-left text-xl"></i> Retour</button>
@@ -440,6 +457,7 @@
         </div>
     </div>
 
+    <!-- Modal Optionnel Devenir Partenaire -->
     <div id="partner-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white text-black p-6 rounded-3xl w-full max-w-sm space-y-4">
             <h3 class="text-sm font-black uppercase tracking-tight">Ouvrir un rayon sur DRIPRUSH</h3>
