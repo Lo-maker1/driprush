@@ -16,7 +16,7 @@
     <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f8f8f8; color: #1a1a1a; overflow-x: hidden; }
         .active-cat { background-color: #000 !important; color: #fff !important; transform: scale(1.05); }
         .product-card { transition: all 0.3s ease; }
@@ -49,20 +49,27 @@
         let cart = [];
         let selectedItem = null;
         let deliveryFee = 0;
-        let deliveryTypeSelected = ""; 
+        let deliveryTypeSelected = "";
         let allProducts = [];
+
+        // --- TOAST : remplace les alert() bloquants par une notif discrète ---
+        let toastTimeout;
+        window.showToast = (message, isError = false) => {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.remove('bg-black', 'bg-red-600', 'hidden');
+            toast.classList.add(isError ? 'bg-red-600' : 'bg-black');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toast.classList.add('hidden'), 2800);
+        };
 
         onValue(ref(db, 'driprush_products'), (snapshot) => {
             const data = snapshot.val();
-            allProducts = []; 
-            if (data) {
-                console.log("=== STRUCTURE DE TES PRODUITS DANS FIREBASE ===");
-                console.log(data);
-                console.log("================================================");
-
-                allProducts = Object.keys(data).map(id => ({ id, ...data[id] })).reverse();
-                window.renderProducts(allProducts);
-            }
+            allProducts = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
+            window.renderProducts(allProducts);
+        }, (error) => {
+            console.error("Erreur Firebase:", error);
+            window.showToast("Erreur de connexion au catalogue", true);
         });
 
         window.enterSite = (mode) => {
@@ -78,7 +85,7 @@
             const name = document.getElementById('p-name').value;
             const phone = document.getElementById('p-phone').value;
             const loc = document.getElementById('p-loc').value;
-            if(!name || !phone || !loc) return alert("Remplissez tous les champs !");
+            if(!name || !phone || !loc) return window.showToast("Remplissez tous les champs !", true);
             const message = `Salut DRIPRUSH ! 🔥\n\nNOUVELLE BOUTIQUE PARTENAIRE :\n🏪 Nom: ${name}\n📞 Contact: ${phone}\n📍 Localisation: ${loc}`;
             window.open(`https://wa.me/2290147535343?text=${encodeURIComponent(message)}`, '_blank');
             document.getElementById('partner-modal').classList.add('hidden');
@@ -187,28 +194,24 @@
 
         window.addToCart = () => {
             if(!selectedItem || !selectedItem.size) {
-                return alert("Sélectionne une taille d'abord !");
+                return window.showToast("Sélectionne une taille d'abord !", true);
             }
-            
-            if (cart.length > 0) {
-                // Fonction interne pour extraire uniquement les chiffres (ex: "+229 01..." devient "22901...")
-                const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
 
-                // CORRECTION ICI : cart au lieu de cart pour cibler le premier produit du tableau
-                const currentCartShopPhone = cleanPhone(cart.shopPhone || "2290147535343");
+            // FIX: cart[0] et non cart (qui est un tableau, pas un objet)
+            if (cart.length > 0) {
+                const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
+                const currentCartShopPhone = cleanPhone(cart[0].shopPhone || "2290147535343");
                 const newShopPhone = cleanPhone(selectedItem.shopPhone || "2290147535343");
-                const currentCartShopName = cart.shop || "Driprush";
+                const currentCartShopName = cart[0].shop || "Driprush";
 
                 if (currentCartShopPhone !== newShopPhone && currentCartShopPhone.length > 5 && newShopPhone.length > 5) {
-                    alert(`Logistique : Ton panier contient déjà des articles de la boutique "${currentCartShopName}". Termine cette commande ou vide ton panier actuel d'abord !`);
+                    window.showToast(`Ton panier contient déjà "${currentCartShopName}". Termine ou vide-le d'abord !`, true);
                     return;
                 }
             }
 
             cart.push({...selectedItem, validated: false});
-            deliveryFee = 0;
-            deliveryTypeSelected = "";
-            
+            window.showToast("Ajouté au panier 🛍️");
             window.updateCartUI();
             document.getElementById('product-modal').classList.add('hidden');
         };
@@ -238,11 +241,16 @@
                         }
                     </div>`;
             });
+
+            if(cart.length === 0) {
+                listContainer.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Ton panier est vide</p>';
+            }
+
             document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
 
+            // FIX: cart[0] et non cart
             if(cart.length > 0) {
-                // CORRECTION ICI : cart au lieu de cart
-                const first = cart;
+                const first = cart[0];
                 document.getElementById('lbl-std').innerText = `🚲 Normale (+${first.deliveryStandard || 0} F)`;
                 document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${first.deliveryExpress || 0} F)`;
                 if(deliveryTypeSelected === "standard") deliveryFee = first.deliveryStandard || 0;
@@ -250,7 +258,7 @@
             }
 
             const totalDisplay = document.getElementById('final-total-display');
-            if(deliveryFee > 0) totalDisplay.innerText = (subtotal + deliveryFee).toLocaleString() + " F";
+            if(deliveryTypeSelected !== "") totalDisplay.innerText = (subtotal + deliveryFee).toLocaleString() + " F";
             else totalDisplay.innerText = "Choisir livraison";
         };
 
@@ -270,20 +278,26 @@
         };
 
         window.confirmOrder = (element) => {
-            const name = document.getElementById('c-name').value;
-            const phone = document.getElementById('c-phone').value;
-            const addr = document.getElementById('c-addr').value;
+            const name = document.getElementById('c-name').value.trim();
+            const phone = document.getElementById('c-phone').value.trim();
+            const addr = document.getElementById('c-addr').value.trim();
             const pendingItems = cart.filter(i => !i.validated);
 
-            if(pendingItems.length === 0) return alert("Aucun article à commander !");
-            if(!name || !phone || !addr || deliveryFee === 0) return alert("Infos manquantes ou livraison non choisie !");
+            if(pendingItems.length === 0) return window.showToast("Aucun article à commander !", true);
+            if(!name || !phone || !addr) return window.showToast("Remplis toutes tes infos !", true);
+
+            // FIX: on vérifie deliveryTypeSelected (et pas deliveryFee qui peut être 0F si livraison gratuite)
+            if(deliveryTypeSelected === "") return window.showToast("Choisis un mode de livraison !", true);
+
+            const phoneDigits = phone.replace(/\D/g, '');
+            if(phoneDigits.length < 8) return window.showToast("Numéro WhatsApp invalide", true);
 
             const originalText = element.innerText;
             element.innerText = "CONNEXION GPS... ⏳";
             element.disabled = true;
 
             navigator.geolocation.getCurrentPosition((pos) => {
-                const gps = `http://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 window.triggerFedaPay(name, phone, addr, gps, element, originalText);
             }, () => {
                 window.triggerFedaPay(name, phone, addr, "GPS Refusé", element, originalText);
@@ -296,51 +310,71 @@
             pendingItems.forEach(i => subtotal += parseInt(i.price));
             const finalTotal = subtotal + deliveryFee;
 
-            FedaPay.init({
-                public_key: 'pk_sandbox_A7pGv9zX8bN3mQ1vL2r5K4tJ',
-                environment: 'sandbox'
-            });
+            const nameParts = name.split(' ');
+            const firstname = nameParts[0] || 'Client';
+            const lastname = nameParts.slice(1).join(' ') || 'Driprush';
 
-            FedaPay.open({
-                amount: finalTotal,
+            // FIX: FedaPay.open() n'existe pas — tout passe par FedaPay.init({...}).open()
+            const widget = FedaPay.init({
+                public_key: 'pk_sandbox_A7pGv9zX8bN3mQ1vL2r5K4tJ',
+                environment: 'sandbox',
+                transaction: {
+                    amount: finalTotal,
+                    description: `Achat de ${pendingItems.length} article(s) - DRIPRUSH`
+                },
                 currency: { iso: 'XOF' },
-                title: 'Paiement Commande DRIPRUSH',
-                description: `Achat de ${pendingItems.length} article(s)`,
-                customer: { firstname: name, lastname: 'Client', email: 'client@driprush.com', phone_number: { number: phone, country: 'BJ' } },
+                customer: {
+                    firstname: firstname,
+                    lastname: lastname,
+                    email: `client${phone.replace(/\D/g,'')}@driprush.bj`,
+                    phone_number: { number: phone, country: 'bj' }
+                },
                 onComplete: function(response) {
-                    if (response.status === 'approved' || response.status === 'successful') {
+                    console.log("Réponse FedaPay :", response); // garde ça pour vérifier les noms de champs en sandbox
+                    if (response.transaction && (response.transaction.status === 'approved' || response.transaction.status === 'successful')) {
                         window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems);
                     } else {
-                        alert("Paiement échoué.");
+                        window.showToast("Paiement annulé ou échoué.", true);
                         btn.innerText = originalText;
                         btn.disabled = false;
                     }
-                },
-                onClose: function() {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
                 }
             });
+            widget.open();
         };
 
         window.saveAutomatedOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
-            // CORRECTION ICI : pendingItems au lieu de pendingItems
-            const firstItem = pendingItems; 
-            const orderRef = push(ref(db, 'driprush_orders'));
+            // FIX: pendingItems[0] et non pendingItems
+            const firstItem = pendingItems[0];
+            const commission = Math.round(finalTotal * 0.10);
+            const montantBoutique = finalTotal - commission;
 
+            const orderRef = push(ref(db, 'driprush_orders'));
             set(orderRef, {
                 clientName: name, phone, address: addr, clientGPS: gps,
-                shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343',
+                shopName: firstItem.shop || 'Driprush', 
+                shopGPS: firstItem.shopGPS || '', 
+                shopPhone: firstItem.shopPhone || '2290147535343',
                 items: pendingItems.map(i => `${i.name} [${i.size}]`).join(', '),
-                deliveryMode: deliveryTypeSelected, total: finalTotal, status: 'Payée', timestamp: Date.now()
+                deliveryMode: deliveryTypeSelected, 
+                total: finalTotal, 
+                commission: commission,
+                montantBoutique: montantBoutique,
+                status: 'Payée', 
+                timestamp: Date.now()
             }).then(() => {
                 const itemsList = pendingItems.map(i => `- ${i.name} (Taille: ${i.size})`).join('\n');
                 const whatsappMessage = `🔥 *NOUVELLE COMMANDE DRIPRUSH PAYÉE* 🔥\n\n🏪 *Boutique:* ${firstItem.shop || 'Driprush'}\n📦 *Articles:*\n${itemsList}\n🚲 *Livraison:* ${deliveryTypeSelected.toUpperCase()}\n💰 *Total:* ${finalTotal.toLocaleString()} F CFA\n👤 *Client:* ${name}\n📞 *Contact:* ${phone}\n📍 *Adresse:* ${addr}\n🗺️ *GPS:* ${gps}`;
                 const targetPhone = firstItem.shopPhone || "2290147535343";
                 window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
                 cart = []; 
+                deliveryFee = 0;
+                deliveryTypeSelected = "";
                 window.updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
+                window.showToast("Commande envoyée à la boutique ✅");
+            }).catch(() => {
+                window.showToast("Erreur réseau, réessaie.", true);
             });
         };
 
@@ -390,7 +424,9 @@
         </header>
 
         <main class="p-3">
-            <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
+            <div id="products-grid" class="grid grid-cols-2 gap-3">
+                <p class="col-span-2 text-center py-20 text-gray-400 font-bold italic uppercase text-xs">Chargement des articles...</p>
+            </div>
         </main>
 
         <div id="cart-bar" class="fixed bottom-20 left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-30 border border-gray-100">
@@ -471,6 +507,8 @@
             </div>
         </div>
     </div>
+
+    <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-black text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl z-[60] max-w-[85%] text-center"></div>
 
 </body>
 </html>
