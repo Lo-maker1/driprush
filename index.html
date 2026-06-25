@@ -46,6 +46,12 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
+        // 🧪 MODE SIMULATION — passe à false dès que ton compte FedaPay/Kkiapay est prêt
+        const SIMULATION_MODE = true;
+        if (SIMULATION_MODE) {
+            document.getElementById('test-mode-banner').classList.remove('hidden');
+        }
+
         let cart = [];
         let selectedItem = null;
         let deliveryFee = 0;
@@ -197,7 +203,6 @@
                 return window.showToast("Sélectionne une taille d'abord !", true);
             }
 
-            // FIX: cart[0] et non cart (qui est un tableau, pas un objet)
             if (cart.length > 0) {
                 const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
                 const currentCartShopPhone = cleanPhone(cart[0].shopPhone || "2290147535343");
@@ -248,7 +253,6 @@
 
             document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
 
-            // FIX: cart[0] et non cart
             if(cart.length > 0) {
                 const first = cart[0];
                 document.getElementById('lbl-std').innerText = `🚲 Normale (+${first.deliveryStandard || 0} F)`;
@@ -286,7 +290,6 @@
             if(pendingItems.length === 0) return window.showToast("Aucun article à commander !", true);
             if(!name || !phone || !addr) return window.showToast("Remplis toutes tes infos !", true);
 
-            // FIX: on vérifie deliveryTypeSelected (et pas deliveryFee qui peut être 0F si livraison gratuite)
             if(deliveryTypeSelected === "") return window.showToast("Choisis un mode de livraison !", true);
 
             const phoneDigits = phone.replace(/\D/g, '');
@@ -310,13 +313,23 @@
             pendingItems.forEach(i => subtotal += parseInt(i.price));
             const finalTotal = subtotal + deliveryFee;
 
+            // --- 🧪 BRANCHE SIMULATION : on saute le vrai appel FedaPay ---
+            if (SIMULATION_MODE) {
+                btn.innerText = "PAIEMENT SIMULÉ... ⏳";
+                window.showToast("🧪 Mode simulation activé — paiement fictif");
+                setTimeout(() => {
+                    window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems);
+                }, 2000);
+                return;
+            }
+            // --- FIN BRANCHE SIMULATION ---
+
             const nameParts = name.split(' ');
             const firstname = nameParts[0] || 'Client';
             const lastname = nameParts.slice(1).join(' ') || 'Driprush';
 
-            // FIX: FedaPay.open() n'existe pas — tout passe par FedaPay.init({...}).open()
             const widget = FedaPay.init({
-                public_key: 'pk_sandbox_A7pGv9zX8bN3mQ1vL2r5K4tJ',
+                public_key: 'pk_sandbox_A7pGv9zX8bN3mQ1vL2r5K4tJ', // remplace par ta vraie clé quand SIMULATION_MODE = false
                 environment: 'sandbox',
                 transaction: {
                     amount: finalTotal,
@@ -330,7 +343,7 @@
                     phone_number: { number: phone, country: 'bj' }
                 },
                 onComplete: function(response) {
-                    console.log("Réponse FedaPay :", response); // garde ça pour vérifier les noms de champs en sandbox
+                    console.log("Réponse FedaPay :", response);
                     if (response.transaction && (response.transaction.status === 'approved' || response.transaction.status === 'successful')) {
                         window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems);
                     } else {
@@ -344,7 +357,6 @@
         };
 
         window.saveAutomatedOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
-            // FIX: pendingItems[0] et non pendingItems
             const firstItem = pendingItems[0];
             const commission = Math.round(finalTotal * 0.10);
             const montantBoutique = finalTotal - commission;
@@ -360,11 +372,12 @@
                 total: finalTotal, 
                 commission: commission,
                 montantBoutique: montantBoutique,
-                status: 'Payée', 
+                status: SIMULATION_MODE ? 'Payée (TEST)' : 'Payée', 
                 timestamp: Date.now()
             }).then(() => {
                 const itemsList = pendingItems.map(i => `- ${i.name} (Taille: ${i.size})`).join('\n');
-                const whatsappMessage = `🔥 *NOUVELLE COMMANDE DRIPRUSH PAYÉE* 🔥\n\n🏪 *Boutique:* ${firstItem.shop || 'Driprush'}\n📦 *Articles:*\n${itemsList}\n🚲 *Livraison:* ${deliveryTypeSelected.toUpperCase()}\n💰 *Total:* ${finalTotal.toLocaleString()} F CFA\n👤 *Client:* ${name}\n📞 *Contact:* ${phone}\n📍 *Adresse:* ${addr}\n🗺️ *GPS:* ${gps}`;
+                const testTag = SIMULATION_MODE ? '🧪 *[COMMANDE TEST - PAS DE VRAI PAIEMENT]*\n\n' : '';
+                const whatsappMessage = `${testTag}🔥 *NOUVELLE COMMANDE DRIPRUSH PAYÉE* 🔥\n\n🏪 *Boutique:* ${firstItem.shop || 'Driprush'}\n📦 *Articles:*\n${itemsList}\n🚲 *Livraison:* ${deliveryTypeSelected.toUpperCase()}\n💰 *Total:* ${finalTotal.toLocaleString()} F CFA\n👤 *Client:* ${name}\n📞 *Contact:* ${phone}\n📍 *Adresse:* ${addr}\n🗺️ *GPS:* ${gps}`;
                 const targetPhone = firstItem.shopPhone || "2290147535343";
                 window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
                 cart = []; 
@@ -386,6 +399,10 @@
     </script>
 </head>
 <body class="pb-24">
+
+    <div id="test-mode-banner" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center text-[10px] font-black uppercase py-1.5 z-[100] tracking-widest">
+        🧪 Mode Test — Paiement simulé, aucun vrai débit
+    </div>
 
     <div id="welcome-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-end pb-20 px-6 text-center">
         <div class="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center"></div>
