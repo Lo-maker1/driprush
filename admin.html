@@ -3,12 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DRIPRUSH - Admin Panel</title>
+    <title>DRIPRUSH - Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=400;600;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0b0b0b; color: #fff; }
+        .order-card { background: linear-gradient(145deg, #141414, #1f1f1f); border: 1px solid #2a2a2a; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
@@ -23,283 +29,148 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- VARIABLES GLOBALES ---
-        let currentRiders = []; 
+        let allOrders = [];
 
-        // FONCTION DE CALCUL DE DISTANCE
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-            const R = 6371; 
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c; 
-        }
-
-        // RÉCUPÉRATION DES LIVREURS
-        const ridersRef = ref(db, 'livreurs');
-        onValue(ridersRef, (snapshot) => {
+        // Écoute en temps réel des commandes
+        onValue(ref(db, 'driprush_orders'), (snapshot) => {
             const data = snapshot.val();
-            const statsContainer = document.getElementById('rider-stats');
-            statsContainer.innerHTML = '';
-            currentRiders = [];
-
-            const maintenant = Date.now();
-            const CINQ_MINUTES = 5 * 60 * 1000;
-
+            allOrders = [];
             if (data) {
-                Object.keys(data).forEach(id => {
-                    const r = data[id];
-                    if (r.timestamp && (maintenant - r.timestamp) < CINQ_MINUTES) {
-                        currentRiders.push({ id, ...r });
-                        statsContainer.innerHTML += `
-                            <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex flex-col gap-2 relative group">
-                                <button onclick="deleteRider('${id}')" class="absolute -top-1 -right-1 bg-red-600 text-white w-5 h-5 rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">X</button>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-[9px] font-black uppercase text-orange-500 truncate mr-1">${r.nom}</span>
-                                    <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                                </div>
-                                <span class="text-[8px] text-gray-500 font-bold">${r.lastSeen || 'Actif'}</span>
-                            </div>
-                        `;
-                    } else if (!r.timestamp) {
-                        currentRiders.push({ id, ...r });
-                        statsContainer.innerHTML += `
-                            <div class="bg-gray-900 border border-white/5 p-3 rounded-2xl flex flex-col gap-2 relative group">
-                                <button onclick="deleteRider('${id}')" class="absolute -top-1 -right-1 bg-red-600 text-white w-5 h-5 rounded-full text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">X</button>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-[9px] font-black uppercase text-orange-500 truncate mr-1">${r.nom}</span>
-                                    <div class="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
-                                </div>
-                                <span class="text-[8px] text-gray-500 font-bold">Inactif</span>
-                            </div>
-                        `;
-                    }
-                });
+                allOrders = Object.keys(data).map(id => ({ id, ...data[id] })).reverse();
             }
-            
-            if (currentRiders.length === 0) {
-                statsContainer.innerHTML = '<p class="col-span-3 text-center text-[10px] text-gray-600 uppercase italic">Aucun livreur actif</p>';
-            }
-            updateAllSelects();
+            renderDashboard();
         });
 
-        function updateAllSelects() {
-            const selects = document.querySelectorAll('select[id^="select-"]');
-            selects.forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">-- CHOISIR LIVREUR --</option>' + 
-                    currentRiders.map(r => `<option value="${r.whatsapp}" ${currentValue === r.whatsapp ? 'selected' : ''}>${r.nom} (${r.whatsapp})</option>`).join('');
-            });
-        }
-
-        const ordersRef = ref(db, 'driprush_orders');
-        onValue(ordersRef, (snapshot) => {
-            const data = snapshot.val();
-            const container = document.getElementById('orders-list');
+        window.renderDashboard = () => {
+            const container = document.getElementById('orders-container');
             container.innerHTML = '';
 
-            if (data) {
-                const ordersArray = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-                ordersArray.sort((a, b) => b.timestamp - a.timestamp);
+            let totalPlatformRevenue = 0; // Tes 10% cumulés sur le Global (Article + Livraison)
+            let pendingPaymentsCount = 0;
+            let activeOrdersCount = 0;
 
-                ordersArray.forEach(o => {
-                    const date = o.timestamp ? new Date(o.timestamp).toLocaleTimeString() : "Heure inconnue";
-                    const isLivree = o.status === 'Livrée';
-                    
-                    const displayShopName = o.shopName || 'Boutique non précisée';
-                    // GESTION DU LIEN GPS BOUTIQUE
-                    let shopLink = "#";
-                    if(o.shopGPS && o.shopGPS !== 'Non renseigné') {
-                        shopLink = o.shopGPS.includes('http') ? o.shopGPS : `https://www.google.com/maps?q=${o.shopGPS}`;
-                    }
+            allOrders.forEach(order => {
+                // CALCUL DE TA COMMISSION : 10% appliqués sur le total global de la commande
+                const globalCommission = order.total * 0.10;
+                
+                if (order.status === 'Attente de paiement') pendingPaymentsCount++;
+                if (order.status === 'Payée' || order.status === 'En cours') {
+                    activeOrdersCount++;
+                    totalPlatformRevenue += globalCommission;
+                }
 
-                    const displayClientGPS = o.clientGPS || 'Non fourni';
+                const statusColor = order.status === 'Payée' ? 'text-green-400 bg-green-500/10 border-green-500/20' : 
+                                    order.status === 'Livrée' ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' : 
+                                    'text-amber-400 bg-amber-500/10 border-amber-500/20';
 
-                    container.innerHTML += `
-                        <div class="bg-gray-900 border ${isLivree ? 'border-green-500/20 opacity-60' : (o.status === 'En livraison' ? 'border-blue-500/30' : 'border-white/5')} p-6 rounded-[2.5rem] mb-6 shadow-2xl relative">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <span class="text-[10px] font-black px-4 py-1.5 rounded-full ${isLivree ? 'bg-green-500 text-black' : (o.status === 'Attente Dépôt' ? 'bg-orange-500 text-black' : 'bg-blue-600 text-white')} uppercase italic">
-                                        ${o.status || 'Nouveau'} ${o.riderName ? '• ' + o.riderName : ''}
-                                    </span>
-                                    <p class="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest">${date}</p>
-                                </div>
-                                <button onclick="deleteOrder('${o.id}')" class="bg-red-500/10 text-red-500 p-2 rounded-xl text-[9px] font-black uppercase">Supprimer</button>
+                container.innerHTML += `
+                    <div class="order-card p-5 rounded-3xl space-y-4 shadow-xl transition-all hover:scale-[1.01]">
+                        <div class="flex justify-between items-start border-b border-white/5 pb-3">
+                            <div>
+                                <span class="text-[9px] font-black uppercase tracking-widest text-gray-500">Boutique Partenaire</span>
+                                <h3 class="text-sm font-black text-white uppercase">${order.shopName || 'Driprush'}</h3>
+                                <p class="text-[10px] text-gray-400 font-semibold">${order.shopPhone || 'Pas de numéro'}</p>
                             </div>
+                            <span class="text-[9px] font-black px-3 py-1.5 rounded-full border ${statusColor} uppercase tracking-wider">
+                                ${order.status}
+                            </span>
+                        </div>
 
-                            <div class="space-y-4">
-                                <h3 class="text-2xl font-black italic uppercase text-white">${o.clientName || 'Client Inconnu'}</h3>
-                                
-                                <div class="bg-black/40 p-5 rounded-[2rem] border border-white/5 space-y-3 text-white">
-                                    <p class="text-xs font-bold"><span class="text-orange-500">🛍️ ARTICLES :</span> ${o.items || 'Aucun'}</p>
-                                    
-                                    <div class="border-t border-white/5 pt-2">
-                                        <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Point de Ramassage</p>
-                                        <p class="text-xs font-bold"><span class="text-blue-400 font-black">🏪 ${displayShopName}</span></p>
-                                        ${shopLink !== "#" ? 
-                                            `<a href="${shopLink}" target="_blank" class="text-[9px] text-blue-400 font-black underline uppercase italic">📍 Voir Itinéraire Boutique</a>` : 
-                                            `<span class="text-[9px] text-red-500 font-black uppercase italic">GPS Boutique Non renseigné</span>`}
-                                    </div>
-
-                                    <div class="border-t border-white/5 pt-2">
-                                        <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Destination Client</p>
-                                        <p class="text-xs font-bold"><span class="text-green-400 font-black">📍 ${o.address || 'Non fournie'}</span></p>
-                                        <div class="flex gap-3 mt-1">
-                                            ${displayClientGPS !== 'Non fourni' && displayClientGPS !== 'GPS Refusé' ? 
-                                                `<a href="${displayClientGPS}" target="_blank" class="text-[9px] text-green-400 font-black underline uppercase italic">Voir Google Maps Client</a>` : ''}
-                                            <a href="tel:${o.phone}" class="text-[9px] text-orange-500 font-black underline uppercase italic">Appeler Client</a>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="flex justify-between items-center bg-orange-500 p-4 rounded-2xl">
-                                    <span class="text-black font-black uppercase text-[10px]">Total à encaisser</span>
-                                    <span class="text-black font-black text-xl italic">${Number(o.total || 0).toLocaleString()} F</span>
-                                </div>
-
-                                <div class="flex flex-col gap-2">
-                                    ${!isLivree ? `
-                                        <select id="select-${o.id}" class="bg-black border border-white/10 text-white text-[10px] font-bold p-3 rounded-xl outline-none uppercase italic">
-                                            <option value="">-- CHOISIR LIVREUR --</option>
-                                            ${currentRiders.map(r => `<option value="${r.whatsapp}">${r.nom} (${r.whatsapp})</option>`).join('')}
-                                        </select>
-                                        <button onclick="sendWhatsAppRider('${o.id}')" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
-                                            🚀 ENVOYER AU LIVREUR & BOUTIQUE
-                                        </button>
-                                        
-                                        ${o.status === 'En livraison' ? `
-                                            <button onclick="markAsDelivered('${o.id}')" class="w-full bg-green-500 text-black py-3 rounded-2xl font-black uppercase text-[10px] italic shadow-xl active:scale-95 transition">
-                                                MARQUER COMME LIVRÉ ✅
-                                            </button>
-                                        ` : ''}
-                                    ` : `
-                                        <div class="bg-green-500/10 border border-green-500/20 py-4 rounded-2xl text-center text-green-500 font-black uppercase text-[10px] italic">
-                                            COMMANDE LIVRÉE AVEC SUCCÈS ✅
-                                        </div>
-                                    `}
-                                </div>
+                        <div class="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                                <p class="text-[9px] text-gray-500 font-bold uppercase mb-0.5">Client</p>
+                                <p class="font-bold text-gray-200">${order.clientName}</p>
+                                <p class="text-gray-400 font-medium">${order.phone}</p>
+                                <p class="text-[10px] text-gray-400 italic mt-1 line-clamp-1">📍 ${order.address}</p>
+                            </div>
+                            <div>
+                                <p class="text-[9px] text-gray-500 font-bold uppercase mb-0.5">Articles & Options</p>
+                                <p class="font-bold text-gray-200 uppercase line-clamp-2">${order.items}</p>
+                                <span class="inline-block mt-1 text-[8px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded font-black uppercase">
+                                    Option: ${order.deliveryMode || 'normale'}
+                                </span>
                             </div>
                         </div>
-                    `;
-                });
-            } else {
-                container.innerHTML = '<div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase text-[10px]">Aucune commande en attente...</div>';
-            }
-        });
 
-        // --- ACTIONS ---
+                        <div class="bg-black/40 p-3 rounded-2xl flex justify-between items-center text-xs">
+                            <div>
+                                <p class="text-[9px] text-gray-500 font-bold uppercase">Total Global encaissé</p>
+                                <p class="text-sm font-black text-white">${parseInt(order.total).toLocaleString()} F</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[9px] text-orange-500 font-bold uppercase">Ta Commission (10%)</p>
+                                <p class="text-sm font-black text-orange-400">${parseInt(globalCommission).toLocaleString()} F</p>
+                            </div>
+                        </div>
 
-        window.sendWhatsAppRider = (id) => {
-            const riderPhone = document.getElementById(`select-${id}`).value;
-            if(!riderPhone) return alert("Sélectionne un livreur d'abord !");
-
-            const rider = currentRiders.find(r => r.whatsapp === riderPhone);
-            const orderRef = ref(db, `driprush_orders/${id}`);
-
-            get(orderRef).then((snapshot) => {
-                const o = snapshot.val();
-                if(!o) return;
-
-                const cleanPhone = (phone) => phone.toString().replace(/\D/g, '');
-
-                // CORRECTION GPS POUR LE MESSAGE LIVREUR
-                let finalShopGPS = "Non renseigné";
-                if(o.shopGPS && o.shopGPS !== 'Non renseigné') {
-                    finalShopGPS = o.shopGPS.includes('http') ? o.shopGPS : `https://www.google.com/maps?q=${o.shopGPS}`;
-                }
-
-                const safeShopName = o.shopName || "Non précisé";
-                const safeClientGPS = o.clientGPS || "Non fourni";
-
-                const texteLivreur = `🏁 *COURSE DRIPRUSH*\n\n` +
-                                     `🏪 *1. RÉCUPÉRATION*\n` +
-                                     `Boutique : ${safeShopName}\n` +
-                                     `Lien GPS : ${finalShopGPS}\n\n` +
-                                     `👤 *2. LIVRAISON*\n` +
-                                     `Client : ${o.clientName}\n` +
-                                     `Articles : ${o.items}\n` +
-                                     `Tel : ${o.phone}\n` +
-                                     `Lien GPS Client : ${safeClientGPS}\n\n` +
-                                     `💰 *MONTANT À ENCAISSER : ${o.total} F*`;
-
-                const texteBoutique = `✨ *COMMANDE À PRÉPARER*\n\n` +
-                                      `📦 *ARTICLES :* ${o.items}\n` +
-                                      `👤 *CLIENT :* ${o.clientName}\n\n` +
-                                      `⚠️ *NB : Le livreur (${rider.nom}) arrive.*`;
-
-                // Ouverture du lien livreur
-                window.open(`https://wa.me/${cleanPhone(rider.whatsapp)}?text=${encodeURIComponent(texteLivreur)}`, '_blank');
-
-                const sPhone = o.shopPhone || o.boutiquePhone;
-                if(sPhone) {
-                    setTimeout(() => {
-                        if(confirm("Envoyer le message de préparation à la boutique ?")) {
-                            window.open(`https://wa.me/${cleanPhone(sPhone)}?text=${encodeURIComponent(texteBoutique)}`, '_blank');
-                        }
-                    }, 2500);
-                }
-
-                update(orderRef, { status: 'En livraison', riderName: rider.nom });
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <a href="${order.clientGPS}" target="_blank" class="bg-white/5 border border-white/10 hover:bg-white/10 text-white text-center py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition">
+                                <i class="fa-solid fa-location-dot text-red-500 mr-1"></i> GPS Client
+                            </a>
+                            <button onclick="updateStatus('${order.id}', 'Livrée')" class="bg-emerald-500 hover:bg-emerald-600 text-black py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition">
+                                Marquer Livrée ✓
+                            </button>
+                        </div>
+                    </div>`;
             });
-        };
 
-        window.markAsDelivered = (id) => {
-            if(confirm("Confirmer que cette commande est livrée ?")) {
-                const orderRef = ref(db, `driprush_orders/${id}`);
-                update(orderRef, { status: 'Livrée' });
+            // Mise à jour exacte des compteurs du dashboard
+            document.getElementById('stat-revenue').innerText = totalPlatformRevenue.toLocaleString() + " F";
+            document.getElementById('stat-pending').innerText = pendingPaymentsCount;
+            document.getElementById('stat-active').innerText = activeOrdersCount;
+
+            if(allOrders.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-gray-600 font-black italic uppercase text-xs tracking-widest">Aucune commande enregistrée...</div>`;
             }
         };
 
-        window.deleteOrder = (id) => {
-            if(confirm("Supprimer cette commande ?")) {
-                const orderRef = ref(db, `driprush_orders/${id}`);
-                remove(orderRef);
+        window.updateStatus = (orderId, newStatus) => {
+            if(confirm(`Passer la commande en statut "${newStatus}" ?`)) {
+                update(ref(db, `driprush_orders/${orderId}`), { status: newStatus })
+                    .then(() => alert("Statut mis à jour avec succès !"))
+                    .catch(() => alert("Erreur réseau lors de la mise à jour."));
             }
         };
-
-        window.deleteRider = (id) => {
-            if(confirm("Supprimer ce livreur du système ?")) {
-                remove(ref(db, `livreurs/${id}`));
-            }
-        };
-
-        window.closeDay = () => {
-            if(confirm("Clôturer la journée ? Cela videra toutes les commandes.")) {
-                remove(ref(db, 'driprush_orders'));
-            }
-        };
-
     </script>
 </head>
-<body class="bg-black text-white p-6 font-sans selection:bg-orange-500">
+<body class="p-4 md:p-8 bg-[#070707] min-h-screen pb-24">
 
-    <div class="max-w-md mx-auto">
-        <header class="flex justify-between items-center mb-6">
+    <!-- Header Stats Dashboard -->
+    <header class="mb-8 space-y-4">
+        <div class="flex justify-between items-center">
             <div>
-                <h1 class="text-3xl font-black italic text-orange-500 uppercase tracking-tighter">ADMIN</h1>
-                <p class="text-[9px] text-gray-500 font-black uppercase tracking-[0.3em]">Gestion des flux</p>
+                <h1 class="text-2xl font-black italic tracking-tighter uppercase text-white">DRIPRUSH ADMIN</h1>
+                <p class="text-[9px] text-orange-500 font-black uppercase tracking-[0.2em]">Gestion de vos bénéfices</p>
             </div>
-            <button onclick="closeDay()" class="bg-red-600 text-white px-4 py-2 rounded-full font-black text-[9px] uppercase italic">
-                Clôturer 🏁
-            </button>
-        </header>
-
-        <div id="rider-stats" class="grid grid-cols-3 gap-2 mb-8">
-            <div class="col-span-3 text-center py-4 text-gray-800 animate-pulse font-black italic uppercase text-[10px]">Recherche livreurs...</div>
+            <div class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10">
+                <i class="fa-solid fa-vault text-orange-400 text-sm"></i>
+            </div>
         </div>
 
-        <div class="flex items-center gap-2 mb-6">
-            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span class="text-[9px] font-black italic uppercase tracking-widest text-gray-400">Flux de commandes en direct</span>
+        <!-- Tableau de bord financier basé sur ta logique -->
+        <div class="grid grid-cols-3 gap-3">
+            <div class="bg-[#121212] border border-white/5 p-4 rounded-2xl">
+                <p class="text-[7px] font-black text-gray-500 uppercase tracking-wider mb-1">Mes Gains (10% global)</p>
+                <p id="stat-revenue" class="text-xs font-black text-orange-400 italic">0 F</p>
+            </div>
+            <div class="bg-[#121212] border border-white/5 p-4 rounded-2xl">
+                <p class="text-[7px] font-black text-gray-500 uppercase tracking-wider mb-1">Attente Pay.</p>
+                <p id="stat-pending" class="text-base font-black text-amber-400">0</p>
+            </div>
+            <div class="bg-[#121212] border border-white/5 p-4 rounded-2xl">
+                <p class="text-[7px] font-black text-gray-500 uppercase tracking-wider mb-1">Payées / En cours</p>
+                <p id="stat-active" class="text-base font-black text-green-400">0</p>
+            </div>
         </div>
+    </header>
 
-        <div id="orders-list">
-            <div class="text-center py-20 text-gray-800 animate-pulse font-black italic uppercase text-[10px]">Chargement du flux...</div>
+    <!-- Flux des commandes réelles -->
+    <main class="space-y-4">
+        <h2 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-2">Flux des Commandes Actives</h2>
+        <div id="orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Injecté dynamiquement -->
         </div>
-    </div>
+    </main>
 
 </body>
 </html>
