@@ -56,7 +56,6 @@
             const data = snapshot.val();
             allProducts = []; 
             if (data) {
-                // MODIFICATION AJOUTÉE : Inspection de la structure Firebase dans la console
                 console.log("=== STRUCTURE DE TES PRODUITS DANS FIREBASE ===");
                 console.log(data);
                 console.log("================================================");
@@ -89,7 +88,6 @@
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
             products.forEach(p => {
-                // Sécurisation stricte des valeurs undefined ou manquantes venant de Firebase
                 const pShopName = p.shopName && p.shopName.trim() !== "" ? p.shopName : "Driprush";
                 const pShopPhone = p.shopPhone && p.shopPhone.trim() !== "" ? p.shopPhone : "2290147535343";
 
@@ -192,13 +190,16 @@
                 return alert("Sélectionne une taille d'abord !");
             }
             
-            // CORRECTION LOGISTIQUE : Si conflit de boutique, on gère les valeurs vides et on évite le blocage indéfini
             if (cart.length > 0) {
-                const currentCartShopPhone = cart.shopPhone || "2290147535343";
-                const newShopPhone = selectedItem.shopPhone || "2290147535343";
+                // Fonction interne pour extraire uniquement les chiffres (ex: "+229 01..." devient "22901...")
+                const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
+
+                // CORRECTION ICI : cart au lieu de cart pour cibler le premier produit du tableau
+                const currentCartShopPhone = cleanPhone(cart.shopPhone || "2290147535343");
+                const newShopPhone = cleanPhone(selectedItem.shopPhone || "2290147535343");
                 const currentCartShopName = cart.shop || "Driprush";
 
-                if (currentCartShopPhone !== newShopPhone) {
+                if (currentCartShopPhone !== newShopPhone && currentCartShopPhone.length > 5 && newShopPhone.length > 5) {
                     alert(`Logistique : Ton panier contient déjà des articles de la boutique "${currentCartShopName}". Termine cette commande ou vide ton panier actuel d'abord !`);
                     return;
                 }
@@ -213,7 +214,6 @@
         };
 
         window.updateCartUI = () => {
-            document.getElementById('cart-count').innerText = cart.length;
             document.getElementById('nav-cart-count').innerText = cart.length;
             const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
             const hasPending = cart.some(i => !i.validated);
@@ -241,6 +241,7 @@
             document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
 
             if(cart.length > 0) {
+                // CORRECTION ICI : cart au lieu de cart
                 const first = cart;
                 document.getElementById('lbl-std').innerText = `🚲 Normale (+${first.deliveryStandard || 0} F)`;
                 document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${first.deliveryExpress || 0} F)`;
@@ -282,7 +283,7 @@
             element.disabled = true;
 
             navigator.geolocation.getCurrentPosition((pos) => {
-                const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                const gps = `http://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 window.triggerFedaPay(name, phone, addr, gps, element, originalText);
             }, () => {
                 window.triggerFedaPay(name, phone, addr, "GPS Refusé", element, originalText);
@@ -323,6 +324,7 @@
         };
 
         window.saveAutomatedOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
+            // CORRECTION ICI : pendingItems au lieu de pendingItems
             const firstItem = pendingItems; 
             const orderRef = push(ref(db, 'driprush_orders'));
 
@@ -433,7 +435,7 @@
                 <div class="w-5"></div>
             </div>
             <div id="cart-items-list" class="flex-1 px-2 mb-4"></div>
-            
+
             <div class="space-y-6 pb-10">
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Mode de Livraison de la Boutique</p>
                 <div class="grid grid-cols-2 gap-3">
