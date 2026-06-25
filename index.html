@@ -28,10 +28,11 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-fade-in { animation: fadeIn 0.2s ease-out; }
         .modal-height-fix { max-height: 90vh; overflow-y: auto; }
+        .pin-input { letter-spacing: 0.5em; }
     </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, push, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
@@ -83,18 +84,61 @@
                 document.getElementById('welcome-screen').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
             } else if(mode === 'partner') {
+                window.showPartnerPanel('choice');
                 document.getElementById('partner-modal').classList.remove('hidden');
             }
         };
 
-        window.submitPartner = () => {
-            const name = document.getElementById('p-name').value;
-            const phone = document.getElementById('p-phone').value;
-            const loc = document.getElementById('p-loc').value;
-            if(!name || !phone || !loc) return window.showToast("Remplissez tous les champs !", true);
-            const message = `Salut DRIPRUSH ! 🔥\n\nNOUVELLE BOUTIQUE PARTENAIRE :\n🏪 Nom: ${name}\n📞 Contact: ${phone}\n📍 Localisation: ${loc}`;
-            window.open(`https://wa.me/2290147535343?text=${encodeURIComponent(message)}`, '_blank');
+        // === ESPACE BOUTIQUES : navigation entre les 3 sous-écrans du modal partenaire ===
+        window.showPartnerPanel = (panel) => {
+            document.getElementById('partner-choice').classList.toggle('hidden', panel !== 'choice');
+            document.getElementById('partner-new').classList.toggle('hidden', panel !== 'new');
+            document.getElementById('partner-login').classList.toggle('hidden', panel !== 'login');
+        };
+
+        window.closePartnerModal = () => {
             document.getElementById('partner-modal').classList.add('hidden');
+            window.showPartnerPanel('choice');
+        };
+
+        // === NOUVELLE DEMANDE DE PARTENARIAT ===
+        window.submitPartner = () => {
+            const name = document.getElementById('p-name').value.trim();
+            const phone = document.getElementById('p-phone').value.replace(/\D/g, '');
+            const loc = document.getElementById('p-loc').value.trim();
+
+            if(!name || !phone || !loc) return window.showToast("Remplissez tous les champs !", true);
+            if(phone.length < 8) return window.showToast("Numéro WhatsApp invalide", true);
+
+            set(ref(db, 'driprush_boutique_requests/' + phone), {
+                name, phone, location: loc, status: 'en_attente', timestamp: Date.now()
+            }).then(() => {
+                const message = `Salut DRIPRUSH ! 🔥\n\nNOUVELLE DEMANDE PARTENAIRE :\n🏪 Nom: ${name}\n📞 Contact: ${phone}\n📍 Localisation: ${loc}`;
+                window.open(`https://wa.me/2290147535343?text=${encodeURIComponent(message)}`, '_blank');
+                window.closePartnerModal();
+                window.showToast("Demande envoyée ! Tu seras contacté(e) sous peu ✅");
+                document.getElementById('p-name').value = '';
+                document.getElementById('p-phone').value = '';
+                document.getElementById('p-loc').value = '';
+            }).catch(() => window.showToast("Erreur réseau, réessaie.", true));
+        };
+
+        // === CONNEXION D'UNE BOUTIQUE DÉJÀ PARTENAIRE ===
+        window.loginPartner = () => {
+            const phone = document.getElementById('l-phone').value.replace(/\D/g, '');
+            const pin = document.getElementById('l-pin').value.trim();
+
+            if(phone.length < 8 || pin.length !== 4) return window.showToast("Vérifie ton numéro et ton PIN", true);
+
+            get(ref(db, 'driprush_boutiques/' + phone)).then((snapshot) => {
+                if (snapshot.exists() && String(snapshot.val().pin) === pin) {
+                    // Session valable 48h, stockée localement sur cet appareil
+                    localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now() }));
+                    window.location.href = 'boutiques.html';
+                } else {
+                    window.showToast("Numéro ou PIN incorrect", true);
+                }
+            }).catch(() => window.showToast("Erreur de connexion, réessaie.", true));
         };
 
         window.renderProducts = (products) => {
@@ -512,15 +556,35 @@
     </div>
 
     <div id="partner-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white text-black p-6 rounded-3xl w-full max-w-sm space-y-4">
-            <h3 class="text-sm font-black uppercase tracking-tight">Ouvrir un rayon sur DRIPRUSH</h3>
-            <p class="text-[11px] text-gray-500 font-medium">Proposez vos articles streetwear premium sur notre catalogue.</p>
-            <input id="p-name" placeholder="NOM DE VOTRE ENSEIGNE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
-            <input id="p-phone" placeholder="NUMÉRO WHATSAPP BOUTIQUE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
-            <input id="p-loc" placeholder="QUARTIER & VILLE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
-            <div class="flex gap-2 pt-2">
-                <button onclick="document.getElementById('partner-modal').classList.add('hidden')" class="flex-1 bg-gray-100 text-black py-3 rounded-xl text-[10px] font-black uppercase">Annuler</button>
-                <button onclick="window.submitPartner()" class="flex-1 bg-black text-white py-3 rounded-xl text-[10px] font-black uppercase">Soumettre 🤝</button>
+        <div class="bg-white text-black p-6 rounded-3xl w-full max-w-sm space-y-4 relative">
+            <button onclick="window.closePartnerModal()" class="absolute top-4 right-5 text-gray-400 text-lg"><i class="fa-solid fa-xmark"></i></button>
+
+            <div id="partner-choice">
+                <h3 class="text-sm font-black uppercase tracking-tight mb-1">Espace Boutiques</h3>
+                <p class="text-[11px] text-gray-500 font-medium mb-5">Proposez vos articles premium ou accédez à votre espace.</p>
+                <div class="space-y-3">
+                    <button onclick="window.showPartnerPanel('new')" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase">🆕 Devenir partenaire</button>
+                    <button onclick="window.showPartnerPanel('login')" class="w-full bg-gray-100 text-black py-4 rounded-xl text-[11px] font-black uppercase">🔑 J'ai déjà un compte</button>
+                </div>
+            </div>
+
+            <div id="partner-new" class="hidden space-y-3">
+                <button onclick="window.showPartnerPanel('choice')" class="text-gray-400 text-[10px] font-bold uppercase mb-1"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
+                <h3 class="text-sm font-black uppercase tracking-tight">Devenir partenaire</h3>
+                <p class="text-[11px] text-gray-500 font-medium">Ta demande sera étudiée, puis tu recevras tes accès.</p>
+                <input id="p-name" placeholder="NOM DE VOTRE ENSEIGNE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
+                <input id="p-phone" placeholder="NUMÉRO WHATSAPP BOUTIQUE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
+                <input id="p-loc" placeholder="QUARTIER & VILLE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
+                <button onclick="window.submitPartner()" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Envoyer ma demande ✅</button>
+            </div>
+
+            <div id="partner-login" class="hidden space-y-3">
+                <button onclick="window.showPartnerPanel('choice')" class="text-gray-400 text-[10px] font-bold uppercase mb-1"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
+                <h3 class="text-sm font-black uppercase tracking-tight">Connexion Boutique</h3>
+                <p class="text-[11px] text-gray-500 font-medium">Entre ton numéro et ton code PIN.</p>
+                <input id="l-phone" type="tel" placeholder="TON NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border text-center">
+                <input id="l-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="• • • •" class="w-full bg-gray-100 p-4 rounded-xl text-xl font-black outline-none border text-center pin-input">
+                <button onclick="window.loginPartner()" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Me connecter 🔓</button>
             </div>
         </div>
     </div>
