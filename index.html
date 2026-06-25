@@ -84,7 +84,6 @@
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
             products.forEach(p => {
-                // Échappement strict des chaînes pour éviter tout crash de l'attribut onclick HTML
                 const safeId = (p.id || "").replace(/'/g, "\\'");
                 const safeName = (p.name || "").replace(/'/g, "\\'");
                 const safePrice = (p.price || "0").toString().replace(/'/g, "\\'");
@@ -131,7 +130,6 @@
         };
 
         window.openModal = (id, name, price, image, sizes, shop, shopGPS, shopPhone, deliveryStandard, deliveryExpress) => {
-            // Création propre et complète de l'objet sélectionné
             selectedItem = { id, name, price, image, shop, shopGPS, shopPhone, deliveryStandard, deliveryExpress, size: null };
             
             document.getElementById('modal-img').src = image;
@@ -141,12 +139,19 @@
             const container = document.getElementById('size-container');
             container.innerHTML = '';
             
+            // CORRECTION : Sélection automatique de la taille par défaut pour éviter tout blocage au panier
             if(sizes && sizes !== "N/A" && sizes.trim() !== "") {
-                sizes.split(',').forEach(s => {
-                    container.innerHTML += `<button onclick="window.selectSize(this, '${s.trim().replace(/'/g, "\\'")}')" class="size-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black">${s.trim()}</button>`;
+                const sizeArray = sizes.split(',');
+                sizeArray.forEach((s, idx) => {
+                    const cleanSize = s.trim().replace(/'/g, "\\'");
+                    const isFirst = idx === 0 ? 'bg-black text-white border-black' : '';
+                    if(idx === 0) selectedItem.size = s.trim(); // Assigne la 1ère taille d'office
+                    
+                    container.innerHTML += `<button onclick="window.selectSize(this, '${cleanSize}')" class="size-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black ${isFirst}">${s.trim()}</button>`;
                 });
             } else {
-                container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black">Taille Unique</button>`;
+                selectedItem.size = "Unique"; // Assigne d'office
+                container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn bg-black text-white border-black border px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition">Taille Unique</button>`;
             }
             document.getElementById('product-modal').classList.remove('hidden');
         };
@@ -176,7 +181,7 @@
 
         window.addToCart = () => {
             if(!selectedItem || !selectedItem.size) {
-                return alert("Choisis une taille avant d'ajouter au panier !");
+                return alert("Sélectionne une taille d'abord !");
             }
             
             if (cart.length > 0 && cart.shopPhone !== selectedItem.shopPhone) {
