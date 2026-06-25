@@ -56,6 +56,11 @@
             const data = snapshot.val();
             allProducts = []; 
             if (data) {
+                // MODIFICATION AJOUTÉE : Inspection de la structure Firebase dans la console
+                console.log("=== STRUCTURE DE TES PRODUITS DANS FIREBASE ===");
+                console.log(data);
+                console.log("================================================");
+
                 allProducts = Object.keys(data).map(id => ({ id, ...data[id] })).reverse();
                 window.renderProducts(allProducts);
             }
@@ -189,9 +194,9 @@
             
             // CORRECTION LOGISTIQUE : Si conflit de boutique, on gère les valeurs vides et on évite le blocage indéfini
             if (cart.length > 0) {
-                const currentCartShopPhone = cart[0].shopPhone || "2290147535343";
+                const currentCartShopPhone = cart.shopPhone || "2290147535343";
                 const newShopPhone = selectedItem.shopPhone || "2290147535343";
-                const currentCartShopName = cart[0].shop || "Driprush";
+                const currentCartShopName = cart.shop || "Driprush";
 
                 if (currentCartShopPhone !== newShopPhone) {
                     alert(`Logistique : Ton panier contient déjà des articles de la boutique "${currentCartShopName}". Termine cette commande ou vide ton panier actuel d'abord !`);
@@ -236,7 +241,7 @@
             document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
 
             if(cart.length > 0) {
-                const first = cart[0];
+                const first = cart;
                 document.getElementById('lbl-std').innerText = `🚲 Normale (+${first.deliveryStandard || 0} F)`;
                 document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${first.deliveryExpress || 0} F)`;
                 if(deliveryTypeSelected === "standard") deliveryFee = first.deliveryStandard || 0;
@@ -318,7 +323,7 @@
         };
 
         window.saveAutomatedOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
-            const firstItem = pendingItems[0]; 
+            const firstItem = pendingItems; 
             const orderRef = push(ref(db, 'driprush_orders'));
 
             set(orderRef, {
@@ -346,7 +351,6 @@
 </head>
 <body class="pb-24">
 
-    <!-- Écran de bienvenue -->
     <div id="welcome-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-end pb-20 px-6 text-center">
         <div class="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
@@ -360,7 +364,6 @@
         </div>
     </div>
 
-    <!-- Contenu Principal -->
     <div id="main-content" class="hidden">
         <header class="bg-white px-4 pt-4 pb-2 sticky top-0 z-40 shadow-sm">
             <div class="flex justify-between items-center mb-4">
@@ -388,7 +391,6 @@
             <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
         </main>
 
-        <!-- BARRE DE PANIER FIXE -->
         <div id="cart-bar" class="fixed bottom-20 left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-30 border border-gray-100">
             <div>
                 <p class="text-[8px] font-black uppercase opacity-40">Sous-total</p>
@@ -397,7 +399,6 @@
             <button onclick="window.toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] italic active:scale-95 transition">Commander 🚀</button>
         </div>
 
-        <!-- MODAL PRODUIT -->
         <div id="product-modal" onclick="window.closeModalOutside(event)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end hidden cursor-pointer">
             <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up modal-height-fix pb-10 cursor-default relative">
                 <button id="close-modal-btn" onclick="window.closeModalOutside(null)" class="absolute top-4 right-6 text-gray-400 hover:text-black transition text-xl p-2">
@@ -420,13 +421,11 @@
             </div>
         </div>
 
-        <!-- MODAL DE ZOOM PHOTO -->
         <div id="zoom-modal" onclick="window.toggleZoom(false)" class="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 hidden animate-fade-in cursor-zoom-out">
             <button onclick="window.toggleZoom(false)" class="absolute top-6 right-6 text-white text-2xl opacity-70 hover:opacity-100 transition"><i class="fa-solid fa-xmark"></i></button>
             <img id="zoom-img" src="" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl">
         </div>
 
-        <!-- Checkout Modal -->
         <div id="checkout-modal" class="fixed inset-0 bg-white z-50 p-4 flex flex-col hidden overflow-y-auto">
             <div class="flex items-center justify-between mb-6 pt-4 shrink-0">
                 <button onclick="window.toggleCheckout(false)" class="flex items-center gap-2 font-bold text-xs uppercase"><i class="fa-solid fa-chevron-left text-xl"></i> Retour</button>
@@ -457,7 +456,6 @@
         </div>
     </div>
 
-    <!-- Modal Optionnel Devenir Partenaire -->
     <div id="partner-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white text-black p-6 rounded-3xl w-full max-w-sm space-y-4">
             <h3 class="text-sm font-black uppercase tracking-tight">Ouvrir un rayon sur DRIPRUSH</h3>
