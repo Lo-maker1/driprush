@@ -10,7 +10,6 @@
         import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // CONFIGURATION (Stricte conformité à ton projet)
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
             authDomain: "vroomiam.firebaseapp.com",
@@ -24,11 +23,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Connexion anonyme automatique — nécessaire depuis qu'on a sécurisé les règles Firebase
         const auth = getAuth(app);
         signInAnonymously(auth).catch((err) => console.error("Erreur auth anonyme:", err));
 
-        // FONCTION GPS (Corrigée pour générer un lien Google Maps valide)
         window.getShopGPS = () => {
             const btn = document.getElementById('gps-btn');
             btn.innerText = "Recherche...";
@@ -63,6 +60,8 @@
             const shopName = document.getElementById('p-shop').value; 
             const shopPhone = document.getElementById('p-shop-phone').value; 
             const shopGPS = document.getElementById('p-shop-gps').value;
+            const deliveryStandard = parseInt(document.getElementById('p-delivery-std').value) || 0;
+            const deliveryExpress = parseInt(document.getElementById('p-delivery-exp').value) || 0;
 
             if(!name || !price || !image) return alert("Remplis au moins Nom, Prix et Image !");
             if(!shopGPS) return alert("Capture le GPS ou colle un lien Google Maps !");
@@ -80,6 +79,8 @@
                 shopName, 
                 shopPhone, 
                 shopGPS, 
+                deliveryStandard,
+                deliveryExpress,
                 timestamp: Date.now() 
             }).then(() => {
                 alert("Article ajouté au catalogue Driprush ! ✅");
@@ -163,6 +164,17 @@
             <div>
                 <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Tailles / ML (Optionnel)</label>
                 <input id="p-sizes" type="text" placeholder="ex: S, M, L ou 100ml" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 font-bold">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Livraison normale (F)</label>
+                    <input id="p-delivery-std" type="number" placeholder="ex: 500" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 text-xs font-bold">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-gray-500 uppercase ml-2">Livraison rapide (F)</label>
+                    <input id="p-delivery-exp" type="number" placeholder="ex: 1000" class="w-full bg-black p-4 rounded-2xl border border-white/10 outline-none focus:border-orange-500 text-xs font-bold">
+                </div>
             </div>
 
             <button type="button" onclick="addProduct()" class="w-full bg-orange-500 text-black py-5 rounded-[2rem] font-black uppercase italic shadow-lg active:scale-95 transition mt-4">
