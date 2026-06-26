@@ -98,6 +98,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, push, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
@@ -111,6 +112,10 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+
+        // Connexion anonyme automatique — nécessaire depuis qu'on a sécurisé les règles Firebase
+        const auth = getAuth(app);
+        signInAnonymously(auth).catch((err) => console.error("Erreur auth anonyme:", err));
 
         const SIMULATION_MODE = true;
         if (SIMULATION_MODE) {
@@ -163,7 +168,6 @@
             window.showPartnerPanel('choice');
         };
 
-        // === GPS de la boutique lors de la demande de partenariat ===
         window.getPartnerGPS = () => {
             const btn = document.getElementById('p-gps-btn');
             btn.innerText = "Recherche...";
