@@ -113,14 +113,17 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Connexion anonyme automatique — nécessaire depuis qu'on a sécurisé les règles Firebase
         const auth = getAuth(app);
         signInAnonymously(auth).catch((err) => console.error("Erreur auth anonyme:", err));
 
-        const SIMULATION_MODE = true;
+        // 🧪 Passe à false quand tu veux tester un vrai paiement sandbox via le webhook
+        const SIMULATION_MODE = false;
         if (SIMULATION_MODE) {
             document.getElementById('test-mode-banner').classList.remove('hidden');
         }
+
+        // 🔑 Remplace par ta vraie clé publique sandbox FedaPay
+        const FEDAPAY_PUBLIC_KEY = 'pk_sandbox_8x40mqXXj84CpQvs4BYhmguJ';
 
         let cart = [];
         let selectedItem = null;
@@ -210,7 +213,7 @@
                 const btn = document.getElementById('p-gps-btn');
                 btn.innerText = "📍 Capturer la position de la boutique";
                 btn.classList.replace('bg-green-100', 'bg-gray-100');
-            }).catch(() => window.showToast("Erreur réseau, réessaie.", true));
+            }).catch((err) => window.showToast("Erreur : " + err.message, true));
         };
 
         window.loginPartner = () => {
@@ -226,7 +229,7 @@
                 } else {
                     window.showToast("Numéro ou PIN incorrect", true);
                 }
-            }).catch(() => window.showToast("Erreur de connexion, réessaie.", true));
+            }).catch((err) => window.showToast("Erreur : " + err.message, true));
         };
 
         window.renderProducts = (products) => {
@@ -456,12 +459,37 @@
             }, { timeout: 8000 });
         };
 
+        // --- Crée la commande EN ATTENTE avant le paiement, pour donner un identifiant au webhook ---
+        window.createPendingOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
+            return new Promise((resolve, reject) => {
+                const firstItem = pendingItems[0];
+                const commission = Math.round(finalTotal * 0.10);
+                const montantBoutique = finalTotal - commission;
+
+                const orderRef = push(ref(db, 'driprush_orders'));
+                set(orderRef, {
+                    clientName: name, phone, address: addr, clientGPS: gps,
+                    shopName: firstItem.shop || 'Driprush',
+                    shopGPS: firstItem.shopGPS || '',
+                    shopPhone: firstItem.shopPhone || '2290147535343',
+                    items: pendingItems.map(i => `${i.name} [${i.size}]`).join(', '),
+                    deliveryMode: deliveryTypeSelected,
+                    total: finalTotal,
+                    commission: commission,
+                    montantBoutique: montantBoutique,
+                    status: 'En attente de paiement',
+                    timestamp: Date.now()
+                }).then(() => resolve(orderRef.key)).catch(reject);
+            });
+        };
+
         window.triggerFedaPay = (name, phone, addr, gps, btn, originalText) => {
             const pendingItems = cart.filter(i => !i.validated);
             let subtotal = 0; 
             pendingItems.forEach(i => subtotal += parseInt(i.price));
             const finalTotal = subtotal + deliveryFee;
 
+            // --- 🧪 BRANCHE SIMULATION (inchangée) ---
             if (SIMULATION_MODE) {
                 btn.innerText = "PAIEMENT SIMULÉ... ⏳";
                 window.showToast("🧪 Mode simulation activé — paiement fictif");
@@ -470,37 +498,47 @@
                 }, 2000);
                 return;
             }
+            // --- FIN BRANCHE SIMULATION ---
 
-            const nameParts = name.split(' ');
-            const firstname = nameParts[0] || 'Client';
-            const lastname = nameParts.slice(1).join(' ') || 'Driprush';
+            // --- 🔒 BRANCHE RÉELLE : webhook-confirmé ---
+            window.createPendingOrder(name, phone, addr, gps, finalTotal, pendingItems).then((orderId) => {
+                const nameParts = name.split(' ');
+                const firstname = nameParts[0] || 'Client';
+                const lastname = nameParts.slice(1).join(' ') || 'Driprush';
 
-            const widget = FedaPay.init({
-                public_key: 'pk_sandbox_A7pGv9zX8bN3mQ1vL2r5K4tJ',
-                environment: 'sandbox',
-                transaction: {
-                    amount: finalTotal,
-                    description: `Achat de ${pendingItems.length} article(s) - DRIPRUSH`
-                },
-                currency: { iso: 'XOF' },
-                customer: {
-                    firstname: firstname,
-                    lastname: lastname,
-                    email: `client${phone.replace(/\D/g,'')}@driprush.bj`,
-                    phone_number: { number: phone, country: 'bj' }
-                },
-                onComplete: function(response) {
-                    console.log("Réponse FedaPay :", response);
-                    if (response.transaction && (response.transaction.status === 'approved' || response.transaction.status === 'successful')) {
-                        window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems);
-                    } else {
-                        window.showToast("Paiement annulé ou échoué.", true);
+                const widget = FedaPay.init({
+                    public_key: FEDAPAY_PUBLIC_KEY,
+                    environment: 'sandbox',
+                    transaction: {
+                        amount: finalTotal,
+                        description: `Commande Driprush #${orderId}`,
+                        custom_metadata: { orderId: orderId }
+                    },
+                    currency: { iso: 'XOF' },
+                    customer: {
+                        firstname: firstname,
+                        lastname: lastname,
+                        email: `client${phone.replace(/\D/g,'')}@driprush.bj`,
+                        phone_number: { number: phone, country: 'bj' }
+                    },
+                    onComplete: function(response) {
+                        console.log("Réponse FedaPay :", response);
                         btn.innerText = originalText;
                         btn.disabled = false;
+                        cart = [];
+                        deliveryFee = 0;
+                        deliveryTypeSelected = "";
+                        window.updateCartUI();
+                        document.getElementById('checkout-modal').classList.add('hidden');
+                        window.showToast("Paiement envoyé ✅ — vérification en cours, la boutique sera notifiée dès confirmation");
                     }
-                }
+                });
+                widget.open();
+            }).catch((err) => {
+                window.showToast("Erreur : " + err.message, true);
+                btn.innerText = originalText;
+                btn.disabled = false;
             });
-            widget.open();
         };
 
         window.saveAutomatedOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
@@ -528,8 +566,8 @@
                 window.updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
                 window.showToast("Commande envoyée 🚀 — la boutique s'en occupe déjà");
-            }).catch(() => {
-                window.showToast("Erreur réseau, réessaie.", true);
+            }).catch((err) => {
+                window.showToast("Erreur : " + err.message, true);
             });
         };
 
