@@ -51,6 +51,12 @@
                 <button type="button" id="gps-btn" onclick="window.getBoutiqueGPS()" class="flex-1 bg-white/5 border border-gray-700 p-4 rounded-2xl text-[10px] font-black text-orange-500 uppercase active:scale-95 transition">📍 Capturer GPS</button>
             </div>
             <input id="b-gps" placeholder="Ou colle un lien Google Maps" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none focus:border-orange-500 text-[10px] text-gray-400">
+
+            <label class="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase px-1 pt-1">
+                <input type="checkbox" id="b-momo-same" checked onchange="window.toggleAdminMomoField()" class="w-4 h-4 accent-orange-500">
+                Mobile Money = même numéro que le WhatsApp
+            </label>
+            <input id="b-momo" placeholder="NUMÉRO MOBILE MONEY" class="hidden w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none focus:border-orange-500 text-sm font-bold">
         </div>
 
         <button onclick="window.registerBoutique()" class="w-full bg-orange-500 text-white font-black py-5 rounded-2xl text-sm uppercase italic shadow-xl active:scale-95 transition mb-8">
@@ -160,7 +166,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Connexion anonyme automatique — nécessaire depuis qu'on a sécurisé les règles Firebase
         const auth = getAuth(app);
         signInAnonymously(auth).catch((err) => console.error("Erreur auth anonyme:", err));
 
@@ -204,6 +209,13 @@
             }
         };
 
+        // === Affiche/cache le champ Mobile Money (ajout manuel admin) ===
+        window.toggleAdminMomoField = () => {
+            const same = document.getElementById('b-momo-same').checked;
+            document.getElementById('b-momo').classList.toggle('hidden', same);
+        };
+
+        // === ADMIN : demandes de partenariat (avec GPS + Mobile Money capturés côté boutique) ===
         window.loadPendingRequests = () => {
             onValue(ref(db, 'driprush_boutique_requests'), (snapshot) => {
                 const data = snapshot.val();
@@ -218,21 +230,23 @@
                     const safeName = r.name.replace(/'/g, "\\'");
                     const safeLoc = (r.location || '').replace(/'/g, "\\'");
                     const safeGps = (r.gps || '').replace(/'/g, "\\'");
+                    const safeMomo = (r.momo || r.phone || '').replace(/'/g, "\\'");
                     container.innerHTML += `
                         <div class="bg-gray-800 rounded-xl p-4 border border-orange-500/30 mb-2">
                             <p class="text-xs font-bold uppercase">${r.name}</p>
                             <p class="text-[10px] text-gray-500 mb-1">${r.phone} — ${r.location || ''}</p>
+                            <p class="text-[10px] text-green-400 mb-1">💰 Momo: ${r.momo || r.phone}</p>
                             ${r.gps ? `<a href="${r.gps}" target="_blank" class="text-[10px] text-orange-400 underline mb-2 inline-block"><i class="fa-solid fa-map mr-1"></i>Voir sur la carte</a>` : '<p class="text-[10px] text-red-400 mb-2">⚠️ Aucun GPS fourni</p>'}
-                            <button onclick="window.approveRequest('${r.phone}', '${safeName}', '${safeLoc}', '${safeGps}')" class="w-full bg-green-500 text-black font-black py-2 rounded-lg text-[10px] uppercase mt-1">✅ Approuver & générer le PIN</button>
+                            <button onclick="window.approveRequest('${r.phone}', '${safeName}', '${safeLoc}', '${safeGps}', '${safeMomo}')" class="w-full bg-green-500 text-black font-black py-2 rounded-lg text-[10px] uppercase mt-1">✅ Approuver & générer le PIN</button>
                         </div>`;
                 });
             });
         };
 
-        window.approveRequest = (phone, name, location, gps) => {
+        window.approveRequest = (phone, name, location, gps, momo) => {
             const pin = String(Math.floor(1000 + Math.random() * 9000));
             set(ref(db, 'driprush_boutiques/' + phone), {
-                name, phone, gps: gps || '', pin, createdAt: Date.now()
+                name, phone, gps: gps || '', momo: momo || phone, pin, createdAt: Date.now()
             }).then(() => {
                 update(ref(db, 'driprush_boutique_requests/' + phone), { status: 'approuvée' });
                 document.getElementById('generated-pin').innerText = pin;
@@ -242,24 +256,31 @@
             }).catch((e) => alert("Erreur : " + e.message));
         };
 
+        // === ADMIN : enregistrer une boutique manuellement ===
         window.registerBoutique = () => {
             const name = document.getElementById('b-name').value.trim();
             const phone = cleanPhone(document.getElementById('b-phone').value);
             const gps = document.getElementById('b-gps').value.trim();
+            const momoSame = document.getElementById('b-momo-same').checked;
+            const momo = momoSame ? phone : cleanPhone(document.getElementById('b-momo').value);
 
             if (!name) return alert("Donne un nom à la boutique !");
             if (phone.length < 8) return alert("Numéro WhatsApp invalide !");
+            if (!momo || momo.length < 8) return alert("Numéro Mobile Money invalide !");
 
             const pin = String(Math.floor(1000 + Math.random() * 9000));
 
             set(ref(db, 'driprush_boutiques/' + phone), {
-                name, phone, gps: gps || '', pin, createdAt: Date.now()
+                name, phone, gps: gps || '', momo, pin, createdAt: Date.now()
             }).then(() => {
                 document.getElementById('generated-pin').innerText = pin;
                 document.getElementById('pin-result').classList.remove('hidden');
                 document.getElementById('b-name').value = '';
                 document.getElementById('b-phone').value = '';
                 document.getElementById('b-gps').value = '';
+                document.getElementById('b-momo').value = '';
+                document.getElementById('b-momo-same').checked = true;
+                window.toggleAdminMomoField();
                 window.loadBoutiquesList();
             }).catch((e) => alert("Erreur : " + e.message));
         };
@@ -284,6 +305,7 @@
                             <div>
                                 <p class="text-xs font-bold uppercase">${b.name}</p>
                                 <p class="text-[10px] text-gray-500">${b.phone}</p>
+                                <p class="text-[9px] text-green-400">💰 ${b.momo || b.phone}</p>
                             </div>
                             <span class="text-orange-500 font-black pin-digit text-sm">${b.pin}</span>
                         </div>`;
@@ -291,6 +313,7 @@
             });
         };
 
+        // === BOUTIQUE : connexion ===
         window.loginBoutique = () => {
             const phone = cleanPhone(document.getElementById('l-phone').value);
             const pin = document.getElementById('l-pin').value.trim();
@@ -497,6 +520,7 @@
                 shopName: currentBoutique.name,
                 shopPhone: currentBoutique.phone,
                 shopGPS: currentBoutique.gps || '',
+                shopMomo: currentBoutique.momo || currentBoutique.phone || '',
                 deliveryStandard, deliveryExpress,
                 timestamp: Date.now()
             }).then(() => {
