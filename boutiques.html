@@ -145,7 +145,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
@@ -159,7 +158,10 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const storage = getStorage(app);
+
+        // === Hébergement des photos via Cloudinary (gratuit, sans carte bancaire) ===
+        const CLOUDINARY_CLOUD_NAME = "dshzay8cf";
+        const CLOUDINARY_UPLOAD_PRESET = "drip_rush";
 
         const SESSION_DURATION_MS = 48 * 60 * 60 * 1000; // 48h
 
@@ -391,7 +393,7 @@
                 .catch(() => alert("Erreur, réessaie."));
         };
 
-        // === MES ARTICLES : ajout produit avec upload photo ===
+        // === MES ARTICLES : ajout produit avec upload photo via Cloudinary ===
         window.openAddProductForm = () => {
             uploadedImageURL = "";
             document.getElementById('img-preview').classList.add('hidden');
@@ -409,47 +411,75 @@
             document.getElementById('add-product-modal').classList.add('hidden');
         };
 
-        // Compression côté téléphone avant envoi (limite la consommation data de la boutique)
+        // Compression côté téléphone, puis envoi à Cloudinary (gratuit, sans carte bancaire)
         window.handleImageUpload = (event) => {
             const file = event.target.files[0];
             if (!file) return;
 
             const btn = document.getElementById('img-upload-btn');
             btn.disabled = true;
-            btn.innerText = "Compression...";
+            btn.innerText = "Préparation...";
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const MAX_WIDTH = 800;
-                    const scale = Math.min(1, MAX_WIDTH / img.width);
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width * scale;
-                    canvas.height = img.height * scale;
-                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            const objectUrl = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                const MAX_WIDTH = 700;
+                const scale = Math.min(1, MAX_WIDTH / img.width);
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(objectUrl);
 
-                    canvas.toBlob((blob) => {
-                        btn.innerText = "Envoi en cours...";
-                        const fileName = `products/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
-                        const fileRef = storageRef(storage, fileName);
+                canvas.toBlob((blob) => {
+                    const formData = new FormData();
+                    formData.append('file', blob, 'product.jpg');
+                    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
-                        uploadBytes(fileRef, blob).then((snap) => getDownloadURL(snap.ref)).then((url) => {
-                            uploadedImageURL = url;
-                            document.getElementById('img-preview').src = url;
-                            document.getElementById('img-preview').classList.remove('hidden');
-                            btn.innerText = "✅ Photo ajoutée — changer";
-                            btn.disabled = false;
-                        }).catch((err) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`);
+
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const pct = Math.round((e.loaded / e.total) * 100);
+                            btn.innerText = `Envoi en cours... ${pct}%`;
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (data.secure_url) {
+                                uploadedImageURL = data.secure_url;
+                                document.getElementById('img-preview').src = uploadedImageURL;
+                                document.getElementById('img-preview').classList.remove('hidden');
+                                btn.innerText = "✅ Photo ajoutée — changer";
+                                btn.disabled = false;
+                            } else {
+                                throw new Error((data.error && data.error.message) || "Réponse Cloudinary invalide");
+                            }
+                        } catch (err) {
                             alert("Erreur d'envoi de la photo : " + err.message);
                             btn.innerText = "📷 Réessayer";
                             btn.disabled = false;
-                        });
-                    }, 'image/jpeg', 0.8);
-                };
-                img.src = e.target.result;
+                        }
+                    };
+
+                    xhr.onerror = () => {
+                        alert("Erreur réseau pendant l'envoi de la photo.");
+                        btn.innerText = "📷 Réessayer";
+                        btn.disabled = false;
+                    };
+
+                    xhr.send(formData);
+                }, 'image/jpeg', 0.75);
             };
-            reader.readAsDataURL(file);
+            img.onerror = () => {
+                alert("Impossible de lire cette image, essaie une autre photo.");
+                btn.innerText = "📷 Réessayer";
+                btn.disabled = false;
+            };
+            img.src = objectUrl;
         };
 
         window.submitNewProduct = () => {
