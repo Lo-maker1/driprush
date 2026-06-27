@@ -2,8 +2,15 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DRIPRUSH - Espace Boutiques</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DRIPRUSH - Premium Store</title>
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://vroomiam.web.app/">
+    <meta property="og:title" content="DRIPRUSH - Premium Store">
+    <meta property="og:description" content="Livraison en 15min chrono au Bénin. Qualité premium uniquement. 🔥">
+    <meta property="og:image" content="https://i.ibb.co/b58wJF0B/IMG-3395.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -22,245 +29,90 @@
     </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+    <meta name="theme-color" content="#FF4D1C">
+    <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
+
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0B0B0C; color: #fff; overflow-x: hidden; }
+        body { font-family: 'Inter', sans-serif; background-color: #F7F5F2; color: #0B0B0C; overflow-x: hidden; }
         .font-display { font-family: 'Archivo Black', sans-serif; }
-        .pin-digit { letter-spacing: 0.5em; }
+        .active-cat { background-color: #0B0B0C !important; color: #fff !important; transform: scale(1.05); }
+        .product-card { transition: all 0.3s ease; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .animate-marquee { display: inline-block; animation: marquee 18s linear infinite; }
+
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-slide-up { animation: slideUp 0.3s ease-out; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+
+        .modal-height-fix { max-height: 90vh; overflow-y: auto; }
+        .pin-input { letter-spacing: 0.5em; }
 
         @keyframes cardEnter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         .card-enter { animation: cardEnter 0.45s ease-out backwards; }
 
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes cartBounce { 0%,100% { transform: scale(1); } 30% { transform: scale(1.35); } 60% { transform: scale(0.92); } }
+        .cart-bounce { animation: cartBounce 0.45s ease-out; }
 
         @keyframes shimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
-        .skeleton { background: linear-gradient(90deg, #1a1a1a 25%, #242424 37%, #1a1a1a 63%); background-size: 600px 100%; animation: shimmer 1.4s infinite linear; }
+        .skeleton { background: linear-gradient(90deg, #ececec 25%, #f6f6f6 37%, #ececec 63%); background-size: 600px 100%; animation: shimmer 1.4s infinite linear; }
 
-        .price-tag-dark {
+        .price-tag {
             position: relative;
             background: #0B0B0C;
-            color: #C8FF4D;
+            color: #fff;
             font-family: 'Archivo Black', sans-serif;
-            font-size: 13px;
-            padding: 8px 14px 8px 20px;
+            font-size: 11px;
+            padding: 6px 12px 6px 18px;
             border-radius: 3px 10px 10px 3px;
-            transform: rotate(-2deg);
+            transform: rotate(-3deg);
             display: inline-flex;
             align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            border: 1px solid rgba(200,255,77,0.2);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.18);
         }
-        .price-tag-dark::before {
+        .price-tag::before {
             content: '';
             position: absolute;
-            left: 7px;
+            left: 6px;
             top: 50%;
             transform: translateY(-50%);
             width: 5px;
             height: 5px;
-            background: #0B0B0C;
-            border: 1px solid #C8FF4D;
+            background: #F7F5F2;
             border-radius: 50%;
         }
 
-        .card-surface { background: linear-gradient(145deg, #141414, #1c1c1c); border: 1px solid rgba(255,255,255,0.06); }
-        .input-dark { background: #141414; border: 1px solid rgba(255,255,255,0.08); }
-        .input-dark:focus { border-color: #FF4D1C; }
+        .new-sticker {
+            background: #C8FF4D;
+            color: #0B0B0C;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 8px;
+            padding: 3px 8px;
+            border-radius: 2px 8px 8px 2px;
+            transform: rotate(3deg);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
 
-        /* === Motif de fond : gouttes vivantes === */
-        #drip-bg { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
-        .drip-shape {
-            position: absolute;
-            border-radius: 50% 50% 50% 0;
-            filter: blur(1px);
-            opacity: 0.10;
+        .pin-reveal {
+            background: #0B0B0C;
+            color: #C8FF4D;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 2.5rem;
+            letter-spacing: 0.4em;
+            padding: 1rem;
+            border-radius: 1rem;
+            text-align: center;
         }
-        @keyframes dripPulse {
-            0%, 100% { opacity: 0.08; transform: rotate(45deg) scale(1); }
-            50% { opacity: 0.18; transform: rotate(45deg) scale(1.12); }
-        }
-        @keyframes dripFloat {
-            0% { transform: rotate(45deg) translateY(0); opacity: 0.10; }
-            50% { transform: rotate(45deg) translateY(40px); opacity: 0.16; }
-            100% { transform: rotate(45deg) translateY(0); opacity: 0.10; }
-        }
-        .drip-pulse { animation: dripPulse 7s ease-in-out infinite; }
-        .drip-float { animation: dripFloat 11s ease-in-out infinite; }
-
-        .app-content { position: relative; z-index: 10; }
     </style>
-</head>
-<body class="min-h-screen p-5 pb-16">
-
-    <!-- Motif de fond — gouttes immersives -->
-    <div id="drip-bg">
-        <div class="drip-shape drip-pulse" style="width:140px; height:140px; background:#FF4D1C; top:6%; left:-5%; transform:rotate(45deg);"></div>
-        <div class="drip-shape drip-float" style="width:90px; height:90px; background:#C8FF4D; top:20%; right:-3%; transform:rotate(45deg);"></div>
-        <div class="drip-shape" style="width:200px; height:200px; background:#C23700; top:45%; left:60%; transform:rotate(45deg); opacity:0.07;"></div>
-        <div class="drip-shape drip-pulse" style="width:110px; height:110px; background:#FF4D1C; top:65%; left:-6%; transform:rotate(45deg); animation-delay: 2s;"></div>
-        <div class="drip-shape drip-float" style="width:70px; height:70px; background:#C8FF4D; top:80%; right:8%; transform:rotate(45deg); animation-delay: 4s;"></div>
-        <div class="drip-shape" style="width:160px; height:160px; background:#FF4D1C; top:88%; left:30%; transform:rotate(45deg); opacity:0.06;"></div>
-    </div>
-
-    <!-- ÉCRAN 1 : CHOIX DU RÔLE -->
-    <div id="landing-card" class="app-content max-w-md mx-auto pt-16 text-center">
-        <h1 class="text-3xl font-display text-drip uppercase tracking-tighter mb-1">Driprush</h1>
-        <p class="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] mb-10">Espace Boutiques</p>
-        <div class="space-y-4">
-            <button onclick="window.showPanel('login')" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-[0_0_30px_rgba(255,77,28,0.25)] active:scale-95 transition-all">
-                🏪 Je suis une boutique
-            </button>
-            <button onclick="window.tryEnterAdmin()" class="w-full bg-white/5 border border-white/10 text-white font-display py-5 rounded-2xl text-sm uppercase active:scale-95 transition-all">
-                🔑 Espace Admin
-            </button>
-        </div>
-    </div>
-
-    <!-- 🆕 ÉCRAN MOT DE PASSE ADMIN -->
-    <div id="admin-password-screen" class="app-content hidden max-w-sm mx-auto pt-20 text-center animate-fade-in">
-        <button onclick="window.showPanel('landing')" class="text-gray-500 text-[10px] font-black uppercase mb-8 tracking-widest"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
-        <i class="fa-solid fa-lock text-drip text-2xl mb-4"></i>
-        <h2 class="text-lg font-display uppercase mb-2 tracking-tight">Accès restreint</h2>
-        <p class="text-[10px] text-gray-500 font-bold uppercase mb-6 tracking-widest">Réservé à l'administrateur</p>
-        <input id="admin-password-input" type="password" placeholder="MOT DE PASSE ADMIN" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold text-center mb-3">
-        <p id="admin-password-error" class="hidden text-[10px] text-red-400 font-bold uppercase mb-3"></p>
-        <button onclick="window.checkAdminPassword(this)" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase shadow-xl active:scale-95 transition">
-            Déverrouiller 🔓
-        </button>
-    </div>
-
-    <!-- ÉCRAN 2 : ADMIN - DEMANDES + AJOUT BOUTIQUE -->
-    <div id="admin-panel" class="app-content hidden max-w-md mx-auto pt-8 animate-fade-in">
-        <button onclick="window.showPanel('landing')" class="text-gray-500 text-[10px] font-black uppercase mb-6 tracking-widest"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
-
-        <h2 class="text-xl font-display uppercase mb-1 tracking-tight">Demandes en attente</h2>
-        <p class="text-[10px] text-gray-500 font-bold uppercase mb-4 tracking-widest">Approuve pour générer le PIN automatiquement</p>
-        <div id="requests-list" class="space-y-2 mb-8"></div>
-
-        <div id="pin-result" class="hidden bg-lime/10 border border-lime/30 rounded-3xl p-6 text-center mb-8">
-            <p class="text-[10px] text-lime font-black uppercase tracking-widest mb-3">✅ Code à transmettre à la boutique</p>
-            <p id="generated-pin" class="text-4xl font-display pin-digit text-white"></p>
-            <button onclick="window.copyPin()" class="mt-4 text-[10px] text-drip font-black uppercase underline tracking-widest">Copier le code</button>
-        </div>
-
-        <h2 class="text-xl font-display uppercase mb-1 mt-8 tracking-tight">Ajout manuel</h2>
-        <p class="text-[10px] text-gray-500 font-bold uppercase mb-6 tracking-widest">Pour ajouter une boutique sans passer par une demande</p>
-
-        <div class="space-y-3 mb-4">
-            <input id="b-name" placeholder="NOM DE LA BOUTIQUE" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold uppercase">
-            <input id="b-phone" type="tel" placeholder="NUMÉRO WHATSAPP (ex: 22901475353)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
-            <div class="flex gap-2">
-                <button type="button" id="gps-btn" onclick="window.getBoutiqueGPS()" class="flex-1 input-dark p-4 rounded-2xl text-[10px] font-black text-drip uppercase active:scale-95 transition tracking-widest">📍 Capturer GPS</button>
-            </div>
-            <input id="b-gps" placeholder="Ou colle un lien Google Maps" class="w-full input-dark p-4 rounded-2xl outline-none text-[10px] text-gray-500">
-
-            <label class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase px-1 pt-1 tracking-widest">
-                <input type="checkbox" id="b-momo-same" checked onchange="window.toggleAdminMomoField()" class="w-4 h-4 accent-drip">
-                Mobile Money = même numéro que le WhatsApp
-            </label>
-            <input id="b-momo" placeholder="NUMÉRO MOBILE MONEY" class="hidden w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
-        </div>
-
-        <button onclick="window.registerBoutique()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-xl active:scale-95 transition mb-8">
-            Enregistrer la boutique 🚀
-        </button>
-
-        <h3 class="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-3">Boutiques déjà enregistrées</h3>
-        <div id="boutiques-list" class="space-y-2"></div>
-    </div>
-
-    <!-- ÉCRAN 3 : CONNEXION BOUTIQUE -->
-    <div id="login-panel" class="app-content hidden max-w-md mx-auto pt-16 animate-fade-in">
-        <button onclick="window.showPanel('landing')" class="text-gray-500 text-[10px] font-black uppercase mb-6 tracking-widest"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
-        <h2 class="text-2xl font-display uppercase mb-2 text-center tracking-tight">Connexion Boutique</h2>
-        <p class="text-[10px] text-gray-500 font-bold uppercase mb-2 text-center tracking-widest">Entre ton numéro WhatsApp et ton code PIN</p>
-        <p class="text-[9px] text-drip font-bold uppercase mb-8 text-center px-4 tracking-wide">⚠️ Le numéro WhatsApp donné à l'inscription — pas ton Mobile Money, même s'il est différent</p>
-        <div class="space-y-3">
-            <input id="l-phone" type="tel" placeholder="TON NUMÉRO WHATSAPP" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold text-center">
-            <input id="l-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="• • • •" class="w-full input-dark p-4 rounded-2xl outline-none text-2xl font-display text-center pin-digit">
-        </div>
-        <button onclick="window.loginBoutique(this)" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-xl active:scale-95 transition mt-6">
-            Me connecter 🔓
-        </button>
-    </div>
-
-    <!-- ÉCRAN 4 : DASHBOARD BOUTIQUE -->
-    <div id="dashboard" class="app-content hidden max-w-md mx-auto animate-fade-in">
-        <div class="flex justify-between items-center pt-4 pb-6 sticky top-0 bg-ink z-10">
-            <div>
-                <p class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Connecté en tant que</p>
-                <h2 id="dash-shop-name" class="text-xl font-display uppercase text-drip tracking-tight"></h2>
-            </div>
-            <div class="flex items-center gap-2">
-                <button onclick="window.location.href='index.html'" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-300" title="Voir le site client">
-                    <i class="fa-solid fa-bag-shopping"></i>
-                </button>
-                <button onclick="window.logoutBoutique()" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-400" title="Se déconnecter">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="flex gap-2 mb-5">
-            <button onclick="window.setTab('active')" id="tab-active" class="flex-1 bg-drip text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition">À traiter</button>
-            <button onclick="window.setTab('done')" id="tab-done" class="flex-1 bg-white/5 text-gray-400 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition">Livrées</button>
-            <button onclick="window.setTab('products')" id="tab-products" class="flex-1 bg-white/5 text-gray-400 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition">Mes Articles</button>
-        </div>
-
-        <div id="orders-list" class="space-y-3 pb-10"></div>
-
-        <div id="products-panel" class="hidden space-y-3 pb-10">
-            <button onclick="window.openAddProductForm()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-xs uppercase active:scale-95 transition mb-4">+ Ajouter un article</button>
-            <div id="my-products-list" class="space-y-2"></div>
-        </div>
-    </div>
-
-    <!-- MODAL : AJOUTER UN ARTICLE -->
-    <div id="add-product-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-end justify-center">
-        <div class="bg-ink w-full max-w-md rounded-t-[2.5rem] p-6 space-y-3 max-h-[90vh] overflow-y-auto border-t border-white/10">
-            <div class="flex justify-between items-center mb-2">
-                <h3 class="text-sm font-display uppercase tracking-tight">Nouvel article</h3>
-                <button onclick="window.closeAddProductForm()" class="text-gray-500 text-lg"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-
-            <input type="file" id="prod-img-input" accept="image/*" class="hidden" onchange="window.handleImageUpload(event)">
-            <button type="button" onclick="document.getElementById('prod-img-input').click()" id="img-upload-btn" class="w-full input-dark p-6 rounded-2xl text-xs font-black text-drip uppercase text-center active:scale-95 transition tracking-widest">
-                📷 Ajouter une photo
-            </button>
-            <img id="img-preview" class="hidden w-full h-40 object-cover rounded-2xl">
-
-            <input id="prod-name" placeholder="NOM DU PRODUIT" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold uppercase">
-            <input id="prod-price" type="number" placeholder="PRIX DE VENTE (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
-
-            <div class="grid grid-cols-2 gap-2">
-                <select id="prod-type" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
-                    <option value="vetement">👕 Vêtement</option>
-                    <option value="chaussure">👟 Chaussure</option>
-                    <option value="parfum">🧴 Parfum</option>
-                    <option value="accessoire">✨ Accessoire</option>
-                </select>
-                <select id="prod-genre" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
-                    <option value="homme">HOMME</option>
-                    <option value="femme">FEMME</option>
-                    <option value="mixte">MIXTE</option>
-                    <option value="enfant">ENFANT</option>
-                </select>
-            </div>
-
-            <input id="prod-sizes" placeholder="TAILLES / ML (optionnel)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
-
-            <div class="grid grid-cols-2 gap-2">
-                <input id="prod-delivery-std" type="number" placeholder="Livraison normale (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
-                <input id="prod-delivery-exp" type="number" placeholder="Livraison rapide (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
-            </div>
-
-            <button onclick="window.submitNewProduct()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase mt-2">Ajouter au catalogue 🚀</button>
-        </div>
-    </div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, push, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -279,207 +131,177 @@
         const auth = getAuth(app);
         signInAnonymously(auth).catch((err) => console.error("Erreur auth anonyme:", err));
 
-        const CLOUDINARY_CLOUD_NAME = "dshzay8cf";
-        const CLOUDINARY_UPLOAD_PRESET = "drip_rush";
+        const SIMULATION_MODE = false;
+        if (SIMULATION_MODE) {
+            document.getElementById('test-mode-banner').classList.remove('hidden');
+        }
+
+        const FEDAPAY_PUBLIC_KEY = 'pk_sandbox_8x40mqXXj84CpQvs4BYhmguJ';
         const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
+        const SHOP_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
-        const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
-        const ADMIN_SESSION_MS = 24 * 60 * 60 * 1000; // 🆕 même durée que admin.html
+        let cart = [];
+        let selectedItem = null;
+        let deliveryFee = 0;
+        let deliveryTypeSelected = "";
+        let allProducts = [];
 
-        let currentShopPhone = null;
-        let currentBoutique = null;
-        let currentTab = 'active';
-        let lastOrdersSnapshot = [];
-        let uploadedImageURL = "";
-
-        const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
-
-        window.showPanel = (panel) => {
-            ['landing-card', 'admin-panel', 'login-panel', 'dashboard', 'admin-password-screen'].forEach(id => {
-                document.getElementById(id).classList.add('hidden');
-            });
-            document.getElementById(panel === 'landing' ? 'landing-card' : panel + (panel === 'admin' ? '-panel' : (panel === 'login' ? '-panel' : ''))).classList.remove('hidden');
-            if (panel === 'admin') {
-                window.loadBoutiquesList();
-                window.loadPendingRequests();
-            }
+        let toastTimeout;
+        window.showToast = (message, isError = false) => {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.remove('bg-ink', 'bg-red-600', 'hidden');
+            toast.classList.add(isError ? 'bg-red-600' : 'bg-ink');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toast.classList.add('hidden'), 2800);
         };
 
-        // === 🆕 Vérifie d'abord si une session admin valide existe déjà ===
-        window.tryEnterAdmin = () => {
-            const saved = localStorage.getItem('driprush_admin_session');
-            if (saved) {
-                try {
-                    const { loginTime } = JSON.parse(saved);
-                    if (Date.now() - loginTime < ADMIN_SESSION_MS) {
-                        return window.showPanel('admin');
-                    }
-                } catch(e) {}
-            }
-            document.getElementById('admin-password-error').classList.add('hidden');
-            document.getElementById('admin-password-input').value = '';
-            document.getElementById('landing-card').classList.add('hidden');
-            document.getElementById('admin-password-screen').classList.remove('hidden');
-        };
-
-        // === 🆕 Vérifie le mot de passe admin côté serveur ===
-        window.checkAdminPassword = (btn) => {
-            const password = document.getElementById('admin-password-input').value;
-            if (!password) return;
-
-            const originalText = btn.innerText;
-            btn.disabled = true;
-            btn.innerText = "Vérification...";
-
-            fetch(WEBHOOK_SERVER_URL + '/verify-admin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password })
-            })
-            .then(res => res.json())
-            .then(data => {
-                btn.disabled = false;
-                btn.innerText = originalText;
-                if (data.success) {
-                    localStorage.setItem('driprush_admin_session', JSON.stringify({ loginTime: Date.now() }));
-                    window.showPanel('admin');
+        let loggedInShopName = null;
+        (function checkShopSession() {
+            const saved = localStorage.getItem('driprush_shop_session');
+            if (!saved) return;
+            try {
+                const { loginTime, boutique } = JSON.parse(saved);
+                if (Date.now() - loginTime < SHOP_SESSION_DURATION_MS && boutique && boutique.name) {
+                    loggedInShopName = boutique.name;
                 } else {
-                    const errEl = document.getElementById('admin-password-error');
-                    errEl.innerText = data.message || "Mot de passe incorrect.";
-                    errEl.classList.remove('hidden');
+                    localStorage.removeItem('driprush_shop_session');
                 }
-            })
-            .catch(() => {
-                btn.disabled = false;
-                btn.innerText = originalText;
-                const errEl = document.getElementById('admin-password-error');
-                errEl.innerText = "Erreur de connexion au serveur.";
-                errEl.classList.remove('hidden');
-            });
+            } catch(e) {
+                localStorage.removeItem('driprush_shop_session');
+            }
+        })();
+
+        if (loggedInShopName) {
+            const banner = document.getElementById('shop-welcome-back');
+            if (banner) {
+                document.getElementById('shop-welcome-name').innerText = loggedInShopName;
+                banner.classList.remove('hidden');
+            }
+            const headerBtn = document.getElementById('shop-dashboard-btn');
+            if (headerBtn) headerBtn.classList.remove('hidden');
+        }
+
+        onValue(ref(db, 'driprush_products'), (snapshot) => {
+            const data = snapshot.val();
+            allProducts = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
+            window.renderProducts(allProducts);
+        }, (error) => {
+            console.error("Erreur Firebase:", error);
+            window.showToast("Erreur de connexion au catalogue", true);
+        });
+
+        window.enterSite = (mode) => {
+            if(mode === 'shop') {
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+            } else if(mode === 'partner') {
+                window.showPartnerPanel('choice');
+                document.getElementById('partner-modal').classList.remove('hidden');
+            }
         };
 
-        window.getBoutiqueGPS = () => {
-            const btn = document.getElementById('gps-btn');
+        window.showPartnerPanel = (panel) => {
+            document.getElementById('partner-choice').classList.toggle('hidden', panel !== 'choice');
+            document.getElementById('partner-new').classList.toggle('hidden', panel !== 'new');
+            document.getElementById('partner-login').classList.toggle('hidden', panel !== 'login');
+        };
+
+        window.closePartnerModal = () => {
+            document.getElementById('partner-modal').classList.add('hidden');
+            document.getElementById('partner-success').classList.add('hidden');
+            window.showPartnerPanel('choice');
+        };
+
+        window.getPartnerGPS = () => {
+            const btn = document.getElementById('p-gps-btn');
             btn.innerText = "Recherche...";
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((pos) => {
                     const link = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                    document.getElementById('b-gps').value = link;
-                    btn.innerText = "📍 GPS OK !";
-                    btn.classList.add('text-lime');
+                    document.getElementById('p-gps').value = link;
+                    btn.innerText = "📍 Position capturée !";
+                    btn.classList.replace('bg-gray-100', 'bg-green-100');
                 }, () => {
-                    alert("Active ta localisation pour capturer le GPS");
+                    window.showToast("Active ta localisation pour capturer le GPS", true);
                     btn.innerText = "📍 Réessayer";
                 });
+            } else {
+                window.showToast("GPS non supporté par ce téléphone", true);
             }
         };
 
-        window.toggleAdminMomoField = () => {
-            const same = document.getElementById('b-momo-same').checked;
-            document.getElementById('b-momo').classList.toggle('hidden', same);
+        window.toggleMomoField = () => {
+            const same = document.getElementById('p-momo-same').checked;
+            document.getElementById('p-momo').classList.toggle('hidden', same);
         };
 
-        window.loadPendingRequests = () => {
-            onValue(ref(db, 'driprush_boutique_requests'), (snapshot) => {
-                const data = snapshot.val();
-                const container = document.getElementById('requests-list');
-                container.innerHTML = '';
-                const pending = data ? Object.values(data).filter(r => r.status === 'en_attente') : [];
-                if (pending.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-xs text-center py-6 font-bold uppercase tracking-widest">Aucune demande en attente</p>';
-                    return;
+        window.submitPartner = (btn) => {
+            const name = document.getElementById('p-name').value.trim();
+            const phone = document.getElementById('p-phone').value.replace(/\D/g, '');
+            const loc = document.getElementById('p-loc').value.trim();
+            const gps = document.getElementById('p-gps').value.trim();
+            const momoSame = document.getElementById('p-momo-same').checked;
+            const momo = momoSame ? phone : document.getElementById('p-momo').value.replace(/\D/g, '');
+
+            if(!name || !phone || !loc) return window.showToast("Remplissez tous les champs !", true);
+            if(phone.length < 8) return window.showToast("Numéro WhatsApp invalide", true);
+            if(!gps) return window.showToast("Capture la position de la boutique avant d'envoyer !", true);
+            if(!momo || momo.length < 8) return window.showToast("Numéro Mobile Money invalide", true);
+
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Création en cours...";
+
+            get(ref(db, 'driprush_boutiques/' + phone)).then((existingSnap) => {
+                if (existingSnap.exists()) {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    return window.showToast("Ce numéro a déjà un compte ! Utilise plutôt « J'ai déjà un compte ».", true);
                 }
-                pending.reverse().forEach((r, idx) => {
-                    const safeName = r.name.replace(/'/g, "\\'");
-                    const safeLoc = (r.location || '').replace(/'/g, "\\'");
-                    const safeGps = (r.gps || '').replace(/'/g, "\\'");
-                    const safeMomo = (r.momo || r.phone || '').replace(/'/g, "\\'");
-                    container.innerHTML += `
-                        <div class="card-surface rounded-2xl p-4 border-l-2 border-l-drip card-enter" style="animation-delay: ${Math.min(idx * 0.06, 0.4)}s">
-                            <p class="text-xs font-black uppercase">${r.name}</p>
-                            <p class="text-[10px] text-gray-500 mb-1">${r.phone} — ${r.location || ''}</p>
-                            <p class="text-[10px] text-lime mb-1">💰 Momo: ${r.momo || r.phone}</p>
-                            ${r.gps ? `<a href="${r.gps}" target="_blank" class="text-[10px] text-drip underline mb-3 inline-block"><i class="fa-solid fa-map mr-1"></i>Voir sur la carte</a>` : '<p class="text-[10px] text-red-400 mb-3">⚠️ Aucun GPS fourni</p>'}
-                            <button onclick="window.approveRequest('${r.phone}', '${safeName}', '${safeLoc}', '${safeGps}', '${safeMomo}')" class="w-full bg-lime text-black font-black py-2.5 rounded-xl text-[10px] uppercase tracking-widest">✅ Approuver & générer le PIN</button>
-                        </div>`;
+
+                const pin = String(Math.floor(1000 + Math.random() * 9000));
+
+                set(ref(db, 'driprush_boutiques/' + phone), {
+                    name, phone, gps: gps || '', momo, location: loc, pin, createdAt: Date.now()
+                }).then(() => {
+                    const message = `Salut DRIPRUSH ! 🔥\n\nNOUVELLE BOUTIQUE INSCRITE :\n🏪 Nom: ${name}\n📞 Contact: ${phone}\n📍 Localisation: ${loc}\n🗺️ GPS: ${gps}\n💰 Mobile Money: ${momo}`;
+                    window.open(`https://wa.me/2290147535343?text=${encodeURIComponent(message)}`, '_blank');
+
+                    document.getElementById('partner-new').classList.add('hidden');
+                    document.getElementById('partner-success-name').innerText = name;
+                    document.getElementById('partner-success-pin').innerText = pin;
+                    document.getElementById('partner-success').classList.remove('hidden');
+
+                    document.getElementById('p-name').value = '';
+                    document.getElementById('p-phone').value = '';
+                    document.getElementById('p-loc').value = '';
+                    document.getElementById('p-gps').value = '';
+                    document.getElementById('p-momo').value = '';
+                    document.getElementById('p-momo-same').checked = true;
+                    window.toggleMomoField();
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    const gpsBtn = document.getElementById('p-gps-btn');
+                    gpsBtn.innerText = "📍 Appuyez ici pour enregistrer automatiquement vos coordonnées GPS";
+                    gpsBtn.classList.replace('bg-green-100', 'bg-gray-100');
+                }).catch((err) => {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    window.showToast("Erreur : " + err.message, true);
                 });
+            }).catch((err) => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                window.showToast("Erreur : " + err.message, true);
             });
         };
 
-        window.approveRequest = (phone, name, location, gps, momo) => {
-            const pin = String(Math.floor(1000 + Math.random() * 9000));
-            set(ref(db, 'driprush_boutiques/' + phone), {
-                name, phone, gps: gps || '', momo: momo || phone, pin, createdAt: Date.now()
-            }).then(() => {
-                update(ref(db, 'driprush_boutique_requests/' + phone), { status: 'approuvée' });
-                document.getElementById('generated-pin').innerText = pin;
-                document.getElementById('pin-result').classList.remove('hidden');
-                window.loadBoutiquesList();
-                alert(`Boutique approuvée ! Transmets ce code à ${name} : ${pin}`);
-            }).catch((e) => alert("Erreur : " + e.message));
-        };
-
-        window.registerBoutique = () => {
-            const name = document.getElementById('b-name').value.trim();
-            const phone = cleanPhone(document.getElementById('b-phone').value);
-            const gps = document.getElementById('b-gps').value.trim();
-            const momoSame = document.getElementById('b-momo-same').checked;
-            const momo = momoSame ? phone : cleanPhone(document.getElementById('b-momo').value);
-
-            if (!name) return alert("Donne un nom à la boutique !");
-            if (phone.length < 8) return alert("Numéro WhatsApp invalide !");
-            if (!momo || momo.length < 8) return alert("Numéro Mobile Money invalide !");
-
-            const pin = String(Math.floor(1000 + Math.random() * 9000));
-
-            set(ref(db, 'driprush_boutiques/' + phone), {
-                name, phone, gps: gps || '', momo, pin, createdAt: Date.now()
-            }).then(() => {
-                document.getElementById('generated-pin').innerText = pin;
-                document.getElementById('pin-result').classList.remove('hidden');
-                document.getElementById('b-name').value = '';
-                document.getElementById('b-phone').value = '';
-                document.getElementById('b-gps').value = '';
-                document.getElementById('b-momo').value = '';
-                document.getElementById('b-momo-same').checked = true;
-                window.toggleAdminMomoField();
-                window.loadBoutiquesList();
-            }).catch((e) => alert("Erreur : " + e.message));
-        };
-
-        window.copyPin = () => {
-            const pin = document.getElementById('generated-pin').innerText;
-            navigator.clipboard.writeText(pin).then(() => alert("Code copié : " + pin));
-        };
-
-        window.loadBoutiquesList = () => {
-            onValue(ref(db, 'driprush_boutiques'), (snapshot) => {
-                const data = snapshot.val();
-                const container = document.getElementById('boutiques-list');
-                container.innerHTML = '';
-                if (!data) {
-                    container.innerHTML = '<p class="text-gray-500 text-xs text-center py-6 font-bold uppercase tracking-widest">Aucune boutique encore</p>';
-                    return;
-                }
-                Object.values(data).reverse().forEach(b => {
-                    container.innerHTML += `
-                        <div class="card-surface rounded-2xl p-3 flex justify-between items-center">
-                            <div>
-                                <p class="text-xs font-bold uppercase">${b.name}</p>
-                                <p class="text-[10px] text-gray-500">${b.phone}</p>
-                                <p class="text-[9px] text-lime">💰 ${b.momo || b.phone}</p>
-                            </div>
-                            <span class="text-drip font-display pin-digit text-sm">${b.pin}</span>
-                        </div>`;
-                });
-            });
-        };
-
-        window.loginBoutique = (btn) => {
-            const phone = cleanPhone(document.getElementById('l-phone').value);
+        window.loginPartner = (btn) => {
+            const phone = document.getElementById('l-phone').value.replace(/\D/g, '');
             const pin = document.getElementById('l-pin').value.trim();
 
-            if (phone.length < 8 || pin.length !== 4) return alert("Vérifie ton numéro et ton code PIN !");
+            if(phone.length < 8 || pin.length !== 4) return window.showToast("Vérifie ton numéro et ton PIN", true);
 
             const originalText = btn.innerText;
             btn.disabled = true;
@@ -495,261 +317,619 @@
                 btn.disabled = false;
                 btn.innerText = originalText;
                 if (data.success) {
-                    currentShopPhone = phone;
                     localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now(), boutique: data.boutique }));
-                    window.openDashboard(data.boutique);
+                    window.location.href = 'boutiques.html';
                 } else {
-                    alert(data.message || "Numéro ou PIN incorrect !");
+                    window.showToast(data.message || "Numéro ou PIN incorrect", true);
                 }
             })
             .catch(() => {
                 btn.disabled = false;
                 btn.innerText = originalText;
-                alert("Erreur de connexion au serveur, réessaie.");
+                window.showToast("Erreur de connexion au serveur, réessaie.", true);
             });
         };
 
-        window.logoutBoutique = () => {
-            currentShopPhone = null;
-            currentBoutique = null;
-            localStorage.removeItem('driprush_shop_session');
-            window.showPanel('landing');
-        };
+        // 🆕 Affichage : utilise la 1ère photo du tableau "images" si dispo, sinon l'ancien champ "image"
+        window.renderProducts = (products) => {
+            const grid = document.getElementById('products-grid');
+            grid.innerHTML = '';
+            products.forEach((p, idx) => {
+                const pShopName = p.shopName && p.shopName.trim() !== "" ? p.shopName : "Driprush";
+                const mainImage = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
+                const safeId = (p.id || "").replace(/'/g, "\\'");
+                const isNew = p.timestamp && (Date.now() - p.timestamp < 48 * 60 * 60 * 1000);
 
-        window.openDashboard = (boutique) => {
-            currentBoutique = boutique;
-            document.getElementById('dash-shop-name').innerText = boutique.name;
-            ['landing-card', 'admin-panel', 'login-panel'].forEach(id => document.getElementById(id).classList.add('hidden'));
-            document.getElementById('dashboard').classList.remove('hidden');
-
-            const ordersQuery = query(ref(db, 'driprush_orders'), orderByChild('shopPhone'), equalTo(currentShopPhone));
-            onValue(ordersQuery, (snapshot) => {
-                const data = snapshot.val();
-                lastOrdersSnapshot = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
-                if (currentTab !== 'products') window.renderOrders();
+                grid.innerHTML += `
+                    <div class="product-card card-enter bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition cursor-pointer" style="animation-delay: ${Math.min(idx * 0.06, 0.6)}s" onclick="window.openModal('${safeId}')">
+                        ${isNew ? '<span class="new-sticker absolute top-3 left-3 z-10">NOUVEAU</span>' : ''}
+                        ${(p.images && p.images.length > 1) ? `<span class="absolute top-3 right-10 z-10 bg-black/60 text-white text-[8px] font-black px-2 py-1 rounded-full"><i class="fa-solid fa-images mr-1"></i>${p.images.length}</span>` : ''}
+                        <button class="absolute top-3 right-3 z-10 text-gray-300 hover:text-red-500 transition" onclick="event.stopPropagation(); this.classList.toggle('text-red-500')">
+                            <i class="fa-solid fa-heart text-lg"></i>
+                        </button>
+                        <img src="${mainImage}" class="w-full h-52 object-cover" loading="lazy">
+                        <div class="p-3">
+                            <p class="text-[9px] text-gray-400 font-black uppercase mb-1">${pShopName}</p>
+                            <h3 class="text-[11px] font-bold text-gray-800 leading-tight h-8 line-clamp-2 uppercase">${p.name}</h3>
+                            <div class="mt-3 flex items-center justify-between">
+                                <span class="price-tag">${parseInt(p.price).toLocaleString()} F</span>
+                                <div class="bg-black text-white w-7 h-7 rounded-full flex items-center justify-center">
+                                    <i class="fa-solid fa-plus text-[10px]"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
             });
+            if(products.length === 0) {
+                grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-400 font-bold uppercase text-xs">Aucune pépite ici pour l\'instant... 👀</div>';
+            }
         };
 
-        window.setTab = (tab) => {
-            currentTab = tab;
-            ['tab-active', 'tab-done', 'tab-products'].forEach(id => {
-                const el = document.getElementById(id);
-                const isActive = id === 'tab-' + tab;
-                el.classList.toggle('bg-drip', isActive);
-                el.classList.toggle('text-white', isActive);
-                el.classList.toggle('bg-white/5', !isActive);
-                el.classList.toggle('text-gray-400', !isActive);
-            });
-            document.getElementById('orders-list').classList.toggle('hidden', tab === 'products');
-            document.getElementById('products-panel').classList.toggle('hidden', tab !== 'products');
-            if (tab === 'products') window.loadMyProducts();
-            else window.renderOrders();
+        window.filterByGenre = (genre) => {
+            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active-cat'));
+            document.getElementById(`btn-${genre}`).classList.add('active-cat');
+            if (genre === 'tout') { window.renderProducts(allProducts); } 
+            else { window.renderProducts(allProducts.filter(p => p.genre && p.genre.toLowerCase() === genre.toLowerCase())); }
         };
 
-        window.renderOrders = () => {
-            const container = document.getElementById('orders-list');
+        window.searchProducts = (query) => {
+            window.renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(query.toLowerCase().trim())));
+        };
+
+        // 🆕 openModal simplifié : retrouve le produit complet via son id, gère galerie + couleurs
+        window.openModal = (id) => {
+            const p = allProducts.find(x => x.id === id);
+            if (!p) return;
+
+            const images = (p.images && p.images.length > 0) ? p.images : (p.image ? [p.image] : []);
+            const pShopMomo = p.shopMomo && String(p.shopMomo).trim() !== "" ? p.shopMomo : (p.shopPhone || "2290147535343");
+
+            selectedItem = {
+                id: p.id, name: p.name, price: p.price, image: images[0] || '',
+                shop: p.shopName || 'Driprush', shopGPS: p.shopGPS || '', shopPhone: p.shopPhone || '2290147535343',
+                shopMomo: pShopMomo, deliveryStandard: p.deliveryStandard || 0, deliveryExpress: p.deliveryExpress || 0,
+                size: null, color: null
+            };
+
+            document.getElementById('modal-img').src = images[0] || '';
+            document.getElementById('modal-name').innerText = p.name;
+            document.getElementById('modal-price').innerText = parseInt(p.price).toLocaleString() + " F";
+
+            // 🆕 Galerie miniatures (visible seulement si plusieurs photos)
+            const galleryContainer = document.getElementById('gallery-thumbs');
+            galleryContainer.innerHTML = '';
+            if (images.length > 1) {
+                galleryContainer.classList.remove('hidden');
+                images.forEach((imgUrl, idx) => {
+                    const safeUrl = imgUrl.replace(/'/g, "\\'");
+                    galleryContainer.innerHTML += `<img src="${imgUrl}" onclick="window.setMainImage('${safeUrl}')" class="w-14 h-14 object-cover rounded-xl ${idx === 0 ? 'ring-2 ring-black' : 'opacity-60'} cursor-pointer flex-shrink-0">`;
+                });
+            } else {
+                galleryContainer.classList.add('hidden');
+            }
+
+            const container = document.getElementById('size-container');
             container.innerHTML = '';
+            if(p.sizes && p.sizes !== "N/A" && p.sizes.trim() !== "") {
+                p.sizes.split(',').forEach((s, idx) => {
+                    const cleanSize = s.trim().replace(/'/g, "\\'");
+                    const isFirst = idx === 0 ? 'bg-black text-white border-black' : '';
+                    if(idx === 0) selectedItem.size = s.trim(); 
+                    container.innerHTML += `<button onclick="window.selectSize(this, '${cleanSize}')" class="size-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black ${isFirst}">${s.trim()}</button>`;
+                });
+            } else {
+                selectedItem.size = "Unique"; 
+                container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn bg-black text-white border-black border px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition">Taille Unique</button>`;
+            }
 
-            const paidOrders = lastOrdersSnapshot.filter(o => o.status === 'Payée' || o.status === 'Payée (TEST)' || o.status === 'Livrée');
-            const filtered = paidOrders.filter(o => currentTab === 'active' ? o.status !== 'Livrée' : o.status === 'Livrée');
+            // 🆕 Couleurs (affichées seulement si la boutique en a renseigné)
+            const colorSection = document.getElementById('color-section');
+            const colorContainer = document.getElementById('color-container');
+            colorContainer.innerHTML = '';
+            if (p.colors && p.colors.trim() !== "") {
+                colorSection.classList.remove('hidden');
+                p.colors.split(',').forEach((c, idx) => {
+                    const cleanColor = c.trim().replace(/'/g, "\\'");
+                    const isFirst = idx === 0 ? 'bg-black text-white border-black' : '';
+                    if (idx === 0) selectedItem.color = c.trim();
+                    colorContainer.innerHTML += `<button onclick="window.selectColor(this, '${cleanColor}')" class="color-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black ${isFirst}">${c.trim()}</button>`;
+                });
+            } else {
+                colorSection.classList.add('hidden');
+                selectedItem.color = null;
+            }
 
-            if (filtered.length === 0) {
-                container.innerHTML = `<p class="text-center text-gray-500 text-xs font-bold uppercase py-16 tracking-widest">Aucune commande ${currentTab === 'active' ? 'à traiter' : 'livrée'} pour l'instant</p>`;
+            document.getElementById('product-modal').classList.remove('hidden');
+        };
+
+        // 🆕 Change la photo principale quand on tape sur une miniature
+        window.setMainImage = (url) => {
+            document.getElementById('modal-img').src = url;
+            if (selectedItem) selectedItem.image = url;
+            document.querySelectorAll('#gallery-thumbs img').forEach(img => {
+                const match = img.getAttribute('src') === url;
+                img.classList.toggle('ring-2', match);
+                img.classList.toggle('ring-black', match);
+                img.classList.toggle('opacity-60', !match);
+            });
+        };
+
+        // 🆕 Sélection de couleur
+        window.selectColor = (element, color) => {
+            if(!selectedItem) return;
+            selectedItem.color = color;
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('bg-black', 'text-white', 'border-black'));
+            element.classList.add('bg-black', 'text-white', 'border-black');
+        };
+
+        window.closeModalOutside = (event) => {
+            if(!event || event.target.id === 'product-modal' || event.target.closest('#close-modal-btn')) {
+                document.getElementById('product-modal').classList.add('hidden');
+            }
+        };
+
+        window.toggleZoom = (show) => {
+            const zoomModal = document.getElementById('zoom-modal');
+            if(show && selectedItem) {
+                document.getElementById('zoom-img').src = selectedItem.image;
+                zoomModal.classList.remove('hidden');
+            } else {
+                zoomModal.classList.add('hidden');
+            }
+        };
+
+        window.selectSize = (element, size) => {
+            if(!selectedItem) return;
+            selectedItem.size = size;
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('bg-black', 'text-white', 'border-black'));
+            element.classList.add('bg-black', 'text-white', 'border-black');
+        };
+
+        window.bounceCartIcon = () => {
+            const icon = document.getElementById('nav-cart-icon');
+            icon.classList.remove('cart-bounce');
+            void icon.offsetWidth;
+            icon.classList.add('cart-bounce');
+        };
+
+        window.addToCart = () => {
+            if(!selectedItem || !selectedItem.size) {
+                return window.showToast("Sélectionne une taille d'abord !", true);
+            }
+
+            if (cart.length > 0) {
+                const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
+                const currentCartShopPhone = cleanPhone(cart[0].shopPhone || "2290147535343");
+                const newShopPhone = cleanPhone(selectedItem.shopPhone || "2290147535343");
+                const currentCartShopName = cart[0].shop || "Driprush";
+
+                if (currentCartShopPhone !== newShopPhone && currentCartShopPhone.length > 5 && newShopPhone.length > 5) {
+                    window.showToast(`Ton panier contient déjà "${currentCartShopName}". Termine ou vide-le d'abord !`, true);
+                    return;
+                }
+            }
+
+            cart.push({...selectedItem, validated: false});
+            window.showToast("Ajouté ✅ — direction le panier quand tu veux");
+            window.updateCartUI();
+            window.bounceCartIcon();
+            document.getElementById('product-modal').classList.add('hidden');
+        };
+
+        // 🆕 Affiche aussi la couleur choisie dans le récapitulatif panier
+        window.updateCartUI = () => {
+            document.getElementById('nav-cart-count').innerText = cart.length;
+            const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
+            const hasPending = cart.some(i => !i.validated);
+            document.getElementById('cart-bar').classList.toggle('hidden', !hasPending || !isCheckoutHidden);
+            
+            let subtotal = 0; 
+            const listContainer = document.getElementById('cart-items-list');
+            listContainer.innerHTML = '';
+
+            cart.forEach((item, index) => {
+                if(!item.validated) subtotal += parseInt(item.price);
+                const variantLabel = item.size + (item.color ? ', ' + item.color : '');
+                listContainer.innerHTML += `
+                    <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-100 mb-2">
+                        <img src="${item.image}" class="w-12 h-12 object-cover rounded-lg">
+                        <div class="flex-1">
+                            <p class="text-[10px] font-bold uppercase">${item.name} (${variantLabel})</p>
+                            <p class="text-black text-[11px] font-black">${parseInt(item.price).toLocaleString()} F</p>
+                        </div>
+                        ${item.validated ? 
+                            '<span class="text-[7px] font-black text-green-500 bg-green-500/10 px-2 py-1 rounded-full uppercase">Validée</span>' : 
+                            `<button onclick="window.removeFromCart(${index})" class="text-red-500 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>`
+                        }
+                    </div>`;
+            });
+
+            if(cart.length === 0) {
+                listContainer.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Ton panier est vide. Va dénicher ta prochaine pépite 🔥</p>';
+            }
+
+            document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
+
+            if(cart.length > 0) {
+                const first = cart[0];
+                document.getElementById('lbl-std').innerText = `🚲 Normale (+${first.deliveryStandard || 0} F)`;
+                document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${first.deliveryExpress || 0} F)`;
+                if(deliveryTypeSelected === "standard") deliveryFee = first.deliveryStandard || 0;
+                else if(deliveryTypeSelected === "express") deliveryFee = first.deliveryExpress || 0;
+            }
+
+            const totalDisplay = document.getElementById('final-total-display');
+            if(deliveryTypeSelected !== "") {
+                totalDisplay.classList.add('price-tag');
+                totalDisplay.classList.remove('text-gray-400');
+                totalDisplay.innerText = (subtotal + deliveryFee).toLocaleString() + " F";
+            } else {
+                totalDisplay.classList.remove('price-tag');
+                totalDisplay.classList.add('text-gray-400');
+                totalDisplay.innerText = "Choisir livraison";
+            }
+        };
+
+        window.removeFromCart = (index) => {
+            cart.splice(index, 1);
+            deliveryFee = 0;
+            deliveryTypeSelected = "";
+            window.updateCartUI();
+        };
+
+        window.setShipping = (type, element) => {
+            if(cart.length === 0) return;
+            deliveryTypeSelected = type;
+            document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('bg-black', 'text-white'));
+            element.classList.add('bg-black', 'text-white');
+            window.updateCartUI();
+        };
+
+        window.confirmOrder = (element) => {
+            const name = document.getElementById('c-name').value.trim();
+            const phone = document.getElementById('c-phone').value.trim();
+            const addr = document.getElementById('c-addr').value.trim();
+            const pendingItems = cart.filter(i => !i.validated);
+
+            if(pendingItems.length === 0) return window.showToast("Aucun article à commander !", true);
+            if(!name || !phone || !addr) return window.showToast("Remplis toutes tes infos !", true);
+
+            if(deliveryTypeSelected === "") return window.showToast("Choisis un mode de livraison !", true);
+
+            const phoneDigits = phone.replace(/\D/g, '');
+            if(phoneDigits.length < 8) return window.showToast("Numéro WhatsApp invalide", true);
+
+            const originalText = element.innerText;
+            element.innerText = "CONNEXION GPS... ⏳";
+            element.disabled = true;
+
+            navigator.geolocation.getCurrentPosition((pos) => {
+                const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                window.triggerFedaPay(name, phone, addr, gps, element, originalText);
+            }, () => {
+                window.triggerFedaPay(name, phone, addr, "GPS Refusé", element, originalText);
+            }, { timeout: 8000 });
+        };
+
+        // 🆕 Inclut la couleur choisie dans le résumé de la commande
+        window.createPendingOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
+            return new Promise((resolve, reject) => {
+                const firstItem = pendingItems[0];
+                const commission = Math.round(finalTotal * 0.10);
+                const montantBoutique = finalTotal - commission;
+
+                const orderRef = push(ref(db, 'driprush_orders'));
+                set(orderRef, {
+                    clientName: name, phone, address: addr, clientGPS: gps,
+                    shopName: firstItem.shop || 'Driprush',
+                    shopGPS: firstItem.shopGPS || '',
+                    shopPhone: firstItem.shopPhone || '2290147535343',
+                    shopMomo: firstItem.shopMomo || firstItem.shopPhone || '',
+                    items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '),
+                    deliveryMode: deliveryTypeSelected,
+                    total: finalTotal,
+                    commission: commission,
+                    montantBoutique: montantBoutique,
+                    status: 'En attente de paiement',
+                    timestamp: Date.now()
+                }).then(() => resolve(orderRef.key)).catch(reject);
+            });
+        };
+
+        window.triggerFedaPay = (name, phone, addr, gps, btn, originalText) => {
+            const pendingItems = cart.filter(i => !i.validated);
+            let subtotal = 0; 
+            pendingItems.forEach(i => subtotal += parseInt(i.price));
+            const finalTotal = subtotal + deliveryFee;
+
+            if (SIMULATION_MODE) {
+                btn.innerText = "PAIEMENT SIMULÉ... ⏳";
+                window.showToast("🧪 Mode simulation activé — paiement fictif");
+                setTimeout(() => {
+                    window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems);
+                }, 2000);
                 return;
             }
 
-            filtered.forEach((o, idx) => {
-                const isTest = o.status === 'Payée (TEST)';
-                container.innerHTML += `
-                    <div class="card-surface rounded-3xl p-5 card-enter ${o.status === 'Livrée' ? 'opacity-50' : ''}" style="animation-delay: ${Math.min(idx * 0.06, 0.4)}s">
-                        ${isTest ? '<p class="text-[9px] text-amber-400 font-black uppercase mb-2 tracking-widest">🧪 Commande Test</p>' : ''}
-                        <div class="flex justify-between items-start mb-3">
-                            <p class="text-sm font-display uppercase tracking-tight">${o.clientName}</p>
-                            <span class="text-[9px] font-black px-3 py-1.5 rounded-full ${o.status === 'Livrée' ? 'bg-blue-500/15 text-blue-400' : 'bg-drip/15 text-drip'} uppercase tracking-widest">${o.status}</span>
-                        </div>
-                        <p class="text-[11px] text-gray-300 mb-1">${o.items}</p>
-                        <p class="text-[10px] text-gray-500 mb-4">${o.deliveryMode === 'express' ? '🚀 Livraison rapide' : '🚲 Livraison normale'}</p>
-                        
-                        <div class="bg-black/40 rounded-2xl p-3 mb-4 space-y-1.5">
-                            <p class="text-[10px] text-gray-400"><i class="fa-solid fa-phone mr-2 text-drip"></i><a href="tel:${o.phone}" class="underline">${o.phone}</a></p>
-                            <p class="text-[10px] text-gray-400"><i class="fa-solid fa-location-dot mr-2 text-drip"></i>${o.address}</p>
-                            ${o.clientGPS ? `<a href="${o.clientGPS}" target="_blank" class="text-[10px] text-drip underline block"><i class="fa-solid fa-map mr-2"></i>Voir sur la carte</a>` : ''}
-                        </div>
+            window.createPendingOrder(name, phone, addr, gps, finalTotal, pendingItems).then((orderId) => {
+                const nameParts = name.split(' ');
+                const firstname = nameParts[0] || 'Client';
+                const lastname = nameParts.slice(1).join(' ') || 'Driprush';
 
-                        <div class="flex justify-between items-center mb-4">
-                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Ta part (90%)</span>
-                            <span class="price-tag-dark">${(o.montantBoutique || 0).toLocaleString()} F</span>
-                        </div>
-
-                        ${o.status !== 'Livrée' ? `<button onclick="window.markDelivered('${o.id}')" class="w-full bg-white text-black font-black py-3.5 rounded-2xl text-[10px] uppercase tracking-widest active:scale-95 transition">Marquer comme livrée ✅</button>` : ''}
-                    </div>`;
+                const widget = FedaPay.init({
+                    public_key: FEDAPAY_PUBLIC_KEY,
+                    environment: 'sandbox',
+                    transaction: {
+                        amount: finalTotal,
+                        description: `Commande Driprush #${orderId}`,
+                        custom_metadata: { orderId: orderId }
+                    },
+                    currency: { iso: 'XOF' },
+                    customer: {
+                        firstname: firstname,
+                        lastname: lastname,
+                        email: `client${phone.replace(/\D/g,'')}@driprush.bj`,
+                        phone_number: { number: phone, country: 'BJ' }
+                    },
+                    onComplete: function(response) {
+                        console.log("Réponse FedaPay :", response);
+                        btn.innerText = originalText;
+                        btn.disabled = false;
+                        cart = [];
+                        deliveryFee = 0;
+                        deliveryTypeSelected = "";
+                        window.updateCartUI();
+                        document.getElementById('checkout-modal').classList.add('hidden');
+                        window.showToast("Paiement envoyé ✅ — vérification en cours, la boutique sera notifiée dès confirmation");
+                    }
+                });
+                widget.open();
+            }).catch((err) => {
+                window.showToast("Erreur : " + err.message, true);
+                btn.innerText = originalText;
+                btn.disabled = false;
             });
         };
 
-        window.markDelivered = (orderId) => {
-            update(ref(db, 'driprush_orders/' + orderId), { status: 'Livrée', deliveredAt: Date.now() })
-                .catch(() => alert("Erreur, réessaie."));
-        };
+        window.saveAutomatedOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
+            const firstItem = pendingItems[0];
+            const commission = Math.round(finalTotal * 0.10);
+            const montantBoutique = finalTotal - commission;
 
-        window.openAddProductForm = () => {
-            uploadedImageURL = "";
-            document.getElementById('img-preview').classList.add('hidden');
-            document.getElementById('img-upload-btn').innerText = "📷 Ajouter une photo";
-            document.getElementById('img-upload-btn').disabled = false;
-            document.getElementById('prod-name').value = '';
-            document.getElementById('prod-price').value = '';
-            document.getElementById('prod-sizes').value = '';
-            document.getElementById('prod-delivery-std').value = '';
-            document.getElementById('prod-delivery-exp').value = '';
-            document.getElementById('add-product-modal').classList.remove('hidden');
-        };
-
-        window.closeAddProductForm = () => {
-            document.getElementById('add-product-modal').classList.add('hidden');
-        };
-
-        window.handleImageUpload = (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const btn = document.getElementById('img-upload-btn');
-            btn.disabled = true;
-            btn.innerText = "Préparation...";
-
-            const objectUrl = URL.createObjectURL(file);
-            const img = new Image();
-            img.onload = () => {
-                const MAX_WIDTH = 700;
-                const scale = Math.min(1, MAX_WIDTH / img.width);
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width * scale;
-                canvas.height = img.height * scale;
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                URL.revokeObjectURL(objectUrl);
-
-                canvas.toBlob((blob) => {
-                    const formData = new FormData();
-                    formData.append('file', blob, 'product.jpg');
-                    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`);
-
-                    xhr.upload.onprogress = (e) => {
-                        if (e.lengthComputable) {
-                            const pct = Math.round((e.loaded / e.total) * 100);
-                            btn.innerText = `Envoi en cours... ${pct}%`;
-                        }
-                    };
-
-                    xhr.onload = () => {
-                        try {
-                            const data = JSON.parse(xhr.responseText);
-                            if (data.secure_url) {
-                                uploadedImageURL = data.secure_url;
-                                document.getElementById('img-preview').src = uploadedImageURL;
-                                document.getElementById('img-preview').classList.remove('hidden');
-                                btn.innerText = "✅ Photo ajoutée — changer";
-                                btn.disabled = false;
-                            } else {
-                                throw new Error((data.error && data.error.message) || "Réponse Cloudinary invalide");
-                            }
-                        } catch (err) {
-                            alert("Erreur d'envoi de la photo : " + err.message);
-                            btn.innerText = "📷 Réessayer";
-                            btn.disabled = false;
-                        }
-                    };
-
-                    xhr.onerror = () => {
-                        alert("Erreur réseau pendant l'envoi de la photo.");
-                        btn.innerText = "📷 Réessayer";
-                        btn.disabled = false;
-                    };
-
-                    xhr.send(formData);
-                }, 'image/jpeg', 0.75);
-            };
-            img.onerror = () => {
-                alert("Impossible de lire cette image, essaie une autre photo.");
-                btn.innerText = "📷 Réessayer";
-                btn.disabled = false;
-            };
-            img.src = objectUrl;
-        };
-
-        window.submitNewProduct = () => {
-            const name = document.getElementById('prod-name').value.trim();
-            const price = parseInt(document.getElementById('prod-price').value);
-            const type = document.getElementById('prod-type').value;
-            const genre = document.getElementById('prod-genre').value;
-            const sizes = document.getElementById('prod-sizes').value.trim() || "N/A";
-            const deliveryStandard = parseInt(document.getElementById('prod-delivery-std').value) || 0;
-            const deliveryExpress = parseInt(document.getElementById('prod-delivery-exp').value) || 0;
-
-            if (!name || !price) return alert("Donne au moins un nom et un prix !");
-            if (!uploadedImageURL) return alert("Ajoute une photo avant de continuer !");
-
-            const productRef = push(ref(db, 'driprush_products'));
-            set(productRef, {
-                name, price, image: uploadedImageURL, type, genre, sizes,
-                shopName: currentBoutique.name,
-                shopPhone: currentBoutique.phone,
-                shopGPS: currentBoutique.gps || '',
-                shopMomo: currentBoutique.momo || currentBoutique.phone || '',
-                deliveryStandard, deliveryExpress,
+            const orderRef = push(ref(db, 'driprush_orders'));
+            set(orderRef, {
+                clientName: name, phone, address: addr, clientGPS: gps,
+                shopName: firstItem.shop || 'Driprush', 
+                shopGPS: firstItem.shopGPS || '', 
+                shopPhone: firstItem.shopPhone || '2290147535343',
+                shopMomo: firstItem.shopMomo || firstItem.shopPhone || '',
+                items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '),
+                deliveryMode: deliveryTypeSelected, 
+                total: finalTotal, 
+                commission: commission,
+                montantBoutique: montantBoutique,
+                status: SIMULATION_MODE ? 'Payée (TEST)' : 'Payée', 
                 timestamp: Date.now()
             }).then(() => {
-                window.closeAddProductForm();
-                alert("Article ajouté à ton catalogue ✅");
-            }).catch((e) => alert("Erreur : " + e.message));
-        };
-
-        window.loadMyProducts = () => {
-            const productsQuery = query(ref(db, 'driprush_products'), orderByChild('shopPhone'), equalTo(currentShopPhone));
-            onValue(productsQuery, (snapshot) => {
-                const data = snapshot.val();
-                const container = document.getElementById('my-products-list');
-                container.innerHTML = '';
-                const products = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
-
-                if (products.length === 0) {
-                    container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-10 tracking-widest">Aucun article encore. Ajoute le premier ! 🛍️</p>';
-                    return;
-                }
-                products.forEach((p, idx) => {
-                    container.innerHTML += `
-                        <div class="card-surface rounded-2xl p-3 flex items-center gap-3 card-enter" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s">
-                            <img src="${p.image}" class="w-14 h-14 object-cover rounded-xl">
-                            <div class="flex-1">
-                                <p class="text-xs font-bold uppercase">${p.name}</p>
-                                <p class="text-[10px] text-drip font-black">${parseInt(p.price).toLocaleString()} F</p>
-                            </div>
-                            <button onclick="window.deleteMyProduct('${p.id}')" class="text-red-400 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>
-                        </div>`;
-                });
+                cart = []; 
+                deliveryFee = 0;
+                deliveryTypeSelected = "";
+                window.updateCartUI();
+                document.getElementById('checkout-modal').classList.add('hidden');
+                window.showToast("Commande envoyée 🚀 — la boutique s'en occupe déjà");
+            }).catch((err) => {
+                window.showToast("Erreur : " + err.message, true);
             });
         };
 
-        window.deleteMyProduct = (productId) => {
-            if (!confirm("Retirer cet article du catalogue ?")) return;
-            remove(ref(db, 'driprush_products/' + productId)).catch((e) => alert("Erreur : " + e.message));
+        window.toggleCheckout = (show) => {
+            document.getElementById('checkout-modal').classList.toggle('hidden', !show);
+            if(!show) window.scrollTo(0,0);
+            window.updateCartUI(); 
         };
 
-        const savedSession = localStorage.getItem('driprush_shop_session');
-        if (savedSession) {
-            try {
-                const { phone, loginTime, boutique } = JSON.parse(savedSession);
-                if (Date.now() - loginTime < SESSION_DURATION_MS && boutique) {
-                    currentShopPhone = phone;
-                    window.openDashboard(boutique);
-                } else {
-                    localStorage.removeItem('driprush_shop_session');
-                }
-            } catch(e) {
-                localStorage.removeItem('driprush_shop_session');
-            }
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch((err) => console.error('Erreur service worker:', err));
         }
     </script>
+</head>
+<body class="pb-24">
+
+    <div id="test-mode-banner" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center text-[10px] font-black uppercase py-1.5 z-[100] tracking-widest">
+        🧪 Mode Test — Paiement simulé, aucun vrai débit
+    </div>
+
+    <div id="welcome-screen" class="fixed inset-0 z-50 bg-ink flex flex-col items-center justify-end pb-20 px-6 text-center overflow-hidden">
+        <div class="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-transparent"></div>
+
+        <div class="absolute top-10 left-0 w-full overflow-hidden whitespace-nowrap z-10">
+            <span class="animate-marquee text-white/30 text-xs font-display uppercase tracking-widest">SNEAKERS&nbsp;&nbsp;★&nbsp;&nbsp;STREETWEAR&nbsp;&nbsp;★&nbsp;&nbsp;PARFUMS&nbsp;&nbsp;★&nbsp;&nbsp;ACCESSOIRES&nbsp;&nbsp;★&nbsp;&nbsp;SNEAKERS&nbsp;&nbsp;★&nbsp;&nbsp;STREETWEAR&nbsp;&nbsp;★&nbsp;&nbsp;PARFUMS&nbsp;&nbsp;★&nbsp;&nbsp;ACCESSOIRES&nbsp;&nbsp;★&nbsp;&nbsp;</span>
+        </div>
+
+        <div class="relative z-10 w-full animate-slide-up">
+            <h1 class="text-6xl font-display text-white mb-2 tracking-tighter uppercase">DRIPRUSH</h1>
+            <p class="text-drip text-[10px] font-black uppercase tracking-[0.3em] mb-12">Benin's Premium Streetwear</p>
+
+            <div id="shop-welcome-back" class="hidden mb-4 bg-lime/10 border border-lime/30 rounded-2xl p-4 text-center backdrop-blur-sm">
+                <p class="text-[10px] text-lime font-black uppercase tracking-widest mb-1">Bon retour 👋</p>
+                <p id="shop-welcome-name" class="text-white font-display text-sm uppercase mb-3"></p>
+                <button onclick="window.location.href='boutiques.html'" class="w-full bg-lime text-black font-display py-3 rounded-xl text-xs uppercase active:scale-95 transition">
+                    Accéder à mon tableau de bord 📊
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <button onclick="window.enterSite('shop')" class="w-full bg-white text-ink py-5 rounded-2xl font-display uppercase text-sm shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 transition-all">Démarrer le Shopping 🛍️</button>
+                <button onclick="window.enterSite('partner')" class="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white py-5 rounded-2xl font-display uppercase text-sm active:scale-95 transition-all">Devenir Partenaire 🤝</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-content" class="hidden">
+        <header class="bg-white px-4 pt-4 pb-2 sticky top-0 z-40 shadow-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-2xl font-display tracking-tighter text-ink uppercase">DRIPRUSH</h1>
+                <div class="flex items-center gap-5 text-xl">
+                    <button id="shop-dashboard-btn" onclick="window.location.href='boutiques.html'" class="hidden relative" title="Mon tableau de bord">
+                        <i class="fa-solid fa-store text-drip"></i>
+                    </button>
+                    <i class="fa-solid fa-heart text-gray-200"></i>
+                    <div id="nav-cart-icon" onclick="window.toggleCheckout(true)" class="relative cursor-pointer">
+                        <i class="fa-solid fa-bag-shopping"></i>
+                        <span id="nav-cart-count" class="absolute -top-2 -right-2 bg-drip text-white text-[10px] font-bold px-1.5 rounded-full border-2 border-white">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="relative mb-4">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input type="text" oninput="window.searchProducts(this.value)" placeholder="Rechercher un article..." class="w-full bg-gray-100 py-3.5 pl-12 pr-4 rounded-2xl text-xs font-bold outline-none border border-transparent focus:border-black transition uppercase tracking-tight">
+            </div>
+            <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                <button onclick="window.filterByGenre('tout')" id="btn-tout" class="cat-btn active-cat bg-white border border-gray-100 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-tight shadow-sm transition-all">Tout</button>
+                <button onclick="window.filterByGenre('homme')" id="btn-homme" class="cat-btn bg-white border border-gray-100 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-tight shadow-sm transition-all">Homme</button>
+                <button onclick="window.filterByGenre('femme')" id="btn-femme" class="cat-btn bg-white border border-gray-100 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-tight shadow-sm transition-all">Femme</button>
+            </div>
+        </header>
+
+        <main class="p-3">
+            <div id="products-grid" class="grid grid-cols-2 gap-3">
+                <div class="skeleton rounded-2xl h-64"></div>
+                <div class="skeleton rounded-2xl h-64"></div>
+                <div class="skeleton rounded-2xl h-64"></div>
+                <div class="skeleton rounded-2xl h-64"></div>
+            </div>
+        </main>
+
+        <div id="cart-bar" class="fixed bottom-20 left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-30 border border-gray-100">
+            <div>
+                <p class="text-[8px] font-black uppercase opacity-40">Sous-total</p>
+                <p id="cart-total" class="text-lg font-black italic tracking-tighter">0 F</p>
+            </div>
+            <button onclick="window.toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] italic active:scale-95 transition">Commander 🚀</button>
+        </div>
+
+        <div id="product-modal" onclick="window.closeModalOutside(event)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end hidden cursor-pointer">
+            <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up modal-height-fix pb-10 cursor-default relative">
+                <button id="close-modal-btn" onclick="window.closeModalOutside(null)" class="absolute top-4 right-6 text-gray-400 hover:text-black transition text-xl p-2">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2"></div>
+                <div class="flex gap-4">
+                    <img id="modal-img" src="" onclick="window.toggleZoom(true)" class="w-32 h-32 object-cover rounded-2xl shadow-lg cursor-zoom-in active:scale-95 transition duration-200">
+                    <div class="flex-1 py-2">
+                        <h2 id="modal-name" class="text-sm font-black uppercase text-gray-800 leading-tight mb-1"></h2>
+                        <p id="modal-price" class="price-tag text-base"></p>
+                        <p class="text-[9px] text-drip font-bold uppercase mt-2 bg-drip/10 inline-block px-2 py-1 rounded-md"><i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Touche la photo pour zoomer</p>
+                    </div>
+                </div>
+
+                <!-- 🆕 Galerie de miniatures (visible seulement si plusieurs photos) -->
+                <div id="gallery-thumbs" class="hidden flex gap-2 overflow-x-auto hide-scrollbar"></div>
+
+                <div>
+                    <p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Taille</p>
+                    <div id="size-container" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- 🆕 Section couleur (visible seulement si la boutique en a renseigné) -->
+                <div id="color-section" class="hidden">
+                    <p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Couleur</p>
+                    <div id="color-container" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <button onclick="window.addToCart()" class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase italic shadow-xl text-sm active:scale-95 transition">Ajouter au panier 🛍️</button>
+            </div>
+        </div>
+
+        <div id="zoom-modal" onclick="window.toggleZoom(false)" class="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 hidden animate-fade-in cursor-zoom-out">
+            <button onclick="window.toggleZoom(false)" class="absolute top-6 right-6 text-white text-2xl opacity-70 hover:opacity-100 transition"><i class="fa-solid fa-xmark"></i></button>
+            <img id="zoom-img" src="" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl">
+        </div>
+
+        <div id="checkout-modal" class="fixed inset-0 bg-white z-50 p-4 flex flex-col hidden overflow-y-auto">
+            <div class="flex items-center justify-between mb-6 pt-4 shrink-0">
+                <button onclick="window.toggleCheckout(false)" class="flex items-center gap-2 font-bold text-xs uppercase"><i class="fa-solid fa-chevron-left text-xl"></i> Retour</button>
+                <h2 class="text-lg font-display tracking-tighter">Mon Panier</h2>
+                <div class="w-5"></div>
+            </div>
+            <div id="cart-items-list" class="flex-1 px-2 mb-4"></div>
+
+            <div class="space-y-6 pb-10">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Mode de Livraison de la Boutique</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="window.setShipping('standard', this)" class="ship-btn border border-gray-200 p-4 rounded-2xl text-[10px] font-black uppercase shadow-sm transition" id="lbl-std">🚲 Normale</button>
+                    <button onclick="window.setShipping('express', this)" class="ship-btn border border-gray-200 p-4 rounded-2xl text-[10px] font-black uppercase shadow-sm transition" id="lbl-exp">🚀 Rapide</button>
+                </div>
+
+                <div class="bg-gray-100 p-5 rounded-3xl flex justify-between items-center">
+                    <span class="text-[10px] font-black uppercase opacity-50">Total à payer</span>
+                    <span id="final-total-display" class="text-xl font-display text-gray-400">Choisir livraison</span>
+                </div>
+
+                <div class="space-y-3">
+                    <input id="c-name" placeholder="NOM COMPLET" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase border">
+                    <input id="c-phone" type="tel" placeholder="NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase border">
+                    <textarea id="c-addr" placeholder="ADRESSE DE LIVRAISON" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase h-20 border"></textarea>
+                </div>
+                <button onclick="window.confirmOrder(this)" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase italic shadow-2xl text-sm">Confirmer la commande ✅</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="partner-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white text-black p-6 rounded-3xl w-full max-w-sm space-y-4 relative">
+            <button onclick="window.closePartnerModal()" class="absolute top-4 right-5 text-gray-400 text-lg"><i class="fa-solid fa-xmark"></i></button>
+
+            <div id="partner-choice">
+                <h3 class="text-sm font-display tracking-tight mb-1">Espace Boutiques</h3>
+                <p class="text-[11px] text-gray-500 font-medium mb-5">Proposez vos articles premium ou accédez à votre espace.</p>
+                <div class="space-y-3">
+                    <button onclick="window.showPartnerPanel('new')" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase">🆕 Devenir partenaire</button>
+                    <button onclick="window.showPartnerPanel('login')" class="w-full bg-gray-100 text-black py-4 rounded-xl text-[11px] font-black uppercase">🔑 J'ai déjà un compte</button>
+                </div>
+            </div>
+
+            <div id="partner-new" class="hidden space-y-3 max-h-[70vh] overflow-y-auto">
+                <button onclick="window.showPartnerPanel('choice')" class="text-gray-400 text-[10px] font-bold uppercase mb-1"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
+                <h3 class="text-sm font-display tracking-tight">Devenir partenaire</h3>
+                <p class="text-[11px] text-gray-500 font-medium">Ton compte sera créé immédiatement, sans attente.</p>
+                <input id="p-name" placeholder="NOM DE VOTRE ENSEIGNE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
+                <input id="p-phone" placeholder="NUMÉRO WHATSAPP BOUTIQUE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
+                <input id="p-loc" placeholder="QUARTIER & VILLE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
+                <button type="button" id="p-gps-btn" onclick="window.getPartnerGPS()" class="w-full bg-gray-100 border border-gray-200 p-4 rounded-xl text-[10px] font-black text-black uppercase active:scale-95 transition">📍 Appuyez ici pour enregistrer automatiquement vos coordonnées GPS</button>
+                <input id="p-gps" placeholder="Ou colle un lien Google Maps" class="w-full bg-gray-100 p-4 rounded-xl border outline-none text-[10px] text-gray-500">
+
+                <label class="flex items-center gap-2 text-[10px] font-bold text-gray-600 uppercase px-1 pt-2">
+                    <input type="checkbox" id="p-momo-same" checked onchange="window.toggleMomoField()" class="w-4 h-4 accent-black">
+                    Mon Mobile Money est le même numéro que mon WhatsApp
+                </label>
+                <input id="p-momo" placeholder="NUMÉRO MOBILE MONEY (pour recevoir tes paiements)" class="hidden w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
+
+                <button onclick="window.submitPartner(this)" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Créer mon compte 🚀</button>
+            </div>
+
+            <div id="partner-success" class="hidden space-y-4 text-center">
+                <div class="text-4xl">✅</div>
+                <h3 class="text-sm font-display tracking-tight">Compte créé, <span id="partner-success-name"></span> !</h3>
+                <p class="text-[11px] text-gray-500 font-medium px-2">Voici ton code de connexion personnel. Note-le bien quelque part — on ne pourra pas te le renvoyer automatiquement.</p>
+                <div class="pin-reveal" id="partner-success-pin"></div>
+                <p class="text-[10px] text-gray-400 font-medium">Garde aussi ton numéro WhatsApp sous la main : c'est lui qui sert d'identifiant.</p>
+                <button onclick="window.closePartnerModal()" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">J'ai noté, fermer ✅</button>
+            </div>
+
+            <div id="partner-login" class="hidden space-y-3">
+                <button onclick="window.showPartnerPanel('choice')" class="text-gray-400 text-[10px] font-bold uppercase mb-1"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
+                <h3 class="text-sm font-display tracking-tight">Connexion Boutique</h3>
+                <p class="text-[11px] text-gray-500 font-medium">Entre ton numéro et ton code PIN.</p>
+                <input id="l-phone" type="tel" placeholder="TON NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border text-center">
+                <input id="l-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="• • • •" class="w-full bg-gray-100 p-4 rounded-xl text-xl font-black outline-none border text-center pin-input">
+                <button onclick="window.loginPartner(this)" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Me connecter 🔓</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-ink text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl z-[60] max-w-[85%] text-center"></div>
+
 </body>
 </html>
