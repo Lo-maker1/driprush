@@ -92,7 +92,7 @@
 </head>
 <body class="min-h-screen p-5 pb-16">
 
-    <!-- Motif de fond — gouttes immersives, jamais au-dessus du contenu, jamais cliquables -->
+    <!-- Motif de fond — gouttes immersives -->
     <div id="drip-bg">
         <div class="drip-shape drip-pulse" style="width:140px; height:140px; background:#FF4D1C; top:6%; left:-5%; transform:rotate(45deg);"></div>
         <div class="drip-shape drip-float" style="width:90px; height:90px; background:#C8FF4D; top:20%; right:-3%; transform:rotate(45deg);"></div>
@@ -103,9 +103,9 @@
     </div>
 
     <!-- ÉCRAN 1 : CHOIX DU RÔLE -->
-    <div id="landing-card" class="app-content max-w-md mx-auto pt-20 text-center animate-fade-in">
-        <h1 class="text-4xl font-display text-drip uppercase tracking-tighter mb-1">DRIPRUSH</h1>
-        <p class="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] mb-12">Espace Boutiques</p>
+    <div id="landing-card" class="app-content max-w-md mx-auto pt-16 text-center">
+        <h1 class="text-3xl font-display text-drip uppercase tracking-tighter mb-1">Driprush</h1>
+        <p class="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] mb-10">Espace Boutiques</p>
         <div class="space-y-4">
             <button onclick="window.showPanel('login')" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-[0_0_30px_rgba(255,77,28,0.25)] active:scale-95 transition-all">
                 🏪 Je suis une boutique
@@ -126,7 +126,7 @@
 
         <div id="pin-result" class="hidden bg-lime/10 border border-lime/30 rounded-3xl p-6 text-center mb-8">
             <p class="text-[10px] text-lime font-black uppercase tracking-widest mb-3">✅ Code à transmettre à la boutique</p>
-            <p id="generated-pin" class="text-5xl font-display pin-digit text-white"></p>
+            <p id="generated-pin" class="text-4xl font-display pin-digit text-white"></p>
             <button onclick="window.copyPin()" class="mt-4 text-[10px] text-drip font-black uppercase underline tracking-widest">Copier le code</button>
         </div>
 
@@ -178,7 +178,14 @@
                 <p class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Connecté en tant que</p>
                 <h2 id="dash-shop-name" class="text-xl font-display uppercase text-drip tracking-tight"></h2>
             </div>
-            <button onclick="window.logoutBoutique()" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-400"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            <div class="flex items-center gap-2">
+                <button onclick="window.location.href='index.html'" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-300" title="Voir le site client">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                </button>
+                <button onclick="window.logoutBoutique()" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-400" title="Se déconnecter">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                </button>
+            </div>
         </div>
 
         <div class="flex gap-2 mb-5">
@@ -263,7 +270,8 @@
         const CLOUDINARY_UPLOAD_PRESET = "drip_rush";
         const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
 
-        const SESSION_DURATION_MS = 48 * 60 * 60 * 1000; // 48h
+        // 🆕 30 jours au lieu de 48h — la boutique reste connectée bien plus longtemps
+        const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
         let currentShopPhone = null;
         let currentBoutique = null;
@@ -425,7 +433,7 @@
                     localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now(), boutique: data.boutique }));
                     window.openDashboard(data.boutique);
                 } else {
-                    alert(data.message || "Numéro ou code PIN incorrect !");
+                    alert(data.message || "Numéro ou PIN incorrect !");
                 }
             })
             .catch(() => {
