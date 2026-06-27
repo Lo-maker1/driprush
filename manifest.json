@@ -2,7 +2,7 @@
   "name": "Driprush - Premium Streetwear",
   "short_name": "Driprush",
   "description": "Livraison en 15min chrono au Bénin. Qualité premium uniquement.",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0B0B0C",
   "theme_color": "#FF4D1C",
