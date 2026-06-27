@@ -223,7 +223,7 @@
                 document.getElementById('p-momo-same').checked = true;
                 window.toggleMomoField();
                 const btn = document.getElementById('p-gps-btn');
-                btn.innerText = "📍 Appuyer ici pour capturer la localisation de votre boutique";
+                btn.innerText = "📍 Appuyer ici pour enregistrer automatiquement vos coordonner gps ";
                 btn.classList.replace('bg-green-100', 'bg-gray-100');
             }).catch((err) => window.showToast("Erreur : " + err.message, true));
         };
