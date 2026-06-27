@@ -30,29 +30,121 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Connexion anonyme automatique — nécessaire depuis qu'on a sécurisé les règles Firebase
         const auth = getAuth(app);
         signInAnonymously(auth).catch((err) => console.error("Erreur auth anonyme:", err));
 
-        let allOrders = [];
+        const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
+        const ADMIN_SESSION_MS = 24 * 60 * 60 * 1000; // 24h
 
-        // Écoute en temps réel des commandes
-        onValue(ref(db, 'driprush_orders'), (snapshot) => {
-            const data = snapshot.val();
-            allOrders = [];
-            if (data) {
-                allOrders = Object.keys(data).map(id => ({ id, ...data[id] })).reverse();
+        let allOrders = [];
+        let allSecurityEvents = [];
+
+        // === Mot de passe admin (vérifié côté serveur, jamais stocké en clair ici) ===
+        window.tryAdminLogin = (btn) => {
+            const password = document.getElementById('admin-password').value;
+            if (!password) return;
+
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Vérification...";
+
+            fetch(WEBHOOK_SERVER_URL + '/verify-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                if (data.success) {
+                    localStorage.setItem('driprush_admin_session', JSON.stringify({ loginTime: Date.now() }));
+                    window.unlockDashboard();
+                } else {
+                    document.getElementById('admin-login-error').innerText = data.message || "Mot de passe incorrect.";
+                    document.getElementById('admin-login-error').classList.remove('hidden');
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                document.getElementById('admin-login-error').innerText = "Erreur de connexion au serveur.";
+                document.getElementById('admin-login-error').classList.remove('hidden');
+            });
+        };
+
+        window.unlockDashboard = () => {
+            document.getElementById('admin-login-screen').classList.add('hidden');
+            document.getElementById('admin-dashboard').classList.remove('hidden');
+            window.startListeners();
+        };
+
+        window.logoutAdmin = () => {
+            localStorage.removeItem('driprush_admin_session');
+            document.getElementById('admin-dashboard').classList.add('hidden');
+            document.getElementById('admin-login-screen').classList.remove('hidden');
+        };
+
+        window.setMainTab = (tab) => {
+            document.getElementById('tab-commandes').classList.toggle('bg-orange-500', tab === 'commandes');
+            document.getElementById('tab-commandes').classList.toggle('bg-white/5', tab !== 'commandes');
+            document.getElementById('tab-securite').classList.toggle('bg-orange-500', tab === 'securite');
+            document.getElementById('tab-securite').classList.toggle('bg-white/5', tab !== 'securite');
+            document.getElementById('panel-commandes').classList.toggle('hidden', tab !== 'commandes');
+            document.getElementById('panel-securite').classList.toggle('hidden', tab !== 'securite');
+        };
+
+        window.startListeners = () => {
+            onValue(ref(db, 'driprush_orders'), (snapshot) => {
+                const data = snapshot.val();
+                allOrders = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
+                window.renderDashboard();
+            }, (error) => console.error("Erreur Firebase:", error));
+
+            onValue(ref(db, 'driprush_security_events'), (snapshot) => {
+                const data = snapshot.val();
+                allSecurityEvents = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
+                window.renderSecurityEvents();
+            }, (error) => console.error("Erreur Firebase sécurité:", error));
+        };
+
+        const EVENT_LABELS = {
+            signature_invalide: { icon: '🚨', label: 'Signature webhook invalide', color: 'text-red-400 bg-red-500/10' },
+            connexion_ratee: { icon: '⚠️', label: 'Connexion boutique ratée', color: 'text-amber-400 bg-amber-500/10' },
+            connexion_bloquee: { icon: '🔒', label: 'Boutique bloquée (5 tentatives)', color: 'text-red-400 bg-red-500/10' },
+            montant_suspect: { icon: '🚨', label: 'Montant de paiement suspect', color: 'text-red-400 bg-red-500/10' },
+            admin_bloque: { icon: '🔒', label: 'Accès admin bloqué (5 tentatives)', color: 'text-red-400 bg-red-500/10' }
+        };
+
+        window.renderSecurityEvents = () => {
+            const container = document.getElementById('security-events-list');
+            container.innerHTML = '';
+
+            if (allSecurityEvents.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-gray-600 font-black italic uppercase text-xs tracking-widest">Aucun événement de sécurité — tout est calme ✅</div>`;
+                return;
             }
-            renderDashboard();
-        }, (error) => {
-            console.error("Erreur Firebase:", error);
-        });
+
+            allSecurityEvents.slice(0, 100).forEach(e => {
+                const info = EVENT_LABELS[e.type] || { icon: '❔', label: e.type, color: 'text-gray-400 bg-white/5' };
+                const date = new Date(e.timestamp).toLocaleString('fr-FR');
+                container.innerHTML += `
+                    <div class="order-card p-4 rounded-2xl flex items-start gap-3">
+                        <span class="text-lg">${info.icon}</span>
+                        <div class="flex-1">
+                            <p class="text-xs font-black ${info.color.split(' ')[0]} uppercase">${info.label}</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">${e.detail || ''}</p>
+                            <p class="text-[9px] text-gray-600 mt-1">${date}</p>
+                        </div>
+                    </div>`;
+            });
+        };
 
         window.renderDashboard = () => {
             const container = document.getElementById('orders-container');
             container.innerHTML = '';
 
-            let totalPlatformRevenue = 0; // Somme des commissions déjà calculées à la création de chaque commande
+            let totalPlatformRevenue = 0;
             let toProcessCount = 0;
             let deliveredCount = 0;
 
@@ -110,6 +202,12 @@
                             </div>
                         </div>
 
+                        ${order.payoutStatus ? `
+                        <div class="bg-black/40 p-3 rounded-2xl flex justify-between items-center text-xs">
+                            <span class="text-[9px] text-gray-500 font-bold uppercase">Versement boutique</span>
+                            <span class="text-[10px] font-black uppercase ${order.payoutStatus === 'envoyé' ? 'text-green-400' : 'text-red-400'}">${order.payoutStatus}</span>
+                        </div>` : ''}
+
                         <div class="grid grid-cols-2 gap-2 pt-1">
                             <a href="${order.clientGPS}" target="_blank" class="bg-white/5 border border-white/10 hover:bg-white/10 text-white text-center py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition">
                                 <i class="fa-solid fa-location-dot text-red-500 mr-1"></i> GPS Client
@@ -141,42 +239,80 @@
                     .catch((err) => alert("Erreur : " + err.message));
             }
         };
+
+        // === Reconnexion automatique admin (24h) ===
+        const savedAdminSession = localStorage.getItem('driprush_admin_session');
+        if (savedAdminSession) {
+            try {
+                const { loginTime } = JSON.parse(savedAdminSession);
+                if (Date.now() - loginTime < ADMIN_SESSION_MS) {
+                    window.addEventListener('DOMContentLoaded', window.unlockDashboard);
+                } else {
+                    localStorage.removeItem('driprush_admin_session');
+                }
+            } catch(e) {
+                localStorage.removeItem('driprush_admin_session');
+            }
+        }
     </script>
 </head>
 <body class="p-4 md:p-8 bg-[#070707] min-h-screen pb-24">
 
-    <header class="mb-8 space-y-4">
-        <div class="flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-black italic tracking-tighter uppercase text-white">DRIPRUSH ADMIN</h1>
-                <p class="text-[9px] text-orange-500 font-black uppercase tracking-[0.2em]">Gestion de vos bénéfices</p>
-            </div>
-            <div class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10">
-                <i class="fa-solid fa-vault text-orange-400 text-sm"></i>
-            </div>
-        </div>
+    <!-- ÉCRAN DE CONNEXION ADMIN -->
+    <div id="admin-login-screen" class="max-w-sm mx-auto pt-24 text-center">
+        <h1 class="text-2xl font-black italic tracking-tighter uppercase text-white mb-1">DRIPRUSH ADMIN</h1>
+        <p class="text-[9px] text-orange-500 font-black uppercase tracking-[0.2em] mb-10">Accès restreint</p>
+        <input id="admin-password" type="password" placeholder="MOT DE PASSE ADMIN" class="w-full bg-[#121212] border border-white/10 p-4 rounded-2xl text-sm font-bold outline-none focus:border-orange-500 text-center mb-3">
+        <p id="admin-login-error" class="hidden text-[10px] text-red-400 font-bold uppercase mb-3"></p>
+        <button onclick="window.tryAdminLogin(this)" class="w-full bg-orange-500 text-black font-black py-4 rounded-2xl text-sm uppercase italic active:scale-95 transition">
+            Déverrouiller 🔓
+        </button>
+    </div>
 
-        <div class="grid grid-cols-3 gap-3">
-            <div class="bg-[#121212] border border-white/5 p-4 rounded-2xl">
-                <p class="text-[7px] font-black text-gray-500 uppercase tracking-wider mb-1">Mes Gains (10%)</p>
-                <p id="stat-revenue" class="text-xs font-black text-orange-400 italic">0 F</p>
+    <!-- TABLEAU DE BORD (masqué jusqu'à connexion) -->
+    <div id="admin-dashboard" class="hidden">
+        <header class="mb-6 space-y-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-black italic tracking-tighter uppercase text-white">DRIPRUSH ADMIN</h1>
+                    <p class="text-[9px] text-orange-500 font-black uppercase tracking-[0.2em]">Gestion de vos bénéfices</p>
+                </div>
+                <button onclick="window.logoutAdmin()" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10">
+                    <i class="fa-solid fa-lock text-orange-400 text-sm"></i>
+                </button>
             </div>
-            <div class="bg-[#121212] border border-white/5 p-4 rounded-2xl">
-                <p class="text-[7px] font-black text-gray-500 uppercase tracking-wider mb-1">À traiter</p>
-                <p id="stat-pending" class="text-base font-black text-amber-400">0</p>
-            </div>
-            <div class="bg-[#121212] border border-white/5 p-4 rounded-2xl">
-                <p class="text-[7px] font-black text-gray-500 uppercase tracking-wider mb-1">Livrées</p>
-                <p id="stat-active" class="text-base font-black text-green-400">0</p>
-            </div>
-        </div>
-    </header>
 
-    <main class="space-y-4">
-        <h2 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-2">Flux des Commandes</h2>
-        <div id="orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        </div>
-    </main>
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-[#121212] border border-white/5 p-4 rounded-2xl">
+                    <p class="text-[7px] font-black text-gray-500 uppercase tracking-wider mb-1">Mes Gains (10%)</p>
+                    <p id="stat-revenue" class="text-xs font-black text-orange-400 italic">0 F</p>
+                </div>
+                <div class="bg-[#121212] border border-white/5 p-4 rounded-2xl">
+                    <p class="text-[7px] font-black text-gray-500 uppercase tracking-wider mb-1">À traiter</p>
+                    <p id="stat-pending" class="text-base font-black text-amber-400">0</p>
+                </div>
+                <div class="bg-[#121212] border border-white/5 p-4 rounded-2xl">
+                    <p class="text-[7px] font-black text-gray-500 uppercase tracking-wider mb-1">Livrées</p>
+                    <p id="stat-active" class="text-base font-black text-green-400">0</p>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="window.setMainTab('commandes')" id="tab-commandes" class="flex-1 bg-orange-500 text-black py-3 rounded-xl text-[10px] font-black uppercase transition">📦 Commandes</button>
+                <button onclick="window.setMainTab('securite')" id="tab-securite" class="flex-1 bg-white/5 text-gray-400 py-3 rounded-xl text-[10px] font-black uppercase transition">🛡️ Sécurité</button>
+            </div>
+        </header>
+
+        <main id="panel-commandes" class="space-y-4">
+            <h2 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-2">Flux des Commandes</h2>
+            <div id="orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </main>
+
+        <main id="panel-securite" class="hidden space-y-4">
+            <h2 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-2">Événements de Sécurité (100 derniers)</h2>
+            <div id="security-events-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </main>
+    </div>
 
 </body>
 </html>
