@@ -110,10 +110,23 @@
             <button onclick="window.showPanel('login')" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-[0_0_30px_rgba(255,77,28,0.25)] active:scale-95 transition-all">
                 🏪 Je suis une boutique
             </button>
-            <button onclick="window.showPanel('admin')" class="w-full bg-white/5 border border-white/10 text-white font-display py-5 rounded-2xl text-sm uppercase active:scale-95 transition-all">
+            <button onclick="window.tryEnterAdmin()" class="w-full bg-white/5 border border-white/10 text-white font-display py-5 rounded-2xl text-sm uppercase active:scale-95 transition-all">
                 🔑 Espace Admin
             </button>
         </div>
+    </div>
+
+    <!-- 🆕 ÉCRAN MOT DE PASSE ADMIN -->
+    <div id="admin-password-screen" class="app-content hidden max-w-sm mx-auto pt-20 text-center animate-fade-in">
+        <button onclick="window.showPanel('landing')" class="text-gray-500 text-[10px] font-black uppercase mb-8 tracking-widest"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
+        <i class="fa-solid fa-lock text-drip text-2xl mb-4"></i>
+        <h2 class="text-lg font-display uppercase mb-2 tracking-tight">Accès restreint</h2>
+        <p class="text-[10px] text-gray-500 font-bold uppercase mb-6 tracking-widest">Réservé à l'administrateur</p>
+        <input id="admin-password-input" type="password" placeholder="MOT DE PASSE ADMIN" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold text-center mb-3">
+        <p id="admin-password-error" class="hidden text-[10px] text-red-400 font-bold uppercase mb-3"></p>
+        <button onclick="window.checkAdminPassword(this)" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase shadow-xl active:scale-95 transition">
+            Déverrouiller 🔓
+        </button>
     </div>
 
     <!-- ÉCRAN 2 : ADMIN - DEMANDES + AJOUT BOUTIQUE -->
@@ -270,8 +283,8 @@
         const CLOUDINARY_UPLOAD_PRESET = "drip_rush";
         const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
 
-        // 🆕 30 jours au lieu de 48h — la boutique reste connectée bien plus longtemps
         const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+        const ADMIN_SESSION_MS = 24 * 60 * 60 * 1000; // 🆕 même durée que admin.html
 
         let currentShopPhone = null;
         let currentBoutique = null;
@@ -282,7 +295,7 @@
         const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
 
         window.showPanel = (panel) => {
-            ['landing-card', 'admin-panel', 'login-panel', 'dashboard'].forEach(id => {
+            ['landing-card', 'admin-panel', 'login-panel', 'dashboard', 'admin-password-screen'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(panel === 'landing' ? 'landing-card' : panel + (panel === 'admin' ? '-panel' : (panel === 'login' ? '-panel' : ''))).classList.remove('hidden');
@@ -290,6 +303,59 @@
                 window.loadBoutiquesList();
                 window.loadPendingRequests();
             }
+        };
+
+        // === 🆕 Vérifie d'abord si une session admin valide existe déjà ===
+        window.tryEnterAdmin = () => {
+            const saved = localStorage.getItem('driprush_admin_session');
+            if (saved) {
+                try {
+                    const { loginTime } = JSON.parse(saved);
+                    if (Date.now() - loginTime < ADMIN_SESSION_MS) {
+                        return window.showPanel('admin');
+                    }
+                } catch(e) {}
+            }
+            document.getElementById('admin-password-error').classList.add('hidden');
+            document.getElementById('admin-password-input').value = '';
+            document.getElementById('landing-card').classList.add('hidden');
+            document.getElementById('admin-password-screen').classList.remove('hidden');
+        };
+
+        // === 🆕 Vérifie le mot de passe admin côté serveur ===
+        window.checkAdminPassword = (btn) => {
+            const password = document.getElementById('admin-password-input').value;
+            if (!password) return;
+
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Vérification...";
+
+            fetch(WEBHOOK_SERVER_URL + '/verify-admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                if (data.success) {
+                    localStorage.setItem('driprush_admin_session', JSON.stringify({ loginTime: Date.now() }));
+                    window.showPanel('admin');
+                } else {
+                    const errEl = document.getElementById('admin-password-error');
+                    errEl.innerText = data.message || "Mot de passe incorrect.";
+                    errEl.classList.remove('hidden');
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                const errEl = document.getElementById('admin-password-error');
+                errEl.innerText = "Erreur de connexion au serveur.";
+                errEl.classList.remove('hidden');
+            });
         };
 
         window.getBoutiqueGPS = () => {
