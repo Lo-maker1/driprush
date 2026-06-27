@@ -5,132 +5,221 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DRIPRUSH - Espace Boutiques</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#0B0B0C',
+                        paper: '#F7F5F2',
+                        drip: '#FF4D1C',
+                        dripdark: '#C23700',
+                        lime: '#C8FF4D'
+                    }
+                }
+            }
+        };
+    </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; background-color: #0B0B0C; color: #fff; overflow-x: hidden; }
+        .font-display { font-family: 'Archivo Black', sans-serif; }
         .pin-digit { letter-spacing: 0.5em; }
+
+        @keyframes cardEnter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        .card-enter { animation: cardEnter 0.45s ease-out backwards; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+
+        @keyframes shimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
+        .skeleton { background: linear-gradient(90deg, #1a1a1a 25%, #242424 37%, #1a1a1a 63%); background-size: 600px 100%; animation: shimmer 1.4s infinite linear; }
+
+        .price-tag-dark {
+            position: relative;
+            background: #0B0B0C;
+            color: #C8FF4D;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 13px;
+            padding: 8px 14px 8px 20px;
+            border-radius: 3px 10px 10px 3px;
+            transform: rotate(-2deg);
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            border: 1px solid rgba(200,255,77,0.2);
+        }
+        .price-tag-dark::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 5px;
+            height: 5px;
+            background: #0B0B0C;
+            border: 1px solid #C8FF4D;
+            border-radius: 50%;
+        }
+
+        .card-surface { background: linear-gradient(145deg, #141414, #1c1c1c); border: 1px solid rgba(255,255,255,0.06); }
+        .input-dark { background: #141414; border: 1px solid rgba(255,255,255,0.08); }
+        .input-dark:focus { border-color: #FF4D1C; }
+
+        /* === Motif de fond : gouttes vivantes === */
+        #drip-bg { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+        .drip-shape {
+            position: absolute;
+            border-radius: 50% 50% 50% 0;
+            filter: blur(1px);
+            opacity: 0.10;
+        }
+        @keyframes dripPulse {
+            0%, 100% { opacity: 0.08; transform: rotate(45deg) scale(1); }
+            50% { opacity: 0.18; transform: rotate(45deg) scale(1.12); }
+        }
+        @keyframes dripFloat {
+            0% { transform: rotate(45deg) translateY(0); opacity: 0.10; }
+            50% { transform: rotate(45deg) translateY(40px); opacity: 0.16; }
+            100% { transform: rotate(45deg) translateY(0); opacity: 0.10; }
+        }
+        .drip-pulse { animation: dripPulse 7s ease-in-out infinite; }
+        .drip-float { animation: dripFloat 11s ease-in-out infinite; }
+
+        .app-content { position: relative; z-index: 10; }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-5">
+<body class="min-h-screen p-5 pb-16">
+
+    <!-- Motif de fond — gouttes immersives, jamais au-dessus du contenu, jamais cliquables -->
+    <div id="drip-bg">
+        <div class="drip-shape drip-pulse" style="width:140px; height:140px; background:#FF4D1C; top:6%; left:-5%; transform:rotate(45deg);"></div>
+        <div class="drip-shape drip-float" style="width:90px; height:90px; background:#C8FF4D; top:20%; right:-3%; transform:rotate(45deg);"></div>
+        <div class="drip-shape" style="width:200px; height:200px; background:#C23700; top:45%; left:60%; transform:rotate(45deg); opacity:0.07;"></div>
+        <div class="drip-shape drip-pulse" style="width:110px; height:110px; background:#FF4D1C; top:65%; left:-6%; transform:rotate(45deg); animation-delay: 2s;"></div>
+        <div class="drip-shape drip-float" style="width:70px; height:70px; background:#C8FF4D; top:80%; right:8%; transform:rotate(45deg); animation-delay: 4s;"></div>
+        <div class="drip-shape" style="width:160px; height:160px; background:#FF4D1C; top:88%; left:30%; transform:rotate(45deg); opacity:0.06;"></div>
+    </div>
 
     <!-- ÉCRAN 1 : CHOIX DU RÔLE -->
-    <div id="landing-card" class="max-w-md mx-auto pt-16 text-center">
-        <h1 class="text-3xl font-black italic text-orange-500 uppercase mb-1">Driprush</h1>
-        <p class="text-gray-400 text-xs font-bold uppercase tracking-widest mb-10">Espace Boutiques</p>
+    <div id="landing-card" class="app-content max-w-md mx-auto pt-20 text-center animate-fade-in">
+        <h1 class="text-4xl font-display text-drip uppercase tracking-tighter mb-1">DRIPRUSH</h1>
+        <p class="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] mb-12">Espace Boutiques</p>
         <div class="space-y-4">
-            <button onclick="window.showPanel('login')" class="w-full bg-orange-500 text-white font-black py-5 rounded-2xl text-sm uppercase italic shadow-xl active:scale-95 transition">
+            <button onclick="window.showPanel('login')" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-[0_0_30px_rgba(255,77,28,0.25)] active:scale-95 transition-all">
                 🏪 Je suis une boutique
             </button>
-            <button onclick="window.showPanel('admin')" class="w-full bg-white/10 border border-white/20 text-white font-black py-5 rounded-2xl text-sm uppercase italic active:scale-95 transition">
+            <button onclick="window.showPanel('admin')" class="w-full bg-white/5 border border-white/10 text-white font-display py-5 rounded-2xl text-sm uppercase active:scale-95 transition-all">
                 🔑 Espace Admin
             </button>
         </div>
     </div>
 
     <!-- ÉCRAN 2 : ADMIN - DEMANDES + AJOUT BOUTIQUE -->
-    <div id="admin-panel" class="hidden max-w-md mx-auto pt-8">
-        <button onclick="window.showPanel('landing')" class="text-gray-400 text-xs font-bold uppercase mb-6"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
+    <div id="admin-panel" class="app-content hidden max-w-md mx-auto pt-8 animate-fade-in">
+        <button onclick="window.showPanel('landing')" class="text-gray-500 text-[10px] font-black uppercase mb-6 tracking-widest"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
 
-        <h2 class="text-xl font-black uppercase italic mb-1">Demandes en attente</h2>
-        <p class="text-[10px] text-gray-500 font-bold uppercase mb-4">Approuve pour générer le PIN automatiquement</p>
+        <h2 class="text-xl font-display uppercase mb-1 tracking-tight">Demandes en attente</h2>
+        <p class="text-[10px] text-gray-500 font-bold uppercase mb-4 tracking-widest">Approuve pour générer le PIN automatiquement</p>
         <div id="requests-list" class="space-y-2 mb-8"></div>
 
-        <div id="pin-result" class="hidden bg-green-500/10 border border-green-500/30 rounded-2xl p-5 text-center mb-8">
-            <p class="text-[10px] text-green-400 font-black uppercase tracking-widest mb-2">✅ Code à transmettre à la boutique</p>
-            <p id="generated-pin" class="text-4xl font-black pin-digit text-white"></p>
-            <button onclick="window.copyPin()" class="mt-3 text-[10px] text-orange-400 font-bold uppercase underline">Copier le code</button>
+        <div id="pin-result" class="hidden bg-lime/10 border border-lime/30 rounded-3xl p-6 text-center mb-8">
+            <p class="text-[10px] text-lime font-black uppercase tracking-widest mb-3">✅ Code à transmettre à la boutique</p>
+            <p id="generated-pin" class="text-5xl font-display pin-digit text-white"></p>
+            <button onclick="window.copyPin()" class="mt-4 text-[10px] text-drip font-black uppercase underline tracking-widest">Copier le code</button>
         </div>
 
-        <h2 class="text-xl font-black uppercase italic mb-1 mt-6">Ajout manuel</h2>
-        <p class="text-[10px] text-gray-500 font-bold uppercase mb-6">Pour ajouter une boutique sans passer par une demande</p>
+        <h2 class="text-xl font-display uppercase mb-1 mt-8 tracking-tight">Ajout manuel</h2>
+        <p class="text-[10px] text-gray-500 font-bold uppercase mb-6 tracking-widest">Pour ajouter une boutique sans passer par une demande</p>
 
         <div class="space-y-3 mb-4">
-            <input id="b-name" placeholder="NOM DE LA BOUTIQUE" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none focus:border-orange-500 text-sm font-bold uppercase">
-            <input id="b-phone" type="tel" placeholder="NUMÉRO WHATSAPP (ex: 22901475353)" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none focus:border-orange-500 text-sm font-bold">
+            <input id="b-name" placeholder="NOM DE LA BOUTIQUE" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold uppercase">
+            <input id="b-phone" type="tel" placeholder="NUMÉRO WHATSAPP (ex: 22901475353)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
             <div class="flex gap-2">
-                <button type="button" id="gps-btn" onclick="window.getBoutiqueGPS()" class="flex-1 bg-white/5 border border-gray-700 p-4 rounded-2xl text-[10px] font-black text-orange-500 uppercase active:scale-95 transition">📍 Capturer GPS</button>
+                <button type="button" id="gps-btn" onclick="window.getBoutiqueGPS()" class="flex-1 input-dark p-4 rounded-2xl text-[10px] font-black text-drip uppercase active:scale-95 transition tracking-widest">📍 Capturer GPS</button>
             </div>
-            <input id="b-gps" placeholder="Ou colle un lien Google Maps" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none focus:border-orange-500 text-[10px] text-gray-400">
+            <input id="b-gps" placeholder="Ou colle un lien Google Maps" class="w-full input-dark p-4 rounded-2xl outline-none text-[10px] text-gray-500">
 
-            <label class="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase px-1 pt-1">
-                <input type="checkbox" id="b-momo-same" checked onchange="window.toggleAdminMomoField()" class="w-4 h-4 accent-orange-500">
+            <label class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase px-1 pt-1 tracking-widest">
+                <input type="checkbox" id="b-momo-same" checked onchange="window.toggleAdminMomoField()" class="w-4 h-4 accent-drip">
                 Mobile Money = même numéro que le WhatsApp
             </label>
-            <input id="b-momo" placeholder="NUMÉRO MOBILE MONEY" class="hidden w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none focus:border-orange-500 text-sm font-bold">
+            <input id="b-momo" placeholder="NUMÉRO MOBILE MONEY" class="hidden w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
         </div>
 
-        <button onclick="window.registerBoutique()" class="w-full bg-orange-500 text-white font-black py-5 rounded-2xl text-sm uppercase italic shadow-xl active:scale-95 transition mb-8">
+        <button onclick="window.registerBoutique()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-xl active:scale-95 transition mb-8">
             Enregistrer la boutique 🚀
         </button>
 
-        <h3 class="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-3">Boutiques déjà enregistrées</h3>
+        <h3 class="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-3">Boutiques déjà enregistrées</h3>
         <div id="boutiques-list" class="space-y-2"></div>
     </div>
 
     <!-- ÉCRAN 3 : CONNEXION BOUTIQUE -->
-    <div id="login-panel" class="hidden max-w-md mx-auto pt-16">
-        <button onclick="window.showPanel('landing')" class="text-gray-400 text-xs font-bold uppercase mb-6"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
-        <h2 class="text-xl font-black uppercase italic mb-1 text-center">Connexion Boutique</h2>
-        <p class="text-[10px] text-gray-500 font-bold uppercase mb-2 text-center">Entre ton numéro WhatsApp et ton code PIN</p>
-        <p class="text-[9px] text-orange-400 font-bold uppercase mb-6 text-center px-4">⚠️ Le numéro WhatsApp donné à l'inscription — pas ton Mobile Money, même s'il est différent</p>
+    <div id="login-panel" class="app-content hidden max-w-md mx-auto pt-16 animate-fade-in">
+        <button onclick="window.showPanel('landing')" class="text-gray-500 text-[10px] font-black uppercase mb-6 tracking-widest"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
+        <h2 class="text-2xl font-display uppercase mb-2 text-center tracking-tight">Connexion Boutique</h2>
+        <p class="text-[10px] text-gray-500 font-bold uppercase mb-2 text-center tracking-widest">Entre ton numéro WhatsApp et ton code PIN</p>
+        <p class="text-[9px] text-drip font-bold uppercase mb-8 text-center px-4 tracking-wide">⚠️ Le numéro WhatsApp donné à l'inscription — pas ton Mobile Money, même s'il est différent</p>
         <div class="space-y-3">
-            <input id="l-phone" type="tel" placeholder="TON NUMÉRO WHATSAPP" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none focus:border-orange-500 text-sm font-bold text-center">
-            <input id="l-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="• • • •" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none focus:border-orange-500 text-2xl font-black text-center pin-digit">
+            <input id="l-phone" type="tel" placeholder="TON NUMÉRO WHATSAPP" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold text-center">
+            <input id="l-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="• • • •" class="w-full input-dark p-4 rounded-2xl outline-none text-2xl font-display text-center pin-digit">
         </div>
-        <button onclick="window.loginBoutique()" class="w-full bg-orange-500 text-white font-black py-5 rounded-2xl text-sm uppercase italic shadow-xl active:scale-95 transition mt-6">
+        <button onclick="window.loginBoutique(this)" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-xl active:scale-95 transition mt-6">
             Me connecter 🔓
         </button>
     </div>
 
     <!-- ÉCRAN 4 : DASHBOARD BOUTIQUE -->
-    <div id="dashboard" class="hidden max-w-md mx-auto">
-        <div class="flex justify-between items-center pt-4 pb-6 sticky top-0 bg-gray-900 z-10">
+    <div id="dashboard" class="app-content hidden max-w-md mx-auto animate-fade-in">
+        <div class="flex justify-between items-center pt-4 pb-6 sticky top-0 bg-ink z-10">
             <div>
-                <p class="text-[9px] text-gray-500 font-bold uppercase">Connecté en tant que</p>
-                <h2 id="dash-shop-name" class="text-lg font-black uppercase italic text-orange-500"></h2>
+                <p class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Connecté en tant que</p>
+                <h2 id="dash-shop-name" class="text-xl font-display uppercase text-drip tracking-tight"></h2>
             </div>
-            <button onclick="window.logoutBoutique()" class="text-gray-400 text-xs"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            <button onclick="window.logoutBoutique()" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-400"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
         </div>
 
         <div class="flex gap-2 mb-5">
-            <button onclick="window.setTab('active')" id="tab-active" class="flex-1 bg-orange-500 text-white py-2 rounded-xl text-[9px] font-black uppercase">À traiter</button>
-            <button onclick="window.setTab('done')" id="tab-done" class="flex-1 bg-white/5 text-gray-400 py-2 rounded-xl text-[9px] font-black uppercase">Livrées</button>
-            <button onclick="window.setTab('products')" id="tab-products" class="flex-1 bg-white/5 text-gray-400 py-2 rounded-xl text-[9px] font-black uppercase">Mes Articles</button>
+            <button onclick="window.setTab('active')" id="tab-active" class="flex-1 bg-drip text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition">À traiter</button>
+            <button onclick="window.setTab('done')" id="tab-done" class="flex-1 bg-white/5 text-gray-400 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition">Livrées</button>
+            <button onclick="window.setTab('products')" id="tab-products" class="flex-1 bg-white/5 text-gray-400 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition">Mes Articles</button>
         </div>
 
         <div id="orders-list" class="space-y-3 pb-10"></div>
 
         <div id="products-panel" class="hidden space-y-3 pb-10">
-            <button onclick="window.openAddProductForm()" class="w-full bg-orange-500 text-black font-black py-4 rounded-2xl text-xs uppercase active:scale-95 transition mb-4">+ Ajouter un article</button>
+            <button onclick="window.openAddProductForm()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-xs uppercase active:scale-95 transition mb-4">+ Ajouter un article</button>
             <div id="my-products-list" class="space-y-2"></div>
         </div>
     </div>
 
     <!-- MODAL : AJOUTER UN ARTICLE -->
-    <div id="add-product-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-end justify-center">
-        <div class="bg-gray-900 w-full max-w-md rounded-t-[2rem] p-6 space-y-3 max-h-[90vh] overflow-y-auto border-t border-gray-700">
+    <div id="add-product-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-end justify-center">
+        <div class="bg-ink w-full max-w-md rounded-t-[2.5rem] p-6 space-y-3 max-h-[90vh] overflow-y-auto border-t border-white/10">
             <div class="flex justify-between items-center mb-2">
-                <h3 class="text-sm font-black uppercase">Nouvel article</h3>
-                <button onclick="window.closeAddProductForm()" class="text-gray-400 text-lg"><i class="fa-solid fa-xmark"></i></button>
+                <h3 class="text-sm font-display uppercase tracking-tight">Nouvel article</h3>
+                <button onclick="window.closeAddProductForm()" class="text-gray-500 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <input type="file" id="prod-img-input" accept="image/*" class="hidden" onchange="window.handleImageUpload(event)">
-            <button type="button" onclick="document.getElementById('prod-img-input').click()" id="img-upload-btn" class="w-full bg-white/5 border border-gray-700 p-6 rounded-2xl text-xs font-black text-orange-500 uppercase text-center active:scale-95 transition">
+            <button type="button" onclick="document.getElementById('prod-img-input').click()" id="img-upload-btn" class="w-full input-dark p-6 rounded-2xl text-xs font-black text-drip uppercase text-center active:scale-95 transition tracking-widest">
                 📷 Ajouter une photo
             </button>
-            <img id="img-preview" class="hidden w-full h-40 object-cover rounded-xl">
+            <img id="img-preview" class="hidden w-full h-40 object-cover rounded-2xl">
 
-            <input id="prod-name" placeholder="NOM DU PRODUIT" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none text-sm font-bold uppercase">
-            <input id="prod-price" type="number" placeholder="PRIX DE VENTE (F)" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none text-sm font-bold">
+            <input id="prod-name" placeholder="NOM DU PRODUIT" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold uppercase">
+            <input id="prod-price" type="number" placeholder="PRIX DE VENTE (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
 
             <div class="grid grid-cols-2 gap-2">
-                <select id="prod-type" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none text-xs font-bold">
+                <select id="prod-type" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
                     <option value="vetement">👕 Vêtement</option>
                     <option value="chaussure">👟 Chaussure</option>
                     <option value="parfum">🧴 Parfum</option>
                     <option value="accessoire">✨ Accessoire</option>
                 </select>
-                <select id="prod-genre" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none text-xs font-bold">
+                <select id="prod-genre" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
                     <option value="homme">HOMME</option>
                     <option value="femme">FEMME</option>
                     <option value="mixte">MIXTE</option>
@@ -138,14 +227,14 @@
                 </select>
             </div>
 
-            <input id="prod-sizes" placeholder="TAILLES / ML (optionnel)" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none text-sm font-bold">
+            <input id="prod-sizes" placeholder="TAILLES / ML (optionnel)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
 
             <div class="grid grid-cols-2 gap-2">
-                <input id="prod-delivery-std" type="number" placeholder="Livraison normale (F)" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none text-xs font-bold">
-                <input id="prod-delivery-exp" type="number" placeholder="Livraison rapide (F)" class="w-full bg-gray-800 p-4 rounded-2xl border border-gray-700 outline-none text-xs font-bold">
+                <input id="prod-delivery-std" type="number" placeholder="Livraison normale (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
+                <input id="prod-delivery-exp" type="number" placeholder="Livraison rapide (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
             </div>
 
-            <button onclick="window.submitNewProduct()" class="w-full bg-orange-500 text-black font-black py-4 rounded-2xl text-sm uppercase mt-2">Ajouter au catalogue 🚀</button>
+            <button onclick="window.submitNewProduct()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase mt-2">Ajouter au catalogue 🚀</button>
         </div>
     </div>
 
@@ -172,6 +261,7 @@
 
         const CLOUDINARY_CLOUD_NAME = "dshzay8cf";
         const CLOUDINARY_UPLOAD_PRESET = "drip_rush";
+        const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
 
         const SESSION_DURATION_MS = 48 * 60 * 60 * 1000; // 48h
 
@@ -202,7 +292,7 @@
                     const link = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                     document.getElementById('b-gps').value = link;
                     btn.innerText = "📍 GPS OK !";
-                    btn.classList.replace('bg-white/5', 'bg-green-500/20');
+                    btn.classList.add('text-lime');
                 }, () => {
                     alert("Active ta localisation pour capturer le GPS");
                     btn.innerText = "📍 Réessayer";
@@ -210,13 +300,11 @@
             }
         };
 
-        // === Affiche/cache le champ Mobile Money (ajout manuel admin) ===
         window.toggleAdminMomoField = () => {
             const same = document.getElementById('b-momo-same').checked;
             document.getElementById('b-momo').classList.toggle('hidden', same);
         };
 
-        // === ADMIN : demandes de partenariat (avec GPS + Mobile Money capturés côté boutique) ===
         window.loadPendingRequests = () => {
             onValue(ref(db, 'driprush_boutique_requests'), (snapshot) => {
                 const data = snapshot.val();
@@ -224,21 +312,21 @@
                 container.innerHTML = '';
                 const pending = data ? Object.values(data).filter(r => r.status === 'en_attente') : [];
                 if (pending.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">Aucune demande en attente</p>';
+                    container.innerHTML = '<p class="text-gray-500 text-xs text-center py-6 font-bold uppercase tracking-widest">Aucune demande en attente</p>';
                     return;
                 }
-                pending.reverse().forEach(r => {
+                pending.reverse().forEach((r, idx) => {
                     const safeName = r.name.replace(/'/g, "\\'");
                     const safeLoc = (r.location || '').replace(/'/g, "\\'");
                     const safeGps = (r.gps || '').replace(/'/g, "\\'");
                     const safeMomo = (r.momo || r.phone || '').replace(/'/g, "\\'");
                     container.innerHTML += `
-                        <div class="bg-gray-800 rounded-xl p-4 border border-orange-500/30 mb-2">
-                            <p class="text-xs font-bold uppercase">${r.name}</p>
+                        <div class="card-surface rounded-2xl p-4 border-l-2 border-l-drip card-enter" style="animation-delay: ${Math.min(idx * 0.06, 0.4)}s">
+                            <p class="text-xs font-black uppercase">${r.name}</p>
                             <p class="text-[10px] text-gray-500 mb-1">${r.phone} — ${r.location || ''}</p>
-                            <p class="text-[10px] text-green-400 mb-1">💰 Momo: ${r.momo || r.phone}</p>
-                            ${r.gps ? `<a href="${r.gps}" target="_blank" class="text-[10px] text-orange-400 underline mb-2 inline-block"><i class="fa-solid fa-map mr-1"></i>Voir sur la carte</a>` : '<p class="text-[10px] text-red-400 mb-2">⚠️ Aucun GPS fourni</p>'}
-                            <button onclick="window.approveRequest('${r.phone}', '${safeName}', '${safeLoc}', '${safeGps}', '${safeMomo}')" class="w-full bg-green-500 text-black font-black py-2 rounded-lg text-[10px] uppercase mt-1">✅ Approuver & générer le PIN</button>
+                            <p class="text-[10px] text-lime mb-1">💰 Momo: ${r.momo || r.phone}</p>
+                            ${r.gps ? `<a href="${r.gps}" target="_blank" class="text-[10px] text-drip underline mb-3 inline-block"><i class="fa-solid fa-map mr-1"></i>Voir sur la carte</a>` : '<p class="text-[10px] text-red-400 mb-3">⚠️ Aucun GPS fourni</p>'}
+                            <button onclick="window.approveRequest('${r.phone}', '${safeName}', '${safeLoc}', '${safeGps}', '${safeMomo}')" class="w-full bg-lime text-black font-black py-2.5 rounded-xl text-[10px] uppercase tracking-widest">✅ Approuver & générer le PIN</button>
                         </div>`;
                 });
             });
@@ -257,7 +345,6 @@
             }).catch((e) => alert("Erreur : " + e.message));
         };
 
-        // === ADMIN : enregistrer une boutique manuellement ===
         window.registerBoutique = () => {
             const name = document.getElementById('b-name').value.trim();
             const phone = cleanPhone(document.getElementById('b-phone').value);
@@ -297,40 +384,55 @@
                 const container = document.getElementById('boutiques-list');
                 container.innerHTML = '';
                 if (!data) {
-                    container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">Aucune boutique encore</p>';
+                    container.innerHTML = '<p class="text-gray-500 text-xs text-center py-6 font-bold uppercase tracking-widest">Aucune boutique encore</p>';
                     return;
                 }
                 Object.values(data).reverse().forEach(b => {
                     container.innerHTML += `
-                        <div class="bg-gray-800 rounded-xl p-3 flex justify-between items-center border border-gray-700">
+                        <div class="card-surface rounded-2xl p-3 flex justify-between items-center">
                             <div>
                                 <p class="text-xs font-bold uppercase">${b.name}</p>
                                 <p class="text-[10px] text-gray-500">${b.phone}</p>
-                                <p class="text-[9px] text-green-400">💰 ${b.momo || b.phone}</p>
+                                <p class="text-[9px] text-lime">💰 ${b.momo || b.phone}</p>
                             </div>
-                            <span class="text-orange-500 font-black pin-digit text-sm">${b.pin}</span>
+                            <span class="text-drip font-display pin-digit text-sm">${b.pin}</span>
                         </div>`;
                 });
             });
         };
 
-        // === BOUTIQUE : connexion ===
-        window.loginBoutique = () => {
+        window.loginBoutique = (btn) => {
             const phone = cleanPhone(document.getElementById('l-phone').value);
             const pin = document.getElementById('l-pin').value.trim();
 
             if (phone.length < 8 || pin.length !== 4) return alert("Vérifie ton numéro et ton code PIN !");
 
-            get(ref(db, 'driprush_boutiques/' + phone)).then((snapshot) => {
-                if (snapshot.exists() && String(snapshot.val().pin) === pin) {
-                    const boutique = snapshot.val();
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Connexion...";
+
+            fetch(WEBHOOK_SERVER_URL + '/verify-pin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, pin })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                if (data.success) {
                     currentShopPhone = phone;
-                    localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now() }));
-                    window.openDashboard(boutique);
+                    localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now(), boutique: data.boutique }));
+                    window.openDashboard(data.boutique);
                 } else {
-                    alert("Numéro ou code PIN incorrect !");
+                    alert(data.message || "Numéro ou code PIN incorrect !");
                 }
-            }).catch(() => alert("Erreur de connexion, réessaie."));
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                alert("Erreur de connexion au serveur, réessaie.");
+            });
         };
 
         window.logoutBoutique = () => {
@@ -359,9 +461,8 @@
             ['tab-active', 'tab-done', 'tab-products'].forEach(id => {
                 const el = document.getElementById(id);
                 const isActive = id === 'tab-' + tab;
-                el.classList.toggle('bg-orange-500', isActive);
+                el.classList.toggle('bg-drip', isActive);
                 el.classList.toggle('text-white', isActive);
-                el.classList.toggle('text-black', isActive && tab === 'products');
                 el.classList.toggle('bg-white/5', !isActive);
                 el.classList.toggle('text-gray-400', !isActive);
             });
@@ -379,34 +480,34 @@
             const filtered = paidOrders.filter(o => currentTab === 'active' ? o.status !== 'Livrée' : o.status === 'Livrée');
 
             if (filtered.length === 0) {
-                container.innerHTML = `<p class="text-center text-gray-500 text-xs font-bold uppercase py-16">Aucune commande ${currentTab === 'active' ? 'à traiter' : 'livrée'} pour l'instant</p>`;
+                container.innerHTML = `<p class="text-center text-gray-500 text-xs font-bold uppercase py-16 tracking-widest">Aucune commande ${currentTab === 'active' ? 'à traiter' : 'livrée'} pour l'instant</p>`;
                 return;
             }
 
-            filtered.forEach(o => {
+            filtered.forEach((o, idx) => {
                 const isTest = o.status === 'Payée (TEST)';
                 container.innerHTML += `
-                    <div class="bg-gray-800 rounded-2xl p-4 border ${o.status === 'Livrée' ? 'border-gray-700 opacity-60' : 'border-orange-500/30'}">
-                        ${isTest ? '<p class="text-[9px] text-yellow-400 font-black uppercase mb-2">🧪 Commande Test</p>' : ''}
-                        <div class="flex justify-between items-start mb-2">
-                            <p class="text-xs font-black uppercase">${o.clientName}</p>
-                            <span class="text-[9px] font-black px-2 py-1 rounded-full ${o.status === 'Livrée' ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'}">${o.status}</span>
+                    <div class="card-surface rounded-3xl p-5 card-enter ${o.status === 'Livrée' ? 'opacity-50' : ''}" style="animation-delay: ${Math.min(idx * 0.06, 0.4)}s">
+                        ${isTest ? '<p class="text-[9px] text-amber-400 font-black uppercase mb-2 tracking-widest">🧪 Commande Test</p>' : ''}
+                        <div class="flex justify-between items-start mb-3">
+                            <p class="text-sm font-display uppercase tracking-tight">${o.clientName}</p>
+                            <span class="text-[9px] font-black px-3 py-1.5 rounded-full ${o.status === 'Livrée' ? 'bg-blue-500/15 text-blue-400' : 'bg-drip/15 text-drip'} uppercase tracking-widest">${o.status}</span>
                         </div>
                         <p class="text-[11px] text-gray-300 mb-1">${o.items}</p>
-                        <p class="text-[10px] text-gray-500 mb-3">${o.deliveryMode === 'express' ? '🚀 Livraison rapide' : '🚲 Livraison normale'}</p>
+                        <p class="text-[10px] text-gray-500 mb-4">${o.deliveryMode === 'express' ? '🚀 Livraison rapide' : '🚲 Livraison normale'}</p>
                         
-                        <div class="bg-black/30 rounded-xl p-3 mb-3 space-y-1">
-                            <p class="text-[10px] text-gray-400"><i class="fa-solid fa-phone mr-2"></i><a href="tel:${o.phone}" class="underline">${o.phone}</a></p>
-                            <p class="text-[10px] text-gray-400"><i class="fa-solid fa-location-dot mr-2"></i>${o.address}</p>
-                            ${o.clientGPS ? `<a href="${o.clientGPS}" target="_blank" class="text-[10px] text-orange-400 underline"><i class="fa-solid fa-map mr-2"></i>Voir sur la carte</a>` : ''}
+                        <div class="bg-black/40 rounded-2xl p-3 mb-4 space-y-1.5">
+                            <p class="text-[10px] text-gray-400"><i class="fa-solid fa-phone mr-2 text-drip"></i><a href="tel:${o.phone}" class="underline">${o.phone}</a></p>
+                            <p class="text-[10px] text-gray-400"><i class="fa-solid fa-location-dot mr-2 text-drip"></i>${o.address}</p>
+                            ${o.clientGPS ? `<a href="${o.clientGPS}" target="_blank" class="text-[10px] text-drip underline block"><i class="fa-solid fa-map mr-2"></i>Voir sur la carte</a>` : ''}
                         </div>
 
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-[9px] text-gray-500 uppercase font-bold">Ta part (90%)</span>
-                            <span class="text-sm font-black text-green-400">${(o.montantBoutique || 0).toLocaleString()} F</span>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Ta part (90%)</span>
+                            <span class="price-tag-dark">${(o.montantBoutique || 0).toLocaleString()} F</span>
                         </div>
 
-                        ${o.status !== 'Livrée' ? `<button onclick="window.markDelivered('${o.id}')" class="w-full bg-white text-black font-black py-3 rounded-xl text-[10px] uppercase active:scale-95 transition">Marquer comme livrée ✅</button>` : ''}
+                        ${o.status !== 'Livrée' ? `<button onclick="window.markDelivered('${o.id}')" class="w-full bg-white text-black font-black py-3.5 rounded-2xl text-[10px] uppercase tracking-widest active:scale-95 transition">Marquer comme livrée ✅</button>` : ''}
                     </div>`;
             });
         };
@@ -539,18 +640,18 @@
                 const products = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
 
                 if (products.length === 0) {
-                    container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-10">Aucun article encore. Ajoute le premier ! 🛍️</p>';
+                    container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-10 tracking-widest">Aucun article encore. Ajoute le premier ! 🛍️</p>';
                     return;
                 }
-                products.forEach(p => {
+                products.forEach((p, idx) => {
                     container.innerHTML += `
-                        <div class="bg-gray-800 rounded-xl p-3 flex items-center gap-3 border border-gray-700">
-                            <img src="${p.image}" class="w-12 h-12 object-cover rounded-lg">
+                        <div class="card-surface rounded-2xl p-3 flex items-center gap-3 card-enter" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s">
+                            <img src="${p.image}" class="w-14 h-14 object-cover rounded-xl">
                             <div class="flex-1">
                                 <p class="text-xs font-bold uppercase">${p.name}</p>
-                                <p class="text-[10px] text-orange-500 font-black">${parseInt(p.price).toLocaleString()} F</p>
+                                <p class="text-[10px] text-drip font-black">${parseInt(p.price).toLocaleString()} F</p>
                             </div>
-                            <button onclick="window.deleteMyProduct('${p.id}')" class="text-red-500 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>
+                            <button onclick="window.deleteMyProduct('${p.id}')" class="text-red-400 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>
                         </div>`;
                 });
             });
@@ -564,12 +665,10 @@
         const savedSession = localStorage.getItem('driprush_shop_session');
         if (savedSession) {
             try {
-                const { phone, loginTime } = JSON.parse(savedSession);
-                if (Date.now() - loginTime < SESSION_DURATION_MS) {
+                const { phone, loginTime, boutique } = JSON.parse(savedSession);
+                if (Date.now() - loginTime < SESSION_DURATION_MS && boutique) {
                     currentShopPhone = phone;
-                    get(ref(db, 'driprush_boutiques/' + phone)).then((snapshot) => {
-                        if (snapshot.exists()) window.openDashboard(snapshot.val());
-                    });
+                    window.openDashboard(boutique);
                 } else {
                     localStorage.removeItem('driprush_shop_session');
                 }
