@@ -125,6 +125,9 @@
         // 🔑 Remplace par ta vraie clé publique sandbox FedaPay
         const FEDAPAY_PUBLIC_KEY = 'pk_sandbox_8x40mqXXj84CpQvs4BYhmguJ';
 
+        // 🆕 Adresse du serveur sécurisé (vérification du PIN, jamais en direct sur Firebase)
+        const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
+
         let cart = [];
         let selectedItem = null;
         let deliveryFee = 0;
@@ -223,25 +226,43 @@
                 document.getElementById('p-momo-same').checked = true;
                 window.toggleMomoField();
                 const btn = document.getElementById('p-gps-btn');
-                btn.innerText = "📍 Appuyer ici pour enregistrer automatiquement vos coordonner gps ";
+                btn.innerText = "📍 Appuyez ici pour enregistrer automatiquement vos coordonnées GPS";
                 btn.classList.replace('bg-green-100', 'bg-gray-100');
             }).catch((err) => window.showToast("Erreur : " + err.message, true));
         };
 
-        window.loginPartner = () => {
+        // === Connexion boutique : vérifiée côté serveur (jamais en direct sur Firebase) ===
+        window.loginPartner = (btn) => {
             const phone = document.getElementById('l-phone').value.replace(/\D/g, '');
             const pin = document.getElementById('l-pin').value.trim();
 
             if(phone.length < 8 || pin.length !== 4) return window.showToast("Vérifie ton numéro et ton PIN", true);
 
-            get(ref(db, 'driprush_boutiques/' + phone)).then((snapshot) => {
-                if (snapshot.exists() && String(snapshot.val().pin) === pin) {
-                    localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now() }));
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Connexion...";
+
+            fetch(WEBHOOK_SERVER_URL + '/verify-pin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, pin })
+            })
+            .then(res => res.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                if (data.success) {
+                    localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now(), boutique: data.boutique }));
                     window.location.href = 'boutiques.html';
                 } else {
-                    window.showToast("Numéro ou PIN incorrect", true);
+                    window.showToast(data.message || "Numéro ou PIN incorrect", true);
                 }
-            }).catch((err) => window.showToast("Erreur : " + err.message, true));
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                window.showToast("Erreur de connexion au serveur, réessaie.", true);
+            });
         };
 
         window.renderProducts = (products) => {
@@ -735,7 +756,7 @@
                 <input id="p-name" placeholder="NOM DE VOTRE ENSEIGNE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
                 <input id="p-phone" placeholder="NUMÉRO WHATSAPP BOUTIQUE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
                 <input id="p-loc" placeholder="QUARTIER & VILLE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
-                <button type="button" id="p-gps-btn" onclick="window.getPartnerGPS()" class="w-full bg-gray-100 border border-gray-200 p-4 rounded-xl text-[10px] font-black text-black uppercase active:scale-95 transition">📍 Appuyer ici pour capturer la localisation de votre boutique</button>
+                <button type="button" id="p-gps-btn" onclick="window.getPartnerGPS()" class="w-full bg-gray-100 border border-gray-200 p-4 rounded-xl text-[10px] font-black text-black uppercase active:scale-95 transition">📍 Appuyez ici pour enregistrer automatiquement vos coordonnées GPS</button>
                 <input id="p-gps" placeholder="Ou colle un lien Google Maps" class="w-full bg-gray-100 p-4 rounded-xl border outline-none text-[10px] text-gray-500">
 
                 <label class="flex items-center gap-2 text-[10px] font-bold text-gray-600 uppercase px-1 pt-2">
@@ -753,7 +774,7 @@
                 <p class="text-[11px] text-gray-500 font-medium">Entre ton numéro et ton code PIN.</p>
                 <input id="l-phone" type="tel" placeholder="TON NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border text-center">
                 <input id="l-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="• • • •" class="w-full bg-gray-100 p-4 rounded-xl text-xl font-black outline-none border text-center pin-input">
-                <button onclick="window.loginPartner()" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Me connecter 🔓</button>
+                <button onclick="window.loginPartner(this)" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Me connecter 🔓</button>
             </div>
         </div>
     </div>
