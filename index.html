@@ -143,6 +143,9 @@
         // Adresse du serveur sécurisé (vérification du PIN, jamais en direct sur Firebase)
         const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
 
+        // 🆕 Même durée de session que boutiques.html — 30 jours
+        const SHOP_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+
         let cart = [];
         let selectedItem = null;
         let deliveryFee = 0;
@@ -158,6 +161,33 @@
             clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => toast.classList.add('hidden'), 2800);
         };
+
+        // 🆕 Détecte si une boutique est déjà connectée (pour afficher l'accès rapide)
+        let loggedInShopName = null;
+        (function checkShopSession() {
+            const saved = localStorage.getItem('driprush_shop_session');
+            if (!saved) return;
+            try {
+                const { loginTime, boutique } = JSON.parse(saved);
+                if (Date.now() - loginTime < SHOP_SESSION_DURATION_MS && boutique && boutique.name) {
+                    loggedInShopName = boutique.name;
+                } else {
+                    localStorage.removeItem('driprush_shop_session');
+                }
+            } catch(e) {
+                localStorage.removeItem('driprush_shop_session');
+            }
+        })();
+
+        if (loggedInShopName) {
+            const banner = document.getElementById('shop-welcome-back');
+            if (banner) {
+                document.getElementById('shop-welcome-name').innerText = loggedInShopName;
+                banner.classList.remove('hidden');
+            }
+            const headerBtn = document.getElementById('shop-dashboard-btn');
+            if (headerBtn) headerBtn.classList.remove('hidden');
+        }
 
         onValue(ref(db, 'driprush_products'), (snapshot) => {
             const data = snapshot.val();
@@ -186,7 +216,7 @@
 
         window.closePartnerModal = () => {
             document.getElementById('partner-modal').classList.add('hidden');
-            document.getElementById('partner-success').classList.add('hidden'); // 🆕 toujours repartir propre
+            document.getElementById('partner-success').classList.add('hidden');
             window.showPartnerPanel('choice');
         };
 
@@ -232,7 +262,6 @@
             btn.disabled = true;
             btn.innerText = "Création en cours...";
 
-            // 🛑 Vérifie d'abord qu'aucun compte n'existe déjà sur ce numéro (protège les boutiques existantes)
             get(ref(db, 'driprush_boutiques/' + phone)).then((existingSnap) => {
                 if (existingSnap.exists()) {
                     btn.disabled = false;
@@ -660,7 +689,7 @@
             window.updateCartUI(); 
         };
 
-        // 🆕 Active l'installation sur l'écran d'accueil
+        // Active l'installation sur l'écran d'accueil
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch((err) => console.error('Erreur service worker:', err));
         }
@@ -683,6 +712,16 @@
         <div class="relative z-10 w-full animate-slide-up">
             <h1 class="text-6xl font-display text-white mb-2 tracking-tighter uppercase">DRIPRUSH</h1>
             <p class="text-drip text-[10px] font-black uppercase tracking-[0.3em] mb-12">Benin's Premium Streetwear</p>
+
+            <!-- 🆕 Bannière "Bon retour" — visible uniquement si une boutique est déjà connectée -->
+            <div id="shop-welcome-back" class="hidden mb-4 bg-lime/10 border border-lime/30 rounded-2xl p-4 text-center backdrop-blur-sm">
+                <p class="text-[10px] text-lime font-black uppercase tracking-widest mb-1">Bon retour 👋</p>
+                <p id="shop-welcome-name" class="text-white font-display text-sm uppercase mb-3"></p>
+                <button onclick="window.location.href='boutiques.html'" class="w-full bg-lime text-black font-display py-3 rounded-xl text-xs uppercase active:scale-95 transition">
+                    Accéder à mon tableau de bord 📊
+                </button>
+            </div>
+
             <div class="space-y-4">
                 <button onclick="window.enterSite('shop')" class="w-full bg-white text-ink py-5 rounded-2xl font-display uppercase text-sm shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 transition-all">Démarrer le Shopping 🛍️</button>
                 <button onclick="window.enterSite('partner')" class="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white py-5 rounded-2xl font-display uppercase text-sm active:scale-95 transition-all">Devenir Partenaire 🤝</button>
@@ -695,6 +734,10 @@
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-2xl font-display tracking-tighter text-ink uppercase">DRIPRUSH</h1>
                 <div class="flex items-center gap-5 text-xl">
+                    <!-- 🆕 Icône d'accès rapide au tableau de bord — visible uniquement si boutique connectée -->
+                    <button id="shop-dashboard-btn" onclick="window.location.href='boutiques.html'" class="hidden relative" title="Mon tableau de bord">
+                        <i class="fa-solid fa-store text-drip"></i>
+                    </button>
                     <i class="fa-solid fa-heart text-gray-200"></i>
                     <div id="nav-cart-icon" onclick="window.toggleCheckout(true)" class="relative cursor-pointer">
                         <i class="fa-solid fa-bag-shopping"></i>
