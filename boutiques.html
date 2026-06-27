@@ -201,10 +201,11 @@
             </div>
         </div>
 
-        <div class="flex gap-2 mb-5">
-            <button onclick="window.setTab('active')" id="tab-active" class="flex-1 bg-drip text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition">À traiter</button>
-            <button onclick="window.setTab('done')" id="tab-done" class="flex-1 bg-white/5 text-gray-400 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition">Livrées</button>
-            <button onclick="window.setTab('products')" id="tab-products" class="flex-1 bg-white/5 text-gray-400 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition">Mes Articles</button>
+        <div class="grid grid-cols-4 gap-1.5 mb-5">
+            <button onclick="window.setTab('active')" id="tab-active" class="bg-drip text-white py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">À traiter</button>
+            <button onclick="window.setTab('done')" id="tab-done" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">Livrées</button>
+            <button onclick="window.setTab('products')" id="tab-products" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">Articles</button>
+            <button onclick="window.setTab('chats')" id="tab-chats" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">💬 Chats</button>
         </div>
 
         <div id="orders-list" class="space-y-3 pb-10"></div>
@@ -212,6 +213,11 @@
         <div id="products-panel" class="hidden space-y-3 pb-10">
             <button onclick="window.openAddProductForm()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-xs uppercase active:scale-95 transition mb-4">+ Ajouter un article</button>
             <div id="my-products-list" class="space-y-2"></div>
+        </div>
+
+        <!-- 🆕 PANNEAU CHATS -->
+        <div id="chats-panel" class="hidden space-y-2 pb-10">
+            <div id="chats-list"></div>
         </div>
     </div>
 
@@ -259,6 +265,24 @@
         </div>
     </div>
 
+    <!-- 🆕 MODAL : FIL DE DISCUSSION (côté boutique) -->
+    <div id="shop-chat-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[55] flex items-end">
+        <div class="w-full bg-ink rounded-t-[2.5rem] flex flex-col border-t border-white/10" style="height: 85vh;">
+            <div class="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
+                <div>
+                    <p id="shop-chat-client-name" class="text-sm font-display uppercase text-drip"></p>
+                    <p id="shop-chat-product-name" class="text-[10px] text-gray-500 font-bold uppercase"></p>
+                </div>
+                <button onclick="window.closeShopChatModal()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="shop-chat-messages-list" class="flex-1 overflow-y-auto p-4"></div>
+            <div class="flex gap-2 p-4 border-t border-white/10 shrink-0">
+                <input id="shop-chat-message-input" placeholder="Réponds au client..." class="flex-1 input-dark p-4 rounded-2xl outline-none text-xs font-bold" onkeydown="if(event.key==='Enter'){window.sendShopMessage();}">
+                <button onclick="window.sendShopMessage()" class="bg-drip text-white w-12 h-12 rounded-2xl flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -286,13 +310,15 @@
 
         const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
         const ADMIN_SESSION_MS = 24 * 60 * 60 * 1000;
-        const MAX_PHOTOS = 10; // 🆕
+        const MAX_PHOTOS = 10;
 
         let currentShopPhone = null;
         let currentBoutique = null;
         let currentTab = 'active';
         let lastOrdersSnapshot = [];
-        let uploadedImageURLs = []; // 🆕 tableau au lieu d'une seule URL
+        let uploadedImageURLs = [];
+        let currentShopChatRef = null; // 🆕
+        let currentShopChatUnsub = null; // 🆕
 
         const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
 
@@ -526,13 +552,13 @@
             onValue(ordersQuery, (snapshot) => {
                 const data = snapshot.val();
                 lastOrdersSnapshot = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
-                if (currentTab !== 'products') window.renderOrders();
+                if (currentTab !== 'products' && currentTab !== 'chats') window.renderOrders();
             });
         };
 
         window.setTab = (tab) => {
             currentTab = tab;
-            ['tab-active', 'tab-done', 'tab-products'].forEach(id => {
+            ['tab-active', 'tab-done', 'tab-products', 'tab-chats'].forEach(id => {
                 const el = document.getElementById(id);
                 const isActive = id === 'tab-' + tab;
                 el.classList.toggle('bg-drip', isActive);
@@ -540,9 +566,11 @@
                 el.classList.toggle('bg-white/5', !isActive);
                 el.classList.toggle('text-gray-400', !isActive);
             });
-            document.getElementById('orders-list').classList.toggle('hidden', tab === 'products');
+            document.getElementById('orders-list').classList.toggle('hidden', tab !== 'active' && tab !== 'done');
             document.getElementById('products-panel').classList.toggle('hidden', tab !== 'products');
+            document.getElementById('chats-panel').classList.toggle('hidden', tab !== 'chats'); // 🆕
             if (tab === 'products') window.loadMyProducts();
+            else if (tab === 'chats') window.loadMyChats(); // 🆕
             else window.renderOrders();
         };
 
@@ -592,7 +620,7 @@
         };
 
         window.openAddProductForm = () => {
-            uploadedImageURLs = []; // 🆕
+            uploadedImageURLs = [];
             document.getElementById('img-preview-grid').innerHTML = '';
             document.getElementById('img-preview-grid').classList.add('hidden');
             document.getElementById('img-upload-btn').innerText = "📷 Ajouter des photos (max 10)";
@@ -600,7 +628,7 @@
             document.getElementById('prod-name').value = '';
             document.getElementById('prod-price').value = '';
             document.getElementById('prod-sizes').value = '';
-            document.getElementById('prod-colors').value = ''; // 🆕
+            document.getElementById('prod-colors').value = '';
             document.getElementById('prod-delivery-std').value = '';
             document.getElementById('prod-delivery-exp').value = '';
             document.getElementById('add-product-modal').classList.remove('hidden');
@@ -610,7 +638,6 @@
             document.getElementById('add-product-modal').classList.add('hidden');
         };
 
-        // 🆕 Traite et envoie une seule photo, retourne une Promise avec l'URL Cloudinary
         window.processAndUploadFile = (file) => {
             return new Promise((resolve, reject) => {
                 const objectUrl = URL.createObjectURL(file);
@@ -647,7 +674,6 @@
             });
         };
 
-        // 🆕 Affiche les miniatures des photos déjà ajoutées
         window.renderImagePreviews = () => {
             const container = document.getElementById('img-preview-grid');
             container.innerHTML = '';
@@ -661,7 +687,6 @@
             container.classList.toggle('hidden', uploadedImageURLs.length === 0);
         };
 
-        // 🆕 Retire une photo de la sélection avant l'ajout au catalogue
         window.removeImagePreview = (idx) => {
             uploadedImageURLs.splice(idx, 1);
             window.renderImagePreviews();
@@ -669,7 +694,6 @@
             btn.innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
         };
 
-        // 🆕 Gère la sélection de plusieurs photos à la fois (jusqu'à 10)
         window.handleImageUpload = async (event) => {
             const files = Array.from(event.target.files);
             if (files.length === 0) return;
@@ -711,7 +735,7 @@
             const type = document.getElementById('prod-type').value;
             const genre = document.getElementById('prod-genre').value;
             const sizes = document.getElementById('prod-sizes').value.trim() || "N/A";
-            const colors = document.getElementById('prod-colors').value.trim() || ""; // 🆕
+            const colors = document.getElementById('prod-colors').value.trim() || "";
             const deliveryStandard = parseInt(document.getElementById('prod-delivery-std').value) || 0;
             const deliveryExpress = parseInt(document.getElementById('prod-delivery-exp').value) || 0;
 
@@ -721,8 +745,8 @@
             const productRef = push(ref(db, 'driprush_products'));
             set(productRef, {
                 name, price,
-                image: uploadedImageURLs[0], // 🆕 garde la 1ère photo aussi en champ simple (compatibilité)
-                images: uploadedImageURLs,   // 🆕 toutes les photos
+                image: uploadedImageURLs[0],
+                images: uploadedImageURLs,
                 type, genre, sizes, colors,
                 shopName: currentBoutique.name,
                 shopPhone: currentBoutique.phone,
@@ -767,6 +791,89 @@
         window.deleteMyProduct = (productId) => {
             if (!confirm("Retirer cet article du catalogue ?")) return;
             remove(ref(db, 'driprush_products/' + productId)).catch((e) => alert("Erreur : " + e.message));
+        };
+
+        // 🆕 === CHATS CÔTÉ BOUTIQUE ===
+        window.loadMyChats = () => {
+            onValue(ref(db, 'driprush_chats/' + currentShopPhone), (snapshot) => {
+                const data = snapshot.val();
+                const container = document.getElementById('chats-list');
+                container.innerHTML = '';
+
+                const chats = data ? Object.keys(data).map(id => ({ id, ...data[id] })).sort((a,b) => b.createdAt - a.createdAt) : [];
+
+                if (chats.length === 0) {
+                    container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-16 tracking-widest">Aucune discussion pour l\'instant</p>';
+                    return;
+                }
+
+                chats.forEach((c, idx) => {
+                    const msgs = c.messages ? Object.values(c.messages) : [];
+                    const lastMsg = msgs.length > 0 ? msgs.sort((a,b) => b.timestamp - a.timestamp)[0] : null;
+                    const safeClientName = (c.clientName || '').replace(/'/g, "\\'");
+                    const safeProductName = (c.productName || '').replace(/'/g, "\\'");
+
+                    container.innerHTML += `
+                        <div class="card-surface rounded-2xl p-4 card-enter cursor-pointer" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s" onclick="window.openShopChatThread('${c.id}', '${safeClientName}', '${safeProductName}')">
+                            <div class="flex justify-between items-start mb-1">
+                                <p class="text-xs font-black uppercase">${c.clientName}</p>
+                                <span class="text-[8px] text-gray-500">${new Date(c.createdAt).toLocaleDateString('fr-FR')}</span>
+                            </div>
+                            <p class="text-[10px] text-drip font-bold uppercase mb-2">${c.productName}</p>
+                            <p class="text-[11px] text-gray-400 line-clamp-1">${lastMsg ? lastMsg.text : 'Aucun message encore'}</p>
+                        </div>`;
+                });
+            });
+        };
+
+        window.openShopChatThread = (chatId, clientName, productName) => {
+            document.getElementById('shop-chat-client-name').innerText = clientName;
+            document.getElementById('shop-chat-product-name').innerText = productName;
+            document.getElementById('shop-chat-modal').classList.remove('hidden');
+
+            if (currentShopChatUnsub) { currentShopChatUnsub(); currentShopChatUnsub = null; }
+            currentShopChatRef = chatId;
+
+            const messagesRef = ref(db, `driprush_chats/${currentShopPhone}/${chatId}/messages`);
+            currentShopChatUnsub = onValue(messagesRef, (snapshot) => {
+                const data = snapshot.val();
+                const messages = data ? Object.keys(data).map(id => ({ id, ...data[id] })).sort((a,b) => a.timestamp - b.timestamp) : [];
+                window.renderShopChatMessages(messages);
+            });
+        };
+
+        window.renderShopChatMessages = (messages) => {
+            const container = document.getElementById('shop-chat-messages-list');
+            container.innerHTML = '';
+            if (messages.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-10">Aucun message encore</p>';
+            }
+            messages.forEach(m => {
+                const isShop = m.sender === 'shop';
+                container.innerHTML += `
+                    <div class="flex ${isShop ? 'justify-end' : 'justify-start'} mb-2">
+                        <div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs ${isShop ? 'bg-drip text-white' : 'bg-white/10 text-white'}">
+                            ${m.text}
+                        </div>
+                    </div>`;
+            });
+            container.scrollTop = container.scrollHeight;
+        };
+
+        window.sendShopMessage = () => {
+            const input = document.getElementById('shop-chat-message-input');
+            const text = input.value.trim();
+            if (!text || !currentShopChatRef) return;
+
+            push(ref(db, `driprush_chats/${currentShopPhone}/${currentShopChatRef}/messages`), {
+                sender: 'shop', text, timestamp: Date.now()
+            }).then(() => { input.value = ''; }).catch((err) => alert("Erreur : " + err.message));
+        };
+
+        window.closeShopChatModal = () => {
+            if (currentShopChatUnsub) { currentShopChatUnsub(); currentShopChatUnsub = null; }
+            currentShopChatRef = null;
+            document.getElementById('shop-chat-modal').classList.add('hidden');
         };
 
         const savedSession = localStorage.getItem('driprush_shop_session');
