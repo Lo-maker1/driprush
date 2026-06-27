@@ -330,7 +330,6 @@
             });
         };
 
-        // 🆕 Affichage : utilise la 1ère photo du tableau "images" si dispo, sinon l'ancien champ "image"
         window.renderProducts = (products) => {
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
@@ -376,7 +375,6 @@
             window.renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(query.toLowerCase().trim())));
         };
 
-        // 🆕 openModal simplifié : retrouve le produit complet via son id, gère galerie + couleurs
         window.openModal = (id) => {
             const p = allProducts.find(x => x.id === id);
             if (!p) return;
@@ -395,7 +393,6 @@
             document.getElementById('modal-name').innerText = p.name;
             document.getElementById('modal-price').innerText = parseInt(p.price).toLocaleString() + " F";
 
-            // 🆕 Galerie miniatures (visible seulement si plusieurs photos)
             const galleryContainer = document.getElementById('gallery-thumbs');
             galleryContainer.innerHTML = '';
             if (images.length > 1) {
@@ -422,7 +419,6 @@
                 container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn bg-black text-white border-black border px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition">Taille Unique</button>`;
             }
 
-            // 🆕 Couleurs (affichées seulement si la boutique en a renseigné)
             const colorSection = document.getElementById('color-section');
             const colorContainer = document.getElementById('color-container');
             colorContainer.innerHTML = '';
@@ -442,7 +438,6 @@
             document.getElementById('product-modal').classList.remove('hidden');
         };
 
-        // 🆕 Change la photo principale quand on tape sur une miniature
         window.setMainImage = (url) => {
             document.getElementById('modal-img').src = url;
             if (selectedItem) selectedItem.image = url;
@@ -454,7 +449,6 @@
             });
         };
 
-        // 🆕 Sélection de couleur
         window.selectColor = (element, color) => {
             if(!selectedItem) return;
             selectedItem.color = color;
@@ -516,7 +510,6 @@
             document.getElementById('product-modal').classList.add('hidden');
         };
 
-        // 🆕 Affiche aussi la couleur choisie dans le récapitulatif panier
         window.updateCartUI = () => {
             document.getElementById('nav-cart-count').innerText = cart.length;
             const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
@@ -611,7 +604,6 @@
             }, { timeout: 8000 });
         };
 
-        // 🆕 Inclut la couleur choisie dans le résumé de la commande
         window.createPendingOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
             return new Promise((resolve, reject) => {
                 const firstItem = pendingItems[0];
@@ -728,6 +720,99 @@
             window.updateCartUI(); 
         };
 
+        // 🆕 === CHAT CLIENT ↔ BOUTIQUE ===
+        let currentChatUnsub = null;
+        let currentChatRefPath = null;
+
+        window.openChatModal = () => {
+            if (!selectedItem) return;
+            document.getElementById('chat-shop-name').innerText = selectedItem.shop;
+            document.getElementById('chat-product-name').innerText = selectedItem.name;
+            const clientName = localStorage.getItem('driprush_client_name');
+            document.getElementById('chat-name-screen').classList.toggle('hidden', !!clientName);
+            document.getElementById('chat-thread-screen').classList.toggle('hidden', !clientName);
+            document.getElementById('chat-modal').classList.remove('hidden');
+            if (clientName) {
+                window.startOrLoadChat(clientName);
+            }
+        };
+
+        window.submitClientName = () => {
+            const name = document.getElementById('chat-client-name-input').value.trim();
+            if (!name) return window.showToast("Entre ton nom pour démarrer la discussion", true);
+            localStorage.setItem('driprush_client_name', name);
+            document.getElementById('chat-name-screen').classList.add('hidden');
+            document.getElementById('chat-thread-screen').classList.remove('hidden');
+            window.startOrLoadChat(name);
+        };
+
+        window.startOrLoadChat = (clientName) => {
+            const productId = selectedItem.id;
+            const shopPhone = selectedItem.shopPhone || '2290147535343';
+
+            let myChats = {};
+            try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) { myChats = {}; }
+
+            if (myChats[productId] && myChats[productId].chatId) {
+                window.attachChatListener(shopPhone, myChats[productId].chatId);
+            } else {
+                const chatRef = push(ref(db, 'driprush_chats/' + shopPhone));
+                set(chatRef, {
+                    clientName, productName: selectedItem.name, productId,
+                    createdAt: Date.now()
+                }).then(() => {
+                    myChats[productId] = { chatId: chatRef.key, shopPhone };
+                    localStorage.setItem('driprush_my_chats', JSON.stringify(myChats));
+                    window.attachChatListener(shopPhone, chatRef.key);
+                }).catch((err) => window.showToast("Erreur : " + err.message, true));
+            }
+        };
+
+        window.attachChatListener = (shopPhone, chatId) => {
+            if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
+            currentChatRefPath = { shopPhone, chatId };
+            const messagesRef = ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`);
+            currentChatUnsub = onValue(messagesRef, (snapshot) => {
+                const data = snapshot.val();
+                const messages = data ? Object.keys(data).map(id => ({ id, ...data[id] })).sort((a,b) => a.timestamp - b.timestamp) : [];
+                window.renderChatMessages(messages);
+            });
+        };
+
+        window.renderChatMessages = (messages) => {
+            const container = document.getElementById('chat-messages-list');
+            container.innerHTML = '';
+            if (messages.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Pose ta question à la boutique 👋</p>';
+            }
+            messages.forEach(m => {
+                const isClient = m.sender === 'client';
+                container.innerHTML += `
+                    <div class="flex ${isClient ? 'justify-end' : 'justify-start'} mb-2">
+                        <div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs ${isClient ? 'bg-black text-white' : 'bg-gray-100 text-black'}">
+                            ${m.text}
+                        </div>
+                    </div>`;
+            });
+            container.scrollTop = container.scrollHeight;
+        };
+
+        window.sendClientMessage = () => {
+            const input = document.getElementById('chat-message-input');
+            const text = input.value.trim();
+            if (!text || !currentChatRefPath) return;
+
+            const { shopPhone, chatId } = currentChatRefPath;
+            push(ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`), {
+                sender: 'client', text, timestamp: Date.now()
+            }).then(() => { input.value = ''; }).catch((err) => window.showToast("Erreur : " + err.message, true));
+        };
+
+        window.closeChatModal = () => {
+            if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
+            document.getElementById('chat-modal').classList.add('hidden');
+        };
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch((err) => console.error('Erreur service worker:', err));
         }
@@ -824,7 +909,6 @@
                     </div>
                 </div>
 
-                <!-- 🆕 Galerie de miniatures (visible seulement si plusieurs photos) -->
                 <div id="gallery-thumbs" class="hidden flex gap-2 overflow-x-auto hide-scrollbar"></div>
 
                 <div>
@@ -832,11 +916,15 @@
                     <div id="size-container" class="flex flex-wrap gap-2"></div>
                 </div>
 
-                <!-- 🆕 Section couleur (visible seulement si la boutique en a renseigné) -->
                 <div id="color-section" class="hidden">
                     <p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Couleur</p>
                     <div id="color-container" class="flex flex-wrap gap-2"></div>
                 </div>
+
+                <!-- 🆕 Bouton chat -->
+                <button onclick="window.openChatModal()" class="w-full bg-gray-100 text-black py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition">
+                    💬 Discuter avec la boutique
+                </button>
 
                 <button onclick="window.addToCart()" class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase italic shadow-xl text-sm active:scale-95 transition">Ajouter au panier 🛍️</button>
             </div>
@@ -925,6 +1013,33 @@
                 <input id="l-phone" type="tel" placeholder="TON NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border text-center">
                 <input id="l-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="• • • •" class="w-full bg-gray-100 p-4 rounded-xl text-xl font-black outline-none border text-center pin-input">
                 <button onclick="window.loginPartner(this)" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Me connecter 🔓</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🆕 MODAL CHAT CLIENT -->
+    <div id="chat-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[55] flex items-end">
+        <div class="w-full bg-white rounded-t-[2.5rem] flex flex-col" style="height: 85vh;">
+            <div class="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
+                <div>
+                    <p id="chat-shop-name" class="text-sm font-display uppercase"></p>
+                    <p id="chat-product-name" class="text-[10px] text-gray-400 font-bold uppercase"></p>
+                </div>
+                <button onclick="window.closeChatModal()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div id="chat-name-screen" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center">
+                <p class="text-xs font-bold text-gray-500 uppercase mb-4">Comment t'appelles-tu ?</p>
+                <input id="chat-client-name-input" placeholder="TON PRÉNOM" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-sm font-bold uppercase border text-center mb-3">
+                <button onclick="window.submitClientName()" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase text-xs">Commencer à discuter 💬</button>
+            </div>
+
+            <div id="chat-thread-screen" class="hidden flex-1 flex flex-col overflow-hidden">
+                <div id="chat-messages-list" class="flex-1 overflow-y-auto p-4"></div>
+                <div class="flex gap-2 p-4 border-t border-gray-100 shrink-0">
+                    <input id="chat-message-input" placeholder="Écris ton message..." class="flex-1 bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold border" onkeydown="if(event.key==='Enter'){window.sendClientMessage();}">
+                    <button onclick="window.sendClientMessage()" class="bg-black text-white w-12 h-12 rounded-2xl flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
             </div>
         </div>
     </div>
