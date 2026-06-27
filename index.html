@@ -29,6 +29,10 @@
     </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+    <meta name="theme-color" content="#FF4D1C">
     <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
 
     <style>
@@ -210,7 +214,7 @@
             document.getElementById('p-momo').classList.toggle('hidden', same);
         };
 
-        // === 🆕 Inscription boutique 100% automatique — crée le compte directement ===
+        // === Inscription boutique 100% automatique — crée le compte directement ===
         window.submitPartner = (btn) => {
             const name = document.getElementById('p-name').value.trim();
             const phone = document.getElementById('p-phone').value.replace(/\D/g, '');
@@ -655,6 +659,11 @@
             if(!show) window.scrollTo(0,0);
             window.updateCartUI(); 
         };
+
+        // 🆕 Active l'installation sur l'écran d'accueil
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch((err) => console.error('Erreur service worker:', err));
+        }
     </script>
 </head>
 <body class="pb-24">
@@ -810,7 +819,7 @@
                 <button onclick="window.submitPartner(this)" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Créer mon compte 🚀</button>
             </div>
 
-            <!-- 🆕 Écran de succès — PIN affiché immédiatement -->
+            <!-- Écran de succès — PIN affiché immédiatement -->
             <div id="partner-success" class="hidden space-y-4 text-center">
                 <div class="text-4xl">✅</div>
                 <h3 class="text-sm font-display tracking-tight">Compte créé, <span id="partner-success-name"></span> !</h3>
