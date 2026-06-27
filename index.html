@@ -94,6 +94,17 @@
             transform: rotate(3deg);
             box-shadow: 0 3px 8px rgba(0,0,0,0.15);
         }
+
+        .pin-reveal {
+            background: #0B0B0C;
+            color: #C8FF4D;
+            font-family: 'Archivo Black', sans-serif;
+            font-size: 2.5rem;
+            letter-spacing: 0.4em;
+            padding: 1rem;
+            border-radius: 1rem;
+            text-align: center;
+        }
     </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -125,7 +136,7 @@
         // 🔑 Remplace par ta vraie clé publique sandbox FedaPay
         const FEDAPAY_PUBLIC_KEY = 'pk_sandbox_8x40mqXXj84CpQvs4BYhmguJ';
 
-        // 🆕 Adresse du serveur sécurisé (vérification du PIN, jamais en direct sur Firebase)
+        // Adresse du serveur sécurisé (vérification du PIN, jamais en direct sur Firebase)
         const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
 
         let cart = [];
@@ -171,6 +182,7 @@
 
         window.closePartnerModal = () => {
             document.getElementById('partner-modal').classList.add('hidden');
+            document.getElementById('partner-success').classList.add('hidden'); // 🆕 toujours repartir propre
             window.showPartnerPanel('choice');
         };
 
@@ -198,7 +210,8 @@
             document.getElementById('p-momo').classList.toggle('hidden', same);
         };
 
-        window.submitPartner = () => {
+        // === 🆕 Inscription boutique 100% automatique — crée le compte directement ===
+        window.submitPartner = (btn) => {
             const name = document.getElementById('p-name').value.trim();
             const phone = document.getElementById('p-phone').value.replace(/\D/g, '');
             const loc = document.getElementById('p-loc').value.trim();
@@ -211,24 +224,53 @@
             if(!gps) return window.showToast("Capture la position de la boutique avant d'envoyer !", true);
             if(!momo || momo.length < 8) return window.showToast("Numéro Mobile Money invalide", true);
 
-            set(ref(db, 'driprush_boutique_requests/' + phone), {
-                name, phone, location: loc, gps, momo, status: 'en_attente', timestamp: Date.now()
-            }).then(() => {
-                const message = `Salut DRIPRUSH ! 🔥\n\nNOUVELLE DEMANDE PARTENAIRE :\n🏪 Nom: ${name}\n📞 Contact: ${phone}\n📍 Localisation: ${loc}\n🗺️ GPS: ${gps}\n💰 Mobile Money: ${momo}`;
-                window.open(`https://wa.me/2290147535343?text=${encodeURIComponent(message)}`, '_blank');
-                window.closePartnerModal();
-                window.showToast("Demande envoyée ! Tu seras contacté(e) sous peu ✅");
-                document.getElementById('p-name').value = '';
-                document.getElementById('p-phone').value = '';
-                document.getElementById('p-loc').value = '';
-                document.getElementById('p-gps').value = '';
-                document.getElementById('p-momo').value = '';
-                document.getElementById('p-momo-same').checked = true;
-                window.toggleMomoField();
-                const btn = document.getElementById('p-gps-btn');
-                btn.innerText = "📍 Appuyez ici pour enregistrer automatiquement vos coordonnées GPS";
-                btn.classList.replace('bg-green-100', 'bg-gray-100');
-            }).catch((err) => window.showToast("Erreur : " + err.message, true));
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Création en cours...";
+
+            // 🛑 Vérifie d'abord qu'aucun compte n'existe déjà sur ce numéro (protège les boutiques existantes)
+            get(ref(db, 'driprush_boutiques/' + phone)).then((existingSnap) => {
+                if (existingSnap.exists()) {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    return window.showToast("Ce numéro a déjà un compte ! Utilise plutôt « J'ai déjà un compte ».", true);
+                }
+
+                const pin = String(Math.floor(1000 + Math.random() * 9000));
+
+                set(ref(db, 'driprush_boutiques/' + phone), {
+                    name, phone, gps: gps || '', momo, location: loc, pin, createdAt: Date.now()
+                }).then(() => {
+                    const message = `Salut DRIPRUSH ! 🔥\n\nNOUVELLE BOUTIQUE INSCRITE :\n🏪 Nom: ${name}\n📞 Contact: ${phone}\n📍 Localisation: ${loc}\n🗺️ GPS: ${gps}\n💰 Mobile Money: ${momo}`;
+                    window.open(`https://wa.me/2290147535343?text=${encodeURIComponent(message)}`, '_blank');
+
+                    document.getElementById('partner-new').classList.add('hidden');
+                    document.getElementById('partner-success-name').innerText = name;
+                    document.getElementById('partner-success-pin').innerText = pin;
+                    document.getElementById('partner-success').classList.remove('hidden');
+
+                    document.getElementById('p-name').value = '';
+                    document.getElementById('p-phone').value = '';
+                    document.getElementById('p-loc').value = '';
+                    document.getElementById('p-gps').value = '';
+                    document.getElementById('p-momo').value = '';
+                    document.getElementById('p-momo-same').checked = true;
+                    window.toggleMomoField();
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    const gpsBtn = document.getElementById('p-gps-btn');
+                    gpsBtn.innerText = "📍 Appuyez ici pour enregistrer automatiquement vos coordonnées GPS";
+                    gpsBtn.classList.replace('bg-green-100', 'bg-gray-100');
+                }).catch((err) => {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    window.showToast("Erreur : " + err.message, true);
+                });
+            }).catch((err) => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                window.showToast("Erreur : " + err.message, true);
+            });
         };
 
         // === Connexion boutique : vérifiée côté serveur (jamais en direct sur Firebase) ===
@@ -752,7 +794,7 @@
             <div id="partner-new" class="hidden space-y-3 max-h-[70vh] overflow-y-auto">
                 <button onclick="window.showPartnerPanel('choice')" class="text-gray-400 text-[10px] font-bold uppercase mb-1"><i class="fa-solid fa-chevron-left mr-1"></i> Retour</button>
                 <h3 class="text-sm font-display tracking-tight">Devenir partenaire</h3>
-                <p class="text-[11px] text-gray-500 font-medium">Ta demande sera étudiée, puis tu recevras tes accès.</p>
+                <p class="text-[11px] text-gray-500 font-medium">Ton compte sera créé immédiatement, sans attente.</p>
                 <input id="p-name" placeholder="NOM DE VOTRE ENSEIGNE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
                 <input id="p-phone" placeholder="NUMÉRO WHATSAPP BOUTIQUE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
                 <input id="p-loc" placeholder="QUARTIER & VILLE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
@@ -765,7 +807,17 @@
                 </label>
                 <input id="p-momo" placeholder="NUMÉRO MOBILE MONEY (pour recevoir tes paiements)" class="hidden w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
 
-                <button onclick="window.submitPartner()" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Envoyer ma demande ✅</button>
+                <button onclick="window.submitPartner(this)" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Créer mon compte 🚀</button>
+            </div>
+
+            <!-- 🆕 Écran de succès — PIN affiché immédiatement -->
+            <div id="partner-success" class="hidden space-y-4 text-center">
+                <div class="text-4xl">✅</div>
+                <h3 class="text-sm font-display tracking-tight">Compte créé, <span id="partner-success-name"></span> !</h3>
+                <p class="text-[11px] text-gray-500 font-medium px-2">Voici ton code de connexion personnel. Note-le bien quelque part — on ne pourra pas te le renvoyer automatiquement.</p>
+                <div class="pin-reveal" id="partner-success-pin"></div>
+                <p class="text-[10px] text-gray-400 font-medium">Garde aussi ton numéro WhatsApp sous la main : c'est lui qui sert d'identifiant.</p>
+                <button onclick="window.closePartnerModal()" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">J'ai noté, fermer ✅</button>
             </div>
 
             <div id="partner-login" class="hidden space-y-3">
