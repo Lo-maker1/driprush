@@ -14,7 +14,7 @@
     </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -38,6 +38,7 @@
 
         let allOrders = [];
         let allSecurityEvents = [];
+        let maintenanceModeActive = false; // 🆕
 
         window.tryAdminLogin = (btn) => {
             const password = document.getElementById('admin-password').value;
@@ -84,7 +85,6 @@
             document.getElementById('admin-login-screen').classList.remove('hidden');
         };
 
-        // 🆕 Gère maintenant 3 onglets : commandes, versements, sécurité
         window.setMainTab = (tab) => {
             ['commandes', 'versements', 'securite'].forEach(t => {
                 document.getElementById('tab-' + t).classList.toggle('bg-orange-500', t === tab);
@@ -93,12 +93,19 @@
             });
         };
 
+        // 🆕 Contrôle du mode maintenance — bascule l'état dans Firebase
+        window.toggleMaintenanceMode = () => {
+            const newValue = !maintenanceModeActive;
+            set(ref(db, 'driprush_settings/maintenanceMode'), newValue)
+                .catch((err) => alert("Erreur : " + err.message));
+        };
+
         window.startListeners = () => {
             onValue(ref(db, 'driprush_orders'), (snapshot) => {
                 const data = snapshot.val();
                 allOrders = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
                 window.renderDashboard();
-                window.renderPayouts(); // 🆕
+                window.renderPayouts();
             }, (error) => console.error("Erreur Firebase:", error));
 
             onValue(ref(db, 'driprush_security_events'), (snapshot) => {
@@ -106,6 +113,17 @@
                 allSecurityEvents = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
                 window.renderSecurityEvents();
             }, (error) => console.error("Erreur Firebase sécurité:", error));
+
+            // 🆕 Écoute en direct le mode maintenance, met à jour le bouton automatiquement
+            onValue(ref(db, 'driprush_settings/maintenanceMode'), (snapshot) => {
+                maintenanceModeActive = snapshot.val() === true;
+                const btn = document.getElementById('maintenance-toggle-btn');
+                if (btn) {
+                    btn.innerText = maintenanceModeActive ? '🔧 Maintenance ACTIVE — Cliquer pour désactiver' : '✅ Site normal — Cliquer pour activer la maintenance';
+                    btn.classList.toggle('bg-red-500', maintenanceModeActive);
+                    btn.classList.toggle('bg-white/5', !maintenanceModeActive);
+                }
+            });
         };
 
         const EVENT_LABELS = {
@@ -140,7 +158,6 @@
             });
         };
 
-        // 🆕 === VERSEMENTS MANUELS AUX BOUTIQUES ===
         window.renderPayouts = () => {
             const container = document.getElementById('payouts-list');
             container.innerHTML = '';
@@ -350,7 +367,11 @@
                 </div>
             </div>
 
-            <!-- 🆕 3 onglets au lieu de 2 -->
+            <!-- 🆕 Bouton de contrôle du mode maintenance -->
+            <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" class="w-full bg-white/5 text-white py-3 rounded-xl text-[10px] font-black uppercase transition">
+                ✅ Site normal — Cliquer pour activer la maintenance
+            </button>
+
             <div class="grid grid-cols-3 gap-2">
                 <button onclick="window.setMainTab('commandes')" id="tab-commandes" class="bg-orange-500 text-black py-3 rounded-xl text-[9px] font-black uppercase transition">📦 Commandes</button>
                 <button onclick="window.setMainTab('versements')" id="tab-versements" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[9px] font-black uppercase transition">💸 Versements</button>
@@ -363,7 +384,6 @@
             <div id="orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
         </main>
 
-        <!-- 🆕 NOUVEAU PANNEAU VERSEMENTS -->
         <main id="panel-versements" class="hidden space-y-4">
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="bg-[#121212] border border-amber-500/20 p-4 rounded-2xl">
