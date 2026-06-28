@@ -135,7 +135,6 @@
         <p class="text-[10px] text-gray-500 font-bold uppercase mb-4 tracking-widest">Approuve pour générer le PIN automatiquement</p>
         <div id="requests-list" class="space-y-2 mb-8"></div>
 
-        <!-- 🆕 Demandes de réinitialisation de PIN -->
         <h2 class="text-xl font-display uppercase mb-1 tracking-tight">🔑 PIN oubliés</h2>
         <p class="text-[10px] text-gray-500 font-bold uppercase mb-4 tracking-widest">Génère un nouveau code et transmets-le par WhatsApp</p>
         <div id="pin-resets-list" class="space-y-2 mb-8"></div>
@@ -206,7 +205,8 @@
                 <button onclick="window.openProfileModal()" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-300" title="Mes informations">
                     <i class="fa-solid fa-user-pen"></i>
                 </button>
-                <button onclick="window.location.href='index.html'" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-300" title="Voir le site client">
+                <!-- 🆕 ?client=1 ajouté pour éviter la boucle de redirection -->
+                <button onclick="window.location.href='index.html?client=1'" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-300" title="Voir le site client">
                     <i class="fa-solid fa-bag-shopping"></i>
                 </button>
                 <button onclick="window.logoutBoutique()" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-400" title="Se déconnecter">
