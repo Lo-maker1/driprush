@@ -146,6 +146,12 @@
         let deliveryTypeSelected = "";
         let allProducts = [];
 
+        // 🆕 Mode maintenance — vérifié en direct depuis Firebase
+        let maintenanceModeActive = false;
+        onValue(ref(db, 'driprush_settings/maintenanceMode'), (snapshot) => {
+            maintenanceModeActive = snapshot.val() === true;
+        });
+
         let toastTimeout;
         window.showToast = (message, isError = false) => {
             const toast = document.getElementById('toast');
@@ -191,8 +197,13 @@
             window.showToast("Erreur de connexion au catalogue", true);
         });
 
+        // 🆕 Vérifie le mode maintenance avant d'ouvrir le shopping
         window.enterSite = (mode) => {
             if(mode === 'shop') {
+                if (maintenanceModeActive) {
+                    document.getElementById('maintenance-modal').classList.remove('hidden');
+                    return;
+                }
                 document.getElementById('welcome-screen').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
             } else if(mode === 'partner') {
@@ -817,7 +828,7 @@
             navigator.serviceWorker.register('sw.js').catch((err) => console.error('Erreur service worker:', err));
         }
 
-        // 🆕 === BANDEAU D'INSTALLATION DE L'APPLI ===
+        // === BANDEAU D'INSTALLATION DE L'APPLI ===
         let deferredInstallPrompt = null;
 
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -1069,7 +1080,17 @@
         </div>
     </div>
 
-    <!-- 🆕 Bandeau d'installation — apparaît automatiquement quand Chrome l'autorise -->
+    <!-- 🆕 Modal Maintenance — affiché seulement si le mode est activé côté admin -->
+    <div id="maintenance-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[80] flex items-center justify-center p-6">
+        <div class="bg-white rounded-3xl p-8 max-w-sm text-center space-y-4">
+            <div class="text-5xl">🔧</div>
+            <h3 class="text-lg font-display uppercase tracking-tight">Maintenance en cours</h3>
+            <p class="text-xs text-gray-500 font-medium">On améliore le site pour toi ! Reviens dans quelques instants — ça ne devrait pas être long.</p>
+            <button onclick="document.getElementById('maintenance-modal').classList.add('hidden')" class="w-full bg-black text-white py-3 rounded-xl text-xs font-black uppercase">D'accord</button>
+        </div>
+    </div>
+
+    <!-- Bandeau d'installation -->
     <div id="install-banner" class="hidden fixed bottom-4 left-4 right-4 bg-ink text-white p-4 rounded-2xl shadow-2xl z-[70] flex items-center gap-3">
         <i class="fa-solid fa-download text-drip text-lg"></i>
         <div class="flex-1">
