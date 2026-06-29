@@ -243,11 +243,11 @@
         </div>
     </div>
 
-    <!-- MODAL : AJOUTER UN ARTICLE -->
+    <!-- MODAL : AJOUTER / MODIFIER UN ARTICLE -->
     <div id="add-product-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-end justify-center">
         <div class="bg-ink w-full max-w-md rounded-t-[2.5rem] p-6 space-y-3 max-h-[90vh] overflow-y-auto border-t border-white/10">
             <div class="flex justify-between items-center mb-2">
-                <h3 class="text-sm font-display uppercase tracking-tight">Nouvel article</h3>
+                <h3 id="add-product-modal-title" class="text-sm font-display uppercase tracking-tight">Nouvel article</h3>
                 <button onclick="window.closeAddProductForm()" class="text-gray-500 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
@@ -288,7 +288,7 @@
                 <input id="prod-delivery-exp" type="number" placeholder="Livraison rapide (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
             </div>
 
-            <button onclick="window.submitNewProduct()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase mt-2">Ajouter au catalogue 🚀</button>
+            <button id="submit-product-btn" onclick="window.submitNewProduct()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase mt-2">Ajouter au catalogue 🚀</button>
         </div>
     </div>
 
@@ -363,6 +363,7 @@
         let currentTab = 'active';
         let lastOrdersSnapshot = [];
         let uploadedImageURLs = [];
+        let editingProductId = null;
         let currentShopChatRef = null;
         let currentShopChatUnsub = null;
         let chatBadgeUnsub = null;
@@ -381,7 +382,6 @@
             return `il y a ${diffD}j`;
         }
 
-        // 🆕 Formate la date et l'heure d'une commande
         function formatOrderDateTime(timestamp) {
             if (!timestamp) return '';
             const date = new Date(timestamp);
@@ -780,7 +780,6 @@
             else window.renderOrders();
         };
 
-        // 🆕 Date/heure de chaque commande ajoutée
         window.renderOrders = () => {
             const container = document.getElementById('orders-list');
             container.innerHTML = '';
@@ -827,7 +826,9 @@
                 .catch(() => alert("Erreur, réessaie."));
         };
 
+        // 🆕 Réinitialise aussi le mode édition
         window.openAddProductForm = () => {
+            editingProductId = null;
             uploadedImageURLs = [];
             document.getElementById('img-preview-grid').innerHTML = '';
             document.getElementById('img-preview-grid').classList.add('hidden');
@@ -840,7 +841,38 @@
             document.getElementById('prod-delivery-std').value = '';
             document.getElementById('prod-delivery-exp').value = '';
             document.getElementById('prod-international').checked = false;
+            document.getElementById('add-product-modal-title').innerText = "Nouvel article";
+            document.getElementById('submit-product-btn').innerText = "Ajouter au catalogue 🚀";
             document.getElementById('add-product-modal').classList.remove('hidden');
+        };
+
+        // 🆕 Ouvre le formulaire pré-rempli pour modifier un article existant
+        window.openEditProductForm = (productId) => {
+            get(ref(db, 'driprush_products/' + productId)).then((snap) => {
+                const p = snap.val();
+                if (!p) return alert("Article introuvable.");
+
+                editingProductId = productId;
+                uploadedImageURLs = p.images && p.images.length > 0 ? [...p.images] : (p.image ? [p.image] : []);
+
+                document.getElementById('prod-name').value = p.name || '';
+                document.getElementById('prod-price').value = p.price || '';
+                document.getElementById('prod-type').value = p.type || 'vetement';
+                document.getElementById('prod-genre').value = p.genre || 'homme';
+                document.getElementById('prod-sizes').value = (p.sizes && p.sizes !== 'N/A') ? p.sizes : '';
+                document.getElementById('prod-colors').value = p.colors || '';
+                document.getElementById('prod-international').checked = !!p.internationalDelay;
+                document.getElementById('prod-delivery-std').value = p.deliveryStandard || '';
+                document.getElementById('prod-delivery-exp').value = p.deliveryExpress || '';
+
+                window.renderImagePreviews();
+                const btn = document.getElementById('img-upload-btn');
+                btn.innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
+
+                document.getElementById('add-product-modal-title').innerText = "Modifier l'article";
+                document.getElementById('submit-product-btn').innerText = "Enregistrer les modifications ✅";
+                document.getElementById('add-product-modal').classList.remove('hidden');
+            }).catch((err) => alert("Erreur : " + err.message));
         };
 
         window.closeAddProductForm = () => {
@@ -938,6 +970,7 @@
             event.target.value = '';
         };
 
+        // 🆕 Gère création ET modification d'article
         window.submitNewProduct = () => {
             const name = document.getElementById('prod-name').value.trim();
             const price = parseInt(document.getElementById('prod-price').value);
@@ -952,8 +985,7 @@
             if (!name || !price) return alert("Donne au moins un nom et un prix !");
             if (uploadedImageURLs.length === 0) return alert("Ajoute au moins une photo avant de continuer !");
 
-            const productRef = push(ref(db, 'driprush_products'));
-            set(productRef, {
+            const productData = {
                 name, price,
                 image: uploadedImageURLs[0],
                 images: uploadedImageURLs,
@@ -963,12 +995,21 @@
                 shopPhone: currentBoutique.phone,
                 shopGPS: currentBoutique.gps || '',
                 shopMomo: currentBoutique.momo || currentBoutique.phone || '',
-                deliveryStandard, deliveryExpress,
-                timestamp: Date.now()
-            }).then(() => {
-                window.closeAddProductForm();
-                alert("Article ajouté à ton catalogue ✅");
-            }).catch((e) => alert("Erreur : " + e.message));
+                deliveryStandard, deliveryExpress
+            };
+
+            if (editingProductId) {
+                update(ref(db, 'driprush_products/' + editingProductId), productData).then(() => {
+                    window.closeAddProductForm();
+                    alert("Article modifié ✅");
+                }).catch((e) => alert("Erreur : " + e.message));
+            } else {
+                const productRef = push(ref(db, 'driprush_products'));
+                set(productRef, { ...productData, timestamp: Date.now() }).then(() => {
+                    window.closeAddProductForm();
+                    alert("Article ajouté à ton catalogue ✅");
+                }).catch((e) => alert("Erreur : " + e.message));
+            }
         };
 
         window.loadMyProducts = () => {
@@ -993,6 +1034,7 @@
                                 <p class="text-[10px] text-drip font-black">${parseInt(p.price).toLocaleString()} F</p>
                                 ${p.images && p.images.length > 1 ? `<p class="text-[9px] text-gray-500">${p.images.length} photos</p>` : ''}
                             </div>
+                            <button onclick="window.openEditProductForm('${p.id}')" class="text-drip text-xs px-2"><i class="fa-solid fa-pen"></i></button>
                             <button onclick="window.deleteMyProduct('${p.id}')" class="text-red-400 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>
                         </div>`;
                 });
