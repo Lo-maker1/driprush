@@ -205,7 +205,6 @@
                 <button onclick="window.openProfileModal()" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-300" title="Mes informations">
                     <i class="fa-solid fa-user-pen"></i>
                 </button>
-                <!-- 🆕 ?client=1 ajouté pour éviter la boucle de redirection -->
                 <button onclick="window.location.href='index.html?client=1'" class="bg-white/5 w-10 h-10 rounded-full flex items-center justify-center border border-white/10 text-gray-300" title="Voir le site client">
                     <i class="fa-solid fa-bag-shopping"></i>
                 </button>
@@ -225,7 +224,11 @@
             <button onclick="window.setTab('active')" id="tab-active" class="bg-drip text-white py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">À traiter</button>
             <button onclick="window.setTab('done')" id="tab-done" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">Livrées</button>
             <button onclick="window.setTab('products')" id="tab-products" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">Articles</button>
-            <button onclick="window.setTab('chats')" id="tab-chats" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">💬 Chats</button>
+            <!-- 🆕 Badge "non lu" -->
+            <button onclick="window.setTab('chats')" id="tab-chats" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition relative">
+                💬 Chats
+                <span id="chat-unread-badge" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
+            </button>
         </div>
 
         <div id="orders-list" class="space-y-3 pb-10"></div>
@@ -274,6 +277,12 @@
 
             <input id="prod-sizes" placeholder="TAILLES / ML (optionnel)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
             <input id="prod-colors" placeholder="COULEURS DISPONIBLES (ex: Noir, Blanc, Rouge)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
+
+            <!-- 🆕 Drapeau délai international -->
+            <label class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase px-1 pt-1 tracking-widest">
+                <input type="checkbox" id="prod-international" class="w-4 h-4 accent-drip">
+                ⏳ Disponible à l'étranger (délai de livraison plus long)
+            </label>
 
             <div class="grid grid-cols-2 gap-2">
                 <input id="prod-delivery-std" type="number" placeholder="Livraison normale (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
@@ -357,6 +366,7 @@
         let uploadedImageURLs = [];
         let currentShopChatRef = null;
         let currentShopChatUnsub = null;
+        let chatBadgeUnsub = null;
 
         const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
 
@@ -671,8 +681,35 @@
         window.logoutBoutique = () => {
             currentShopPhone = null;
             currentBoutique = null;
+            if (chatBadgeUnsub) { chatBadgeUnsub(); chatBadgeUnsub = null; }
             localStorage.removeItem('driprush_shop_session');
             window.showPanel('landing');
+        };
+
+        // 🆕 Badge "non lu" côté boutique sur l'onglet Chats
+        window.attachChatBadgeListener = () => {
+            if (chatBadgeUnsub) { chatBadgeUnsub(); chatBadgeUnsub = null; }
+            chatBadgeUnsub = onValue(ref(db, 'driprush_chats/' + currentShopPhone), (snapshot) => {
+                const data = snapshot.val();
+                const badge = document.getElementById('chat-unread-badge');
+                if (!data) {
+                    badge.classList.add('hidden');
+                    return;
+                }
+                let unreadCount = 0;
+                Object.values(data).forEach(chat => {
+                    const lastRead = chat.lastReadByShop || 0;
+                    const messages = chat.messages ? Object.values(chat.messages) : [];
+                    const hasUnread = messages.some(m => m.sender === 'client' && m.timestamp > lastRead);
+                    if (hasUnread) unreadCount++;
+                });
+                if (unreadCount > 0) {
+                    badge.innerText = unreadCount;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            });
         };
 
         window.openDashboard = (boutique) => {
@@ -680,6 +717,8 @@
             document.getElementById('dash-shop-name').innerText = boutique.name;
             ['landing-card', 'admin-panel', 'login-panel'].forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById('dashboard').classList.remove('hidden');
+
+            window.attachChatBadgeListener();
 
             const ordersQuery = query(ref(db, 'driprush_orders'), orderByChild('shopPhone'), equalTo(currentShopPhone));
             onValue(ordersQuery, (snapshot) => {
@@ -764,6 +803,7 @@
             document.getElementById('prod-colors').value = '';
             document.getElementById('prod-delivery-std').value = '';
             document.getElementById('prod-delivery-exp').value = '';
+            document.getElementById('prod-international').checked = false; // 🆕
             document.getElementById('add-product-modal').classList.remove('hidden');
         };
 
@@ -869,6 +909,7 @@
             const genre = document.getElementById('prod-genre').value;
             const sizes = document.getElementById('prod-sizes').value.trim() || "N/A";
             const colors = document.getElementById('prod-colors').value.trim() || "";
+            const internationalDelay = document.getElementById('prod-international').checked; // 🆕
             const deliveryStandard = parseInt(document.getElementById('prod-delivery-std').value) || 0;
             const deliveryExpress = parseInt(document.getElementById('prod-delivery-exp').value) || 0;
 
@@ -881,6 +922,7 @@
                 image: uploadedImageURLs[0],
                 images: uploadedImageURLs,
                 type, genre, sizes, colors,
+                internationalDelay, // 🆕
                 shopName: currentBoutique.name,
                 shopPhone: currentBoutique.phone,
                 shopGPS: currentBoutique.gps || '',
@@ -965,6 +1007,10 @@
 
             if (currentShopChatUnsub) { currentShopChatUnsub(); currentShopChatUnsub = null; }
             currentShopChatRef = chatId;
+
+            // 🆕 Marque la conversation comme lue côté boutique
+            update(ref(db, `driprush_chats/${currentShopPhone}/${chatId}`), { lastReadByShop: Date.now() })
+                .catch((err) => console.error("Erreur marquage lu:", err));
 
             const messagesRef = ref(db, `driprush_chats/${currentShopPhone}/${chatId}/messages`);
             currentShopChatUnsub = onValue(messagesRef, (snapshot) => {
