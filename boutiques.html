@@ -168,6 +168,7 @@
         </button>
 
         <h3 class="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-3">Boutiques déjà enregistrées</h3>
+        <p class="text-[9px] text-gray-600 font-medium mb-3 -mt-2">💡 Clique sur une boutique pour voir sa dernière connexion</p>
         <div id="boutiques-list" class="space-y-2"></div>
     </div>
 
@@ -224,7 +225,6 @@
             <button onclick="window.setTab('active')" id="tab-active" class="bg-drip text-white py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">À traiter</button>
             <button onclick="window.setTab('done')" id="tab-done" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">Livrées</button>
             <button onclick="window.setTab('products')" id="tab-products" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">Articles</button>
-            <!-- 🆕 Badge "non lu" -->
             <button onclick="window.setTab('chats')" id="tab-chats" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition relative">
                 💬 Chats
                 <span id="chat-unread-badge" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
@@ -278,7 +278,6 @@
             <input id="prod-sizes" placeholder="TAILLES / ML (optionnel)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
             <input id="prod-colors" placeholder="COULEURS DISPONIBLES (ex: Noir, Blanc, Rouge)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
 
-            <!-- 🆕 Drapeau délai international -->
             <label class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase px-1 pt-1 tracking-widest">
                 <input type="checkbox" id="prod-international" class="w-4 h-4 accent-drip">
                 ⏳ Disponible à l'étranger (délai de livraison plus long)
@@ -369,6 +368,25 @@
         let chatBadgeUnsub = null;
 
         const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
+
+        // 🆕 Formate un temps écoulé de façon lisible
+        function formatRelativeTime(timestamp) {
+            if (!timestamp) return "Jamais connectée";
+            const diffMs = Date.now() - timestamp;
+            const diffMin = Math.floor(diffMs / 60000);
+            const diffH = Math.floor(diffMs / 3600000);
+            const diffD = Math.floor(diffMs / 86400000);
+            if (diffMin < 1) return "à l'instant";
+            if (diffMin < 60) return `il y a ${diffMin} min`;
+            if (diffH < 24) return `il y a ${diffH}h`;
+            return `il y a ${diffD}j`;
+        }
+
+        // 🆕 Déplie/replie le détail de connexion d'une boutique
+        window.toggleBoutiqueDetails = (card) => {
+            const details = card.querySelector('.boutique-details');
+            if (details) details.classList.toggle('hidden');
+        };
 
         window.showPanel = (panel) => {
             ['landing-card', 'admin-panel', 'login-panel', 'dashboard', 'admin-password-screen'].forEach(id => {
@@ -560,6 +578,7 @@
             navigator.clipboard.writeText(pin).then(() => alert("Code copié : " + pin));
         };
 
+        // 🆕 Liste boutiques avec dernière connexion cliquable
         window.loadBoutiquesList = () => {
             onValue(ref(db, 'driprush_boutiques'), (snapshot) => {
                 const data = snapshot.val();
@@ -571,16 +590,25 @@
                 }
                 Object.values(data).reverse().forEach(b => {
                     const safeName = b.name.replace(/'/g, "\\'");
+                    const isRecent = b.lastLogin && (Date.now() - b.lastLogin < 24 * 60 * 60 * 1000);
+                    const lastLoginText = formatRelativeTime(b.lastLogin);
                     container.innerHTML += `
-                        <div class="card-surface rounded-2xl p-3 flex justify-between items-center">
-                            <div>
-                                <p class="text-xs font-bold uppercase">${b.name}</p>
-                                <p class="text-[10px] text-gray-500">${b.phone}</p>
-                                <p class="text-[9px] text-lime">💰 ${b.momo || b.phone}</p>
+                        <div class="card-surface rounded-2xl p-3 cursor-pointer" onclick="window.toggleBoutiqueDetails(this)">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-xs font-bold uppercase">${b.name}</p>
+                                    <p class="text-[10px] text-gray-500">${b.phone}</p>
+                                    <p class="text-[9px] text-lime">💰 ${b.momo || b.phone}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-drip font-display pin-digit text-sm">${b.pin}</span>
+                                    <button onclick="event.stopPropagation(); window.deleteBoutique('${b.phone}', '${safeName}')" class="text-red-500 text-xs px-2" title="Supprimer cette boutique"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-drip font-display pin-digit text-sm">${b.pin}</span>
-                                <button onclick="window.deleteBoutique('${b.phone}', '${safeName}')" class="text-red-500 text-xs px-2" title="Supprimer cette boutique"><i class="fa-solid fa-trash-can"></i></button>
+                            <div class="boutique-details hidden mt-2 pt-2 border-t border-white/10">
+                                <p class="text-[9px] font-bold uppercase ${isRecent ? 'text-lime' : 'text-gray-500'}">
+                                    <i class="fa-solid fa-circle text-[6px] mr-1"></i> Dernière connexion : ${lastLoginText}
+                                </p>
                             </div>
                         </div>`;
                 });
@@ -629,6 +657,8 @@
                 if (data.success) {
                     currentShopPhone = phone;
                     localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now(), boutique: data.boutique }));
+                    // 🆕 Enregistre l'heure exacte de cette connexion
+                    update(ref(db, 'driprush_boutiques/' + phone), { lastLogin: Date.now() }).catch(() => {});
                     window.openDashboard(data.boutique);
                 } else {
                     alert(data.message || "Numéro ou PIN incorrect !");
@@ -686,7 +716,6 @@
             window.showPanel('landing');
         };
 
-        // 🆕 Badge "non lu" côté boutique sur l'onglet Chats
         window.attachChatBadgeListener = () => {
             if (chatBadgeUnsub) { chatBadgeUnsub(); chatBadgeUnsub = null; }
             chatBadgeUnsub = onValue(ref(db, 'driprush_chats/' + currentShopPhone), (snapshot) => {
@@ -803,7 +832,7 @@
             document.getElementById('prod-colors').value = '';
             document.getElementById('prod-delivery-std').value = '';
             document.getElementById('prod-delivery-exp').value = '';
-            document.getElementById('prod-international').checked = false; // 🆕
+            document.getElementById('prod-international').checked = false;
             document.getElementById('add-product-modal').classList.remove('hidden');
         };
 
@@ -909,7 +938,7 @@
             const genre = document.getElementById('prod-genre').value;
             const sizes = document.getElementById('prod-sizes').value.trim() || "N/A";
             const colors = document.getElementById('prod-colors').value.trim() || "";
-            const internationalDelay = document.getElementById('prod-international').checked; // 🆕
+            const internationalDelay = document.getElementById('prod-international').checked;
             const deliveryStandard = parseInt(document.getElementById('prod-delivery-std').value) || 0;
             const deliveryExpress = parseInt(document.getElementById('prod-delivery-exp').value) || 0;
 
@@ -922,7 +951,7 @@
                 image: uploadedImageURLs[0],
                 images: uploadedImageURLs,
                 type, genre, sizes, colors,
-                internationalDelay, // 🆕
+                internationalDelay,
                 shopName: currentBoutique.name,
                 shopPhone: currentBoutique.phone,
                 shopGPS: currentBoutique.gps || '',
@@ -1008,7 +1037,6 @@
             if (currentShopChatUnsub) { currentShopChatUnsub(); currentShopChatUnsub = null; }
             currentShopChatRef = chatId;
 
-            // 🆕 Marque la conversation comme lue côté boutique
             update(ref(db, `driprush_chats/${currentShopPhone}/${chatId}`), { lastReadByShop: Date.now() })
                 .catch((err) => console.error("Erreur marquage lu:", err));
 
