@@ -38,7 +38,16 @@
 
         let allOrders = [];
         let allSecurityEvents = [];
-        let maintenanceModeActive = false; // 🆕
+        let maintenanceModeActive = false;
+
+        // 🆕 Formate la date et l'heure d'une commande
+        function formatOrderDateTime(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+            const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            return `${dateStr} à ${timeStr}`;
+        }
 
         window.tryAdminLogin = (btn) => {
             const password = document.getElementById('admin-password').value;
@@ -93,7 +102,6 @@
             });
         };
 
-        // 🆕 Contrôle du mode maintenance — bascule l'état dans Firebase
         window.toggleMaintenanceMode = () => {
             const newValue = !maintenanceModeActive;
             set(ref(db, 'driprush_settings/maintenanceMode'), newValue)
@@ -114,7 +122,6 @@
                 window.renderSecurityEvents();
             }, (error) => console.error("Erreur Firebase sécurité:", error));
 
-            // 🆕 Écoute en direct le mode maintenance, met à jour le bouton automatiquement
             onValue(ref(db, 'driprush_settings/maintenanceMode'), (snapshot) => {
                 maintenanceModeActive = snapshot.val() === true;
                 const btn = document.getElementById('maintenance-toggle-btn');
@@ -246,6 +253,9 @@
                             </span>
                         </div>
 
+                        <!-- 🆕 Date et heure de la commande -->
+                        <p class="text-[9px] text-gray-500 font-medium -mt-2"><i class="fa-solid fa-clock mr-1"></i>${formatOrderDateTime(order.timestamp)}</p>
+
                         <div class="grid grid-cols-2 gap-4 text-xs">
                             <div>
                                 <p class="text-[9px] text-gray-500 font-bold uppercase mb-0.5">Client</p>
@@ -367,7 +377,6 @@
                 </div>
             </div>
 
-            <!-- 🆕 Bouton de contrôle du mode maintenance -->
             <button id="maintenance-toggle-btn" onclick="window.toggleMaintenanceMode()" class="w-full bg-white/5 text-white py-3 rounded-xl text-[10px] font-black uppercase transition">
                 ✅ Site normal — Cliquer pour activer la maintenance
             </button>
