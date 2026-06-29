@@ -147,11 +147,6 @@
         let allProducts = [];
         let lastCreatedBoutique = null;
 
-        let maintenanceModeActive = false;
-        onValue(ref(db, 'driprush_settings/maintenanceMode'), (snapshot) => {
-            maintenanceModeActive = snapshot.val() === true;
-        });
-
         let toastTimeout;
         window.showToast = (message, isError = false) => {
             const toast = document.getElementById('toast');
@@ -204,19 +199,24 @@
             window.showToast("Erreur de connexion au catalogue", true);
         });
 
+        // 🆕 Vérifie le mode maintenance EN DIRECT au moment du clic, pas via une valeur mise en cache
         window.enterSite = (mode) => {
             if(mode === 'shop') {
-                if (maintenanceModeActive) {
-                    document.getElementById('maintenance-modal').classList.remove('hidden');
-                    return;
-                }
-                document.getElementById('welcome-screen').classList.add('hidden');
-                document.getElementById('main-content').classList.remove('hidden');
+                get(ref(db, 'driprush_settings/maintenanceMode')).then((snap) => {
+                    if (snap.val() === true) {
+                        document.getElementById('maintenance-modal').classList.remove('hidden');
+                        return;
+                    }
+                    document.getElementById('welcome-screen').classList.add('hidden');
+                    document.getElementById('main-content').classList.remove('hidden');
+                }).catch(() => {
+                    document.getElementById('welcome-screen').classList.add('hidden');
+                    document.getElementById('main-content').classList.remove('hidden');
+                });
             } else if(mode === 'partner') {
                 window.showPartnerPanel('choice');
                 document.getElementById('partner-modal').classList.remove('hidden');
             } else if(mode === 'login') {
-                // 🆕 Ouvre directement le panneau de connexion depuis l'écran d'accueil
                 window.showPartnerPanel('login');
                 document.getElementById('partner-modal').classList.remove('hidden');
             }
@@ -426,7 +426,6 @@
             document.getElementById('modal-name').innerText = p.name;
             document.getElementById('modal-price').innerText = parseInt(p.price).toLocaleString() + " F";
 
-            // 🆕 Notice "délai de livraison plus long" pour les articles disponibles à l'étranger
             document.getElementById('international-delay-notice').classList.toggle('hidden', !p.internationalDelay);
 
             const galleryContainer = document.getElementById('gallery-thumbs');
@@ -471,7 +470,6 @@
                 selectedItem.color = null;
             }
 
-            // 🆕 Vérifie s'il y a un message non lu de la boutique pour ce produit
             const chatDot = document.getElementById('chat-unread-dot');
             chatDot.classList.add('hidden');
             let myChats = {};
@@ -823,7 +821,6 @@
             if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
             currentChatRefPath = { shopPhone, chatId };
 
-            // 🆕 Marque la conversation comme lue côté client (cache le point rouge)
             if (selectedItem) {
                 let myChats = {};
                 try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) { myChats = {}; }
@@ -935,7 +932,6 @@
             <div class="space-y-4">
                 <button onclick="window.enterSite('shop')" class="w-full bg-white text-ink py-5 rounded-2xl font-display uppercase text-sm shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 transition-all">Démarrer le Shopping 🛍️</button>
                 <button onclick="window.enterSite('partner')" class="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white py-5 rounded-2xl font-display uppercase text-sm active:scale-95 transition-all">Devenir Partenaire 🤝</button>
-                <!-- 🆕 Connexion directement accessible depuis l'accueil -->
                 <button onclick="window.enterSite('login')" class="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white py-5 rounded-2xl font-display uppercase text-sm active:scale-95 transition-all">Me connecter à mon compte 🔑</button>
             </div>
         </div>
@@ -1001,7 +997,6 @@
 
                 <div id="gallery-thumbs" class="hidden flex gap-2 overflow-x-auto hide-scrollbar"></div>
 
-                <!-- 🆕 Notice "délai de livraison plus long" pour les articles disponibles à l'étranger -->
                 <div id="international-delay-notice" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
                     <span class="text-lg">⏳</span>
                     <p class="text-[10px] text-amber-700 font-medium leading-snug">Cet article est disponible à l'étranger — le délai de livraison peut être plus long que d'habitude. <strong>Discute avec la boutique</strong> (bouton ci-dessous) pour connaître le délai exact avant de commander.</p>
@@ -1017,7 +1012,6 @@
                     <div id="color-container" class="flex flex-wrap gap-2"></div>
                 </div>
 
-                <!-- 🆕 Point rouge si la boutique a répondu sans que le client ait encore vu -->
                 <button onclick="window.openChatModal()" class="w-full bg-gray-100 text-black py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition relative">
                     💬 Discuter avec la boutique
                     <span id="chat-unread-dot" class="hidden absolute top-2 right-4 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
@@ -1071,7 +1065,6 @@
                 <p class="text-[11px] text-gray-500 font-medium mb-5">Proposez vos articles premium ou accédez à votre espace.</p>
                 <div class="space-y-3">
                     <button onclick="window.showPartnerPanel('new')" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase">🆕 Devenir partenaire</button>
-                    <!-- 🆕 Texte renommé pour plus de clarté -->
                     <button onclick="window.showPartnerPanel('login')" class="w-full bg-gray-100 text-black py-4 rounded-xl text-[11px] font-black uppercase">🔑 Me connecter à mon compte</button>
                 </div>
             </div>
