@@ -215,6 +215,10 @@
             } else if(mode === 'partner') {
                 window.showPartnerPanel('choice');
                 document.getElementById('partner-modal').classList.remove('hidden');
+            } else if(mode === 'login') {
+                // 🆕 Ouvre directement le panneau de connexion depuis l'écran d'accueil
+                window.showPartnerPanel('login');
+                document.getElementById('partner-modal').classList.remove('hidden');
             }
         };
 
@@ -274,7 +278,7 @@
                 if (existingSnap.exists()) {
                     btn.disabled = false;
                     btn.innerText = originalText;
-                    return window.showToast("Ce numéro a déjà un compte ! Utilise plutôt « J'ai déjà un compte ».", true);
+                    return window.showToast("Ce numéro a déjà un compte ! Utilise plutôt « Me connecter à mon compte ».", true);
                 }
 
                 const pin = String(Math.floor(1000 + Math.random() * 9000));
@@ -285,7 +289,6 @@
                     const message = `Salut DRIPRUSH ! 🔥\n\nNOUVELLE BOUTIQUE INSCRITE :\n🏪 Nom: ${name}\n📞 Contact: ${phone}\n📍 Localisation: ${loc}\n🗺️ GPS: ${gps}\n💰 Mobile Money: ${momo}`;
                     window.open(`https://wa.me/2290147535343?text=${encodeURIComponent(message)}`, '_blank');
 
-                    // 🆕 Garde la boutique créée en mémoire ET sauvegarde la session immédiatement
                     lastCreatedBoutique = { name, phone, gps: gps || '', momo, location: loc, pin };
                     localStorage.setItem('driprush_shop_session', JSON.stringify({
                         phone: lastCreatedBoutique.phone,
@@ -423,6 +426,9 @@
             document.getElementById('modal-name').innerText = p.name;
             document.getElementById('modal-price').innerText = parseInt(p.price).toLocaleString() + " F";
 
+            // 🆕 Notice "délai de livraison plus long" pour les articles disponibles à l'étranger
+            document.getElementById('international-delay-notice').classList.toggle('hidden', !p.internationalDelay);
+
             const galleryContainer = document.getElementById('gallery-thumbs');
             galleryContainer.innerHTML = '';
             if (images.length > 1) {
@@ -463,6 +469,22 @@
             } else {
                 colorSection.classList.add('hidden');
                 selectedItem.color = null;
+            }
+
+            // 🆕 Vérifie s'il y a un message non lu de la boutique pour ce produit
+            const chatDot = document.getElementById('chat-unread-dot');
+            chatDot.classList.add('hidden');
+            let myChats = {};
+            try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) {}
+            const chatInfo = myChats[id];
+            if (chatInfo && chatInfo.chatId) {
+                get(ref(db, `driprush_chats/${chatInfo.shopPhone}/${chatInfo.chatId}/messages`)).then((snap) => {
+                    const msgs = snap.val();
+                    if (!msgs) return;
+                    const lastRead = chatInfo.lastReadByClient || 0;
+                    const hasUnread = Object.values(msgs).some(m => m.sender === 'shop' && m.timestamp > lastRead);
+                    if (hasUnread) chatDot.classList.remove('hidden');
+                }).catch(() => {});
             }
 
             document.getElementById('product-modal').classList.remove('hidden');
@@ -800,6 +822,18 @@
         window.attachChatListener = (shopPhone, chatId) => {
             if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
             currentChatRefPath = { shopPhone, chatId };
+
+            // 🆕 Marque la conversation comme lue côté client (cache le point rouge)
+            if (selectedItem) {
+                let myChats = {};
+                try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) { myChats = {}; }
+                if (myChats[selectedItem.id]) {
+                    myChats[selectedItem.id].lastReadByClient = Date.now();
+                    localStorage.setItem('driprush_my_chats', JSON.stringify(myChats));
+                }
+            }
+            document.getElementById('chat-unread-dot').classList.add('hidden');
+
             const messagesRef = ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`);
             currentChatUnsub = onValue(messagesRef, (snapshot) => {
                 const data = snapshot.val();
@@ -901,6 +935,8 @@
             <div class="space-y-4">
                 <button onclick="window.enterSite('shop')" class="w-full bg-white text-ink py-5 rounded-2xl font-display uppercase text-sm shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 transition-all">Démarrer le Shopping 🛍️</button>
                 <button onclick="window.enterSite('partner')" class="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white py-5 rounded-2xl font-display uppercase text-sm active:scale-95 transition-all">Devenir Partenaire 🤝</button>
+                <!-- 🆕 Connexion directement accessible depuis l'accueil -->
+                <button onclick="window.enterSite('login')" class="w-full bg-white/10 backdrop-blur-md border border-white/20 text-white py-5 rounded-2xl font-display uppercase text-sm active:scale-95 transition-all">Me connecter à mon compte 🔑</button>
             </div>
         </div>
     </div>
@@ -965,6 +1001,12 @@
 
                 <div id="gallery-thumbs" class="hidden flex gap-2 overflow-x-auto hide-scrollbar"></div>
 
+                <!-- 🆕 Notice "délai de livraison plus long" pour les articles disponibles à l'étranger -->
+                <div id="international-delay-notice" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
+                    <span class="text-lg">⏳</span>
+                    <p class="text-[10px] text-amber-700 font-medium leading-snug">Cet article est disponible à l'étranger — le délai de livraison peut être plus long que d'habitude. <strong>Discute avec la boutique</strong> (bouton ci-dessous) pour connaître le délai exact avant de commander.</p>
+                </div>
+
                 <div>
                     <p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Taille</p>
                     <div id="size-container" class="flex flex-wrap gap-2"></div>
@@ -975,8 +1017,10 @@
                     <div id="color-container" class="flex flex-wrap gap-2"></div>
                 </div>
 
-                <button onclick="window.openChatModal()" class="w-full bg-gray-100 text-black py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition">
+                <!-- 🆕 Point rouge si la boutique a répondu sans que le client ait encore vu -->
+                <button onclick="window.openChatModal()" class="w-full bg-gray-100 text-black py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition relative">
                     💬 Discuter avec la boutique
+                    <span id="chat-unread-dot" class="hidden absolute top-2 right-4 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
                 </button>
 
                 <button onclick="window.addToCart()" class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase italic shadow-xl text-sm active:scale-95 transition">Ajouter au panier 🛍️</button>
@@ -1027,7 +1071,8 @@
                 <p class="text-[11px] text-gray-500 font-medium mb-5">Proposez vos articles premium ou accédez à votre espace.</p>
                 <div class="space-y-3">
                     <button onclick="window.showPartnerPanel('new')" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase">🆕 Devenir partenaire</button>
-                    <button onclick="window.showPartnerPanel('login')" class="w-full bg-gray-100 text-black py-4 rounded-xl text-[11px] font-black uppercase">🔑 J'ai déjà un compte</button>
+                    <!-- 🆕 Texte renommé pour plus de clarté -->
+                    <button onclick="window.showPartnerPanel('login')" class="w-full bg-gray-100 text-black py-4 rounded-xl text-[11px] font-black uppercase">🔑 Me connecter à mon compte</button>
                 </div>
             </div>
 
