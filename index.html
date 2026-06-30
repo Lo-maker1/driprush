@@ -136,7 +136,7 @@
             document.getElementById('test-mode-banner').classList.remove('hidden');
         }
 
-        const FEDAPAY_PUBLIC_KEY = 'pk_sandbox_8x40mqXXj84CpQvs4BYhmguJ';
+        const FEDAPAY_PUBLIC_KEY = 'pk_live_1EVs9lvE_nNNKUI2TEOI-qvB';
         const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
         const SHOP_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -700,7 +700,7 @@
 
                 const widget = FedaPay.init({
                     public_key: FEDAPAY_PUBLIC_KEY,
-                    environment: 'sandbox',
+                    environment: 'live',
                     transaction: {
                         amount: finalTotal,
                         description: `Commande Driprush #${orderId}`,
