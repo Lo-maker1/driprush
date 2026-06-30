@@ -663,7 +663,6 @@
                 if (data.success) {
                     currentShopPhone = phone;
                     localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now(), boutique: data.boutique }));
-                    update(ref(db, 'driprush_boutiques/' + phone), { lastLogin: Date.now() }).catch(() => {});
                     window.openDashboard(data.boutique);
                 } else {
                     alert(data.message || "Numéro ou PIN incorrect !");
@@ -746,8 +745,12 @@
             });
         };
 
+        // 🆕 Enregistre l'activité à chaque ouverture du tableau de bord, peu importe le chemin emprunté
         window.openDashboard = (boutique) => {
             currentBoutique = boutique;
+            if (currentShopPhone) {
+                update(ref(db, 'driprush_boutiques/' + currentShopPhone), { lastLogin: Date.now() }).catch(() => {});
+            }
             document.getElementById('dash-shop-name').innerText = boutique.name;
             ['landing-card', 'admin-panel', 'login-panel'].forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById('dashboard').classList.remove('hidden');
@@ -826,7 +829,6 @@
                 .catch(() => alert("Erreur, réessaie."));
         };
 
-        // 🆕 Réinitialise aussi le mode édition
         window.openAddProductForm = () => {
             editingProductId = null;
             uploadedImageURLs = [];
@@ -846,7 +848,6 @@
             document.getElementById('add-product-modal').classList.remove('hidden');
         };
 
-        // 🆕 Ouvre le formulaire pré-rempli pour modifier un article existant
         window.openEditProductForm = (productId) => {
             get(ref(db, 'driprush_products/' + productId)).then((snap) => {
                 const p = snap.val();
@@ -970,7 +971,6 @@
             event.target.value = '';
         };
 
-        // 🆕 Gère création ET modification d'article
         window.submitNewProduct = () => {
             const name = document.getElementById('prod-name').value.trim();
             const price = parseInt(document.getElementById('prod-price').value);
