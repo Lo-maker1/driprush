@@ -155,7 +155,6 @@
                 <button type="button" id="gps-btn" onclick="window.getBoutiqueGPS()" class="flex-1 input-dark p-4 rounded-2xl text-[10px] font-black text-drip uppercase active:scale-95 transition tracking-widest">📍 Capturer GPS</button>
             </div>
             <input id="b-gps" placeholder="Ou colle un lien Google Maps" class="w-full input-dark p-4 rounded-2xl outline-none text-[10px] text-gray-500">
-
             <label class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase px-1 pt-1 tracking-widest">
                 <input type="checkbox" id="b-momo-same" checked onchange="window.toggleAdminMomoField()" class="w-4 h-4 accent-drip">
                 Mobile Money = même numéro que le WhatsApp
@@ -165,6 +164,19 @@
 
         <button onclick="window.registerBoutique()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-xl active:scale-95 transition mb-8">
             Enregistrer la boutique 🚀
+        </button>
+
+        <!-- 🆕 SECTION MESSAGERIE ADMIN -->
+        <h2 class="text-xl font-display uppercase mb-1 mt-4 tracking-tight">📬 Envoyer un message</h2>
+        <p class="text-[10px] text-gray-500 font-bold uppercase mb-4 tracking-widest">Message individuel ou annonce générale à toutes les boutiques</p>
+        <div class="space-y-3 mb-4">
+            <select id="msg-target" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
+                <option value="">📢 Toutes les boutiques (message général)</option>
+            </select>
+            <textarea id="msg-text" placeholder="CONTENU DU MESSAGE..." class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold h-24 resize-none"></textarea>
+        </div>
+        <button onclick="window.sendAdminMessage()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase shadow-xl active:scale-95 transition mb-8">
+            Envoyer le message 📨
         </button>
 
         <h3 class="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-3">Boutiques déjà enregistrées</h3>
@@ -185,7 +197,6 @@
         <button onclick="window.loginBoutique(this)" class="w-full bg-drip hover:bg-dripdark text-white font-display py-5 rounded-2xl text-sm uppercase shadow-xl active:scale-95 transition mt-6">
             Me connecter 🔓
         </button>
-
         <button onclick="window.toggleForgotPinForm()" class="w-full text-center text-[10px] text-gray-500 font-bold uppercase mt-5 underline">PIN oublié ?</button>
         <div id="forgot-pin-form" class="hidden mt-4 space-y-3 text-center">
             <p class="text-[9px] text-gray-500">Renseigne ton numéro ci-dessus, puis clique ici — on va prévenir l'admin pour qu'il te génère un nouveau code.</p>
@@ -221,13 +232,18 @@
             </p>
         </a>
 
-        <div class="grid grid-cols-4 gap-1.5 mb-5">
-            <button onclick="window.setTab('active')" id="tab-active" class="bg-drip text-white py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">À traiter</button>
-            <button onclick="window.setTab('done')" id="tab-done" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">Livrées</button>
-            <button onclick="window.setTab('products')" id="tab-products" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition">Articles</button>
-            <button onclick="window.setTab('chats')" id="tab-chats" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[8px] font-black uppercase tracking-wide transition relative">
+        <!-- 🆕 5 onglets avec Messages -->
+        <div class="grid grid-cols-5 gap-1 mb-5">
+            <button onclick="window.setTab('active')" id="tab-active" class="bg-drip text-white py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition">À traiter</button>
+            <button onclick="window.setTab('done')" id="tab-done" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition">Livrées</button>
+            <button onclick="window.setTab('products')" id="tab-products" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition">Articles</button>
+            <button onclick="window.setTab('chats')" id="tab-chats" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition relative">
                 💬 Chats
                 <span id="chat-unread-badge" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
+            </button>
+            <button onclick="window.setTab('messages')" id="tab-messages" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition relative">
+                📬 Admin
+                <span id="messages-unread-badge" class="hidden absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">!</span>
             </button>
         </div>
 
@@ -241,6 +257,11 @@
         <div id="chats-panel" class="hidden space-y-2 pb-10">
             <div id="chats-list"></div>
         </div>
+
+        <!-- 🆕 Panneau messages admin -->
+        <div id="messages-panel" class="hidden space-y-3 pb-10">
+            <div id="messages-list"></div>
+        </div>
     </div>
 
     <!-- MODAL : AJOUTER / MODIFIER UN ARTICLE -->
@@ -250,16 +271,13 @@
                 <h3 id="add-product-modal-title" class="text-sm font-display uppercase tracking-tight">Nouvel article</h3>
                 <button onclick="window.closeAddProductForm()" class="text-gray-500 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
-
             <input type="file" id="prod-img-input" accept="image/*" multiple class="hidden" onchange="window.handleImageUpload(event)">
             <button type="button" onclick="document.getElementById('prod-img-input').click()" id="img-upload-btn" class="w-full input-dark p-6 rounded-2xl text-xs font-black text-drip uppercase text-center active:scale-95 transition tracking-widest">
                 📷 Ajouter des photos (max 10)
             </button>
             <div id="img-preview-grid" class="hidden grid grid-cols-4 gap-2"></div>
-
             <input id="prod-name" placeholder="NOM DU PRODUIT" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold uppercase">
             <input id="prod-price" type="number" placeholder="PRIX DE VENTE (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
-
             <div class="grid grid-cols-2 gap-2">
                 <select id="prod-type" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
                     <option value="vetement">👕 Vêtement</option>
@@ -274,20 +292,16 @@
                     <option value="enfant">ENFANT</option>
                 </select>
             </div>
-
             <input id="prod-sizes" placeholder="TAILLES / ML (optionnel)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
             <input id="prod-colors" placeholder="COULEURS DISPONIBLES (ex: Noir, Blanc, Rouge)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
-
             <label class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase px-1 pt-1 tracking-widest">
                 <input type="checkbox" id="prod-international" class="w-4 h-4 accent-drip">
                 ⏳ Disponible à l'étranger (délai de livraison plus long)
             </label>
-
             <div class="grid grid-cols-2 gap-2">
                 <input id="prod-delivery-std" type="number" placeholder="Livraison normale (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
                 <input id="prod-delivery-exp" type="number" placeholder="Livraison rapide (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
             </div>
-
             <button id="submit-product-btn" onclick="window.submitNewProduct()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase mt-2">Ajouter au catalogue 🚀</button>
         </div>
     </div>
@@ -318,14 +332,25 @@
                 <button onclick="window.closeProfileModal()" class="text-gray-500 text-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <p class="text-[9px] text-gray-500 mb-2">Ton numéro WhatsApp (identifiant de connexion) ne peut pas être changé ici — contacte l'admin si besoin.</p>
-
             <input id="profile-name" placeholder="NOM DE LA BOUTIQUE" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold uppercase">
             <input id="profile-location" placeholder="QUARTIER & VILLE" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold uppercase">
             <button type="button" id="profile-gps-btn" onclick="window.getProfileGPS()" class="w-full input-dark p-4 rounded-2xl text-[10px] font-black text-drip uppercase active:scale-95 transition tracking-widest">📍 Recapturer ma position GPS</button>
             <input id="profile-gps" placeholder="Ou colle un lien Google Maps" class="w-full input-dark p-4 rounded-2xl outline-none text-[10px] text-gray-500">
             <input id="profile-momo" placeholder="NUMÉRO MOBILE MONEY" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
-
             <button onclick="window.saveProfile()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase mt-2">Enregistrer les modifications ✅</button>
+        </div>
+    </div>
+
+    <!-- 🆕 MODAL : MESSAGE ADMIN (pop-up à l'ouverture du dashboard) -->
+    <div id="admin-message-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
+        <div class="bg-ink w-full max-w-sm rounded-3xl p-6 border border-white/10 space-y-4">
+            <div class="flex items-center gap-3 mb-1">
+                <span class="text-2xl">📬</span>
+                <h3 class="text-sm font-display uppercase text-drip tracking-tight">Message de l'Admin</h3>
+            </div>
+            <p class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Driprush — Service Client</p>
+            <div id="admin-message-modal-content" class="text-xs text-gray-200 leading-relaxed bg-white/5 rounded-2xl p-4"></div>
+            <button onclick="window.closeAdminMessageModal()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-3 rounded-2xl text-xs uppercase active:scale-95 transition">Lu ✅</button>
         </div>
     </div>
 
@@ -367,8 +392,18 @@
         let currentShopChatRef = null;
         let currentShopChatUnsub = null;
         let chatBadgeUnsub = null;
+        let pendingAdminMessages = []; // 🆕 file d'attente des messages non lus
 
         const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
+
+        // 🆕 Restriction anti-contact dans le chat
+        function containsContactAttempt(text) {
+            const digitMatches = text.match(/\d/g);
+            if (digitMatches && digitMatches.length >= 3) return true;
+            const suspiciousKeywords = ['whatsapp', 'whats app', 'numero', 'numéro', 'appelle', 'appel moi', 'telegram', 'contacte moi', 'mon numero', 'sms'];
+            const lowerText = text.toLowerCase();
+            return suspiciousKeywords.some(kw => lowerText.includes(kw));
+        }
 
         function formatRelativeTime(timestamp) {
             if (!timestamp) return "Jamais connectée";
@@ -404,6 +439,7 @@
                 window.loadBoutiquesList();
                 window.loadPendingRequests();
                 window.loadPinResetRequests();
+                window.loadAdminMessageTargets();
             }
         };
 
@@ -426,11 +462,9 @@
         window.checkAdminPassword = (btn) => {
             const password = document.getElementById('admin-password-input').value;
             if (!password) return;
-
             const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = "Vérification...";
-
             fetch(WEBHOOK_SERVER_URL + '/verify-admin', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -479,6 +513,37 @@
             document.getElementById('b-momo').classList.toggle('hidden', same);
         };
 
+        // 🆕 Charge les boutiques dans le select du formulaire de message
+        window.loadAdminMessageTargets = () => {
+            get(ref(db, 'driprush_boutiques')).then((snap) => {
+                const data = snap.val();
+                const select = document.getElementById('msg-target');
+                select.innerHTML = '<option value="">📢 Toutes les boutiques (message général)</option>';
+                if (data) {
+                    Object.values(data).forEach(b => {
+                        select.innerHTML += `<option value="${b.phone}">🏪 ${b.name} (${b.phone})</option>`;
+                    });
+                }
+            }).catch(() => {});
+        };
+
+        // 🆕 Envoie un message admin vers une ou toutes les boutiques
+        window.sendAdminMessage = () => {
+            const text = document.getElementById('msg-text').value.trim();
+            const targetPhone = document.getElementById('msg-target').value;
+            if (!text) return alert("Écris un message avant d'envoyer !");
+            push(ref(db, 'driprush_messages'), {
+                text,
+                timestamp: Date.now(),
+                targetPhone: targetPhone || null,
+                readBy: {}
+            }).then(() => {
+                document.getElementById('msg-text').value = '';
+                document.getElementById('msg-target').value = '';
+                alert("Message envoyé ✅");
+            }).catch((err) => alert("Erreur : " + err.message));
+        };
+
         window.loadPendingRequests = () => {
             onValue(ref(db, 'driprush_boutique_requests'), (snapshot) => {
                 const data = snapshot.val();
@@ -512,7 +577,6 @@
                 const container = document.getElementById('pin-resets-list');
                 container.innerHTML = '';
                 const requests = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
-
                 if (requests.length === 0) {
                     container.innerHTML = '<p class="text-gray-500 text-xs text-center py-6 font-bold uppercase tracking-widest">Aucune demande de PIN oublié</p>';
                     return;
@@ -558,13 +622,10 @@
             const gps = document.getElementById('b-gps').value.trim();
             const momoSame = document.getElementById('b-momo-same').checked;
             const momo = momoSame ? phone : cleanPhone(document.getElementById('b-momo').value);
-
             if (!name) return alert("Donne un nom à la boutique !");
             if (phone.length < 8) return alert("Numéro WhatsApp invalide !");
             if (!momo || momo.length < 8) return alert("Numéro Mobile Money invalide !");
-
             const pin = String(Math.floor(1000 + Math.random() * 9000));
-
             set(ref(db, 'driprush_boutiques/' + phone), {
                 name, phone, gps: gps || '', momo, pin, createdAt: Date.now()
             }).then(() => {
@@ -577,6 +638,7 @@
                 document.getElementById('b-momo-same').checked = true;
                 window.toggleAdminMomoField();
                 window.loadBoutiquesList();
+                window.loadAdminMessageTargets();
             }).catch((e) => alert("Erreur : " + e.message));
         };
 
@@ -623,7 +685,6 @@
 
         window.deleteBoutique = (phone, name) => {
             if (!confirm(`Supprimer définitivement "${name}" et tous ses articles ? Cette action est irréversible.`)) return;
-
             const productsQuery = query(ref(db, 'driprush_products'), orderByChild('shopPhone'), equalTo(phone));
             get(productsQuery).then((snapshot) => {
                 const data = snapshot.val();
@@ -644,13 +705,10 @@
         window.loginBoutique = (btn) => {
             const phone = cleanPhone(document.getElementById('l-phone').value);
             const pin = document.getElementById('l-pin').value.trim();
-
             if (phone.length < 8 || pin.length !== 4) return alert("Vérifie ton numéro et ton code PIN !");
-
             const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = "Connexion...";
-
             fetch(WEBHOOK_SERVER_URL + '/verify-pin', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -682,11 +740,9 @@
         window.requestPinReset = (btn) => {
             const phone = cleanPhone(document.getElementById('l-phone').value);
             if (phone.length < 8) return alert("Renseigne d'abord ton numéro WhatsApp ci-dessus !");
-
             const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = "Envoi...";
-
             get(ref(db, 'driprush_boutiques/' + phone)).then((snap) => {
                 if (!snap.exists()) {
                     btn.disabled = false;
@@ -725,10 +781,7 @@
             chatBadgeUnsub = onValue(ref(db, 'driprush_chats/' + currentShopPhone), (snapshot) => {
                 const data = snapshot.val();
                 const badge = document.getElementById('chat-unread-badge');
-                if (!data) {
-                    badge.classList.add('hidden');
-                    return;
-                }
+                if (!data) { badge.classList.add('hidden'); return; }
                 let unreadCount = 0;
                 Object.values(data).forEach(chat => {
                     const lastRead = chat.lastReadByShop || 0;
@@ -745,7 +798,105 @@
             });
         };
 
-        // 🆕 Enregistre l'activité à chaque ouverture du tableau de bord, peu importe le chemin emprunté
+        // 🆕 Vérifie les messages admin non lus à l'ouverture du dashboard
+        window.checkUnreadAdminMessages = () => {
+            get(ref(db, 'driprush_messages')).then((snap) => {
+                const data = snap.val();
+                if (!data) return;
+                const unread = Object.keys(data)
+                    .map(id => ({ id, ...data[id] }))
+                    .filter(m => {
+                        const isForMe = !m.targetPhone || m.targetPhone === currentShopPhone;
+                        const isUnread = !m.readBy || !m.readBy[currentShopPhone];
+                        return isForMe && isUnread;
+                    })
+                    .sort((a, b) => a.timestamp - b.timestamp);
+
+                if (unread.length > 0) {
+                    document.getElementById('messages-unread-badge').classList.remove('hidden');
+                    pendingAdminMessages = unread;
+                    window.showNextAdminMessage();
+                }
+            }).catch(() => {});
+        };
+
+        // 🆕 Affiche le premier message non lu dans le pop-up
+        window.showNextAdminMessage = () => {
+            if (pendingAdminMessages.length === 0) return;
+            const msg = pendingAdminMessages[0];
+            const date = new Date(msg.timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('admin-message-modal-content').innerText = msg.text;
+            document.getElementById('admin-message-modal').classList.remove('hidden');
+            document.getElementById('admin-message-modal').dataset.currentMsgId = msg.id;
+        };
+
+        // 🆕 Ferme le pop-up et marque comme lu, puis affiche le suivant si besoin
+        window.closeAdminMessageModal = () => {
+            const msgId = document.getElementById('admin-message-modal').dataset.currentMsgId;
+            if (msgId && currentShopPhone) {
+                const readByUpdate = {};
+                readByUpdate[currentShopPhone] = true;
+                update(ref(db, 'driprush_messages/' + msgId + '/readBy'), readByUpdate).catch(() => {});
+            }
+            pendingAdminMessages.shift();
+            document.getElementById('admin-message-modal').classList.add('hidden');
+
+            if (pendingAdminMessages.length > 0) {
+                setTimeout(() => window.showNextAdminMessage(), 300);
+            } else {
+                document.getElementById('messages-unread-badge').classList.add('hidden');
+            }
+        };
+
+        // 🆕 Charge les messages dans l'onglet 📬 Admin du dashboard boutique
+        window.loadMyMessages = () => {
+            const container = document.getElementById('messages-list');
+            container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-6 tracking-widest">Chargement...</p>';
+            get(ref(db, 'driprush_messages')).then((snap) => {
+                const data = snap.val();
+                container.innerHTML = '';
+                const messages = data
+                    ? Object.keys(data).map(id => ({ id, ...data[id] }))
+                        .filter(m => !m.targetPhone || m.targetPhone === currentShopPhone)
+                        .sort((a, b) => b.timestamp - a.timestamp)
+                    : [];
+
+                if (messages.length === 0) {
+                    container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-16 tracking-widest">Aucun message de l\'admin pour l\'instant</p>';
+                    return;
+                }
+
+                messages.forEach((m, idx) => {
+                    const isRead = m.readBy && m.readBy[currentShopPhone];
+                    const date = new Date(m.timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+                    const isGeneral = !m.targetPhone;
+                    container.innerHTML += `
+                        <div class="card-surface rounded-2xl p-4 card-enter border-l-2 ${isRead ? 'border-l-white/10' : 'border-l-amber-500'}" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[8px] font-black uppercase ${isGeneral ? 'text-amber-400' : 'text-drip'}">${isGeneral ? '📢 Message général' : '📬 Message pour toi'}</span>
+                                <span class="text-[8px] text-gray-500">${date}</span>
+                            </div>
+                            <p class="text-xs text-gray-200 leading-relaxed">${m.text}</p>
+                            ${!isRead ? `<button onclick="window.markMessageRead('${m.id}', this)" class="mt-3 text-[9px] text-amber-400 font-bold uppercase underline">Marquer comme lu</button>` : '<p class="text-[9px] text-gray-600 mt-2 font-bold uppercase">✓ Lu</p>'}
+                        </div>`;
+                });
+            }).catch(() => {
+                container.innerHTML = '<p class="text-center text-red-400 text-xs font-bold uppercase py-10">Erreur de chargement</p>';
+            });
+        };
+
+        // 🆕 Marque un message comme lu depuis l'onglet
+        window.markMessageRead = (msgId, btn) => {
+            if (!currentShopPhone) return;
+            const readByUpdate = {};
+            readByUpdate[currentShopPhone] = true;
+            update(ref(db, 'driprush_messages/' + msgId + '/readBy'), readByUpdate).then(() => {
+                btn.parentElement.querySelector('p.text-[9px]') && btn.remove();
+                btn.outerHTML = '<p class="text-[9px] text-gray-600 mt-2 font-bold uppercase">✓ Lu</p>';
+                window.loadMyMessages();
+            }).catch(() => {});
+        };
+
         window.openDashboard = (boutique) => {
             currentBoutique = boutique;
             if (currentShopPhone) {
@@ -757,18 +908,22 @@
 
             window.attachChatBadgeListener();
 
+            // 🆕 Vérifie les messages admin non lus après un court délai (auth anonyme complète)
+            setTimeout(() => window.checkUnreadAdminMessages(), 1500);
+
             const ordersQuery = query(ref(db, 'driprush_orders'), orderByChild('shopPhone'), equalTo(currentShopPhone));
             onValue(ordersQuery, (snapshot) => {
                 const data = snapshot.val();
                 lastOrdersSnapshot = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
-                if (currentTab !== 'products' && currentTab !== 'chats') window.renderOrders();
+                if (currentTab !== 'products' && currentTab !== 'chats' && currentTab !== 'messages') window.renderOrders();
             });
         };
 
         window.setTab = (tab) => {
             currentTab = tab;
-            ['tab-active', 'tab-done', 'tab-products', 'tab-chats'].forEach(id => {
+            ['tab-active', 'tab-done', 'tab-products', 'tab-chats', 'tab-messages'].forEach(id => {
                 const el = document.getElementById(id);
+                if (!el) return;
                 const isActive = id === 'tab-' + tab;
                 el.classList.toggle('bg-drip', isActive);
                 el.classList.toggle('text-white', isActive);
@@ -778,23 +933,22 @@
             document.getElementById('orders-list').classList.toggle('hidden', tab !== 'active' && tab !== 'done');
             document.getElementById('products-panel').classList.toggle('hidden', tab !== 'products');
             document.getElementById('chats-panel').classList.toggle('hidden', tab !== 'chats');
+            document.getElementById('messages-panel').classList.toggle('hidden', tab !== 'messages');
             if (tab === 'products') window.loadMyProducts();
             else if (tab === 'chats') window.loadMyChats();
+            else if (tab === 'messages') window.loadMyMessages();
             else window.renderOrders();
         };
 
         window.renderOrders = () => {
             const container = document.getElementById('orders-list');
             container.innerHTML = '';
-
             const paidOrders = lastOrdersSnapshot.filter(o => o.status === 'Payée' || o.status === 'Payée (TEST)' || o.status === 'Livrée');
             const filtered = paidOrders.filter(o => currentTab === 'active' ? o.status !== 'Livrée' : o.status === 'Livrée');
-
             if (filtered.length === 0) {
                 container.innerHTML = `<p class="text-center text-gray-500 text-xs font-bold uppercase py-16 tracking-widest">Aucune commande ${currentTab === 'active' ? 'à traiter' : 'livrée'} pour l'instant</p>`;
                 return;
             }
-
             filtered.forEach((o, idx) => {
                 const isTest = o.status === 'Payée (TEST)';
                 container.innerHTML += `
@@ -807,18 +961,15 @@
                         <p class="text-[9px] text-gray-500 font-medium mb-1"><i class="fa-solid fa-clock mr-1"></i>${formatOrderDateTime(o.timestamp)}</p>
                         <p class="text-[11px] text-gray-300 mb-1">${o.items}</p>
                         <p class="text-[10px] text-gray-500 mb-4">${o.deliveryMode === 'express' ? '🚀 Livraison rapide' : '🚲 Livraison normale'}</p>
-                        
                         <div class="bg-black/40 rounded-2xl p-3 mb-4 space-y-1.5">
                             <p class="text-[10px] text-gray-400"><i class="fa-solid fa-phone mr-2 text-drip"></i><a href="tel:${o.phone}" class="underline">${o.phone}</a></p>
                             <p class="text-[10px] text-gray-400"><i class="fa-solid fa-location-dot mr-2 text-drip"></i>${o.address}</p>
                             ${o.clientGPS ? `<a href="${o.clientGPS}" target="_blank" class="text-[10px] text-drip underline block"><i class="fa-solid fa-map mr-2"></i>Voir sur la carte</a>` : ''}
                         </div>
-
                         <div class="flex justify-between items-center mb-4">
                             <span class="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Ta part (90%)</span>
                             <span class="price-tag-dark">${(o.montantBoutique || 0).toLocaleString()} F</span>
                         </div>
-
                         ${o.status !== 'Livrée' ? `<button onclick="window.markDelivered('${o.id}')" class="w-full bg-white text-black font-black py-3.5 rounded-2xl text-[10px] uppercase tracking-widest active:scale-95 transition">Marquer comme livrée ✅</button>` : ''}
                     </div>`;
             });
@@ -852,10 +1003,8 @@
             get(ref(db, 'driprush_products/' + productId)).then((snap) => {
                 const p = snap.val();
                 if (!p) return alert("Article introuvable.");
-
                 editingProductId = productId;
                 uploadedImageURLs = p.images && p.images.length > 0 ? [...p.images] : (p.image ? [p.image] : []);
-
                 document.getElementById('prod-name').value = p.name || '';
                 document.getElementById('prod-price').value = p.price || '';
                 document.getElementById('prod-type').value = p.type || 'vetement';
@@ -865,11 +1014,9 @@
                 document.getElementById('prod-international').checked = !!p.internationalDelay;
                 document.getElementById('prod-delivery-std').value = p.deliveryStandard || '';
                 document.getElementById('prod-delivery-exp').value = p.deliveryExpress || '';
-
                 window.renderImagePreviews();
                 const btn = document.getElementById('img-upload-btn');
                 btn.innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
-
                 document.getElementById('add-product-modal-title').innerText = "Modifier l'article";
                 document.getElementById('submit-product-btn').innerText = "Enregistrer les modifications ✅";
                 document.getElementById('add-product-modal').classList.remove('hidden');
@@ -892,12 +1039,10 @@
                     canvas.height = img.height * scale;
                     canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
                     URL.revokeObjectURL(objectUrl);
-
                     canvas.toBlob((blob) => {
                         const formData = new FormData();
                         formData.append('file', blob, 'product.jpg');
                         formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
                         const xhr = new XMLHttpRequest();
                         xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`);
                         xhr.onload = () => {
@@ -939,22 +1084,18 @@
         window.handleImageUpload = async (event) => {
             const files = Array.from(event.target.files);
             if (files.length === 0) return;
-
             const remainingSlots = MAX_PHOTOS - uploadedImageURLs.length;
             if (remainingSlots <= 0) {
                 alert(`Tu as déjà atteint le maximum de ${MAX_PHOTOS} photos !`);
                 event.target.value = '';
                 return;
             }
-
             const filesToProcess = files.slice(0, remainingSlots);
             if (files.length > remainingSlots) {
                 alert(`Tu peux ajouter encore ${remainingSlots} photo(s) seulement (limite de ${MAX_PHOTOS}). Le reste n'a pas été pris en compte.`);
             }
-
             const btn = document.getElementById('img-upload-btn');
             btn.disabled = true;
-
             for (let i = 0; i < filesToProcess.length; i++) {
                 btn.innerText = `Envoi photo ${i + 1}/${filesToProcess.length}...`;
                 try {
@@ -965,7 +1106,6 @@
                     alert("Erreur d'envoi d'une photo : " + err.message);
                 }
             }
-
             btn.disabled = false;
             btn.innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
             event.target.value = '';
@@ -981,10 +1121,8 @@
             const internationalDelay = document.getElementById('prod-international').checked;
             const deliveryStandard = parseInt(document.getElementById('prod-delivery-std').value) || 0;
             const deliveryExpress = parseInt(document.getElementById('prod-delivery-exp').value) || 0;
-
             if (!name || !price) return alert("Donne au moins un nom et un prix !");
             if (uploadedImageURLs.length === 0) return alert("Ajoute au moins une photo avant de continuer !");
-
             const productData = {
                 name, price,
                 image: uploadedImageURLs[0],
@@ -997,7 +1135,6 @@
                 shopMomo: currentBoutique.momo || currentBoutique.phone || '',
                 deliveryStandard, deliveryExpress
             };
-
             if (editingProductId) {
                 update(ref(db, 'driprush_products/' + editingProductId), productData).then(() => {
                     window.closeAddProductForm();
@@ -1019,7 +1156,6 @@
                 const container = document.getElementById('my-products-list');
                 container.innerHTML = '';
                 const products = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
-
                 if (products.length === 0) {
                     container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-10 tracking-widest">Aucun article encore. Ajoute le premier ! 🛍️</p>';
                     return;
@@ -1051,20 +1187,16 @@
                 const data = snapshot.val();
                 const container = document.getElementById('chats-list');
                 container.innerHTML = '';
-
                 const chats = data ? Object.keys(data).map(id => ({ id, ...data[id] })).sort((a,b) => b.createdAt - a.createdAt) : [];
-
                 if (chats.length === 0) {
                     container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-16 tracking-widest">Aucune discussion pour l\'instant</p>';
                     return;
                 }
-
                 chats.forEach((c, idx) => {
                     const msgs = c.messages ? Object.values(c.messages) : [];
                     const lastMsg = msgs.length > 0 ? msgs.sort((a,b) => b.timestamp - a.timestamp)[0] : null;
                     const safeClientName = (c.clientName || '').replace(/'/g, "\\'");
                     const safeProductName = (c.productName || '').replace(/'/g, "\\'");
-
                     container.innerHTML += `
                         <div class="card-surface rounded-2xl p-4 card-enter cursor-pointer" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s" onclick="window.openShopChatThread('${c.id}', '${safeClientName}', '${safeProductName}')">
                             <div class="flex justify-between items-start mb-1">
@@ -1082,13 +1214,10 @@
             document.getElementById('shop-chat-client-name').innerText = clientName;
             document.getElementById('shop-chat-product-name').innerText = productName;
             document.getElementById('shop-chat-modal').classList.remove('hidden');
-
             if (currentShopChatUnsub) { currentShopChatUnsub(); currentShopChatUnsub = null; }
             currentShopChatRef = chatId;
-
             update(ref(db, `driprush_chats/${currentShopPhone}/${chatId}`), { lastReadByShop: Date.now() })
                 .catch((err) => console.error("Erreur marquage lu:", err));
-
             const messagesRef = ref(db, `driprush_chats/${currentShopPhone}/${chatId}/messages`);
             currentShopChatUnsub = onValue(messagesRef, (snapshot) => {
                 const data = snapshot.val();
@@ -1115,10 +1244,16 @@
             container.scrollTop = container.scrollHeight;
         };
 
+        // 🆕 Restriction anti-contact côté boutique
         window.sendShopMessage = () => {
             const input = document.getElementById('shop-chat-message-input');
             const text = input.value.trim();
             if (!text || !currentShopChatRef) return;
+
+            if (containsContactAttempt(text)) {
+                alert("⚠️ Les échanges de numéros/contacts sont interdits dans ce chat pour la sécurité de la plateforme.");
+                return;
+            }
 
             push(ref(db, `driprush_chats/${currentShopPhone}/${currentShopChatRef}/messages`), {
                 sender: 'shop', text, timestamp: Date.now()
@@ -1165,10 +1300,8 @@
             const location = document.getElementById('profile-location').value.trim();
             const gps = document.getElementById('profile-gps').value.trim();
             const momo = cleanPhone(document.getElementById('profile-momo').value);
-
             if (!name) return alert("Le nom de la boutique ne peut pas être vide !");
             if (!momo || momo.length < 8) return alert("Numéro Mobile Money invalide !");
-
             update(ref(db, 'driprush_boutiques/' + currentShopPhone), { name, location, gps, momo }).then(() => {
                 currentBoutique = { ...currentBoutique, name, location, gps, momo };
                 const saved = JSON.parse(localStorage.getItem('driprush_shop_session') || '{}');
