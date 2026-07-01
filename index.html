@@ -64,56 +64,69 @@
         .skeleton { background: linear-gradient(90deg, #ececec 25%, #f6f6f6 37%, #ececec 63%); background-size: 600px 100%; animation: shimmer 1.4s infinite linear; }
 
         .price-tag {
-            position: relative;
-            background: #0B0B0C;
-            color: #fff;
-            font-family: 'Archivo Black', sans-serif;
-            font-size: 11px;
-            padding: 6px 12px 6px 18px;
-            border-radius: 3px 10px 10px 3px;
-            transform: rotate(-3deg);
-            display: inline-flex;
-            align-items: center;
+            position: relative; background: #0B0B0C; color: #fff;
+            font-family: 'Archivo Black', sans-serif; font-size: 11px;
+            padding: 6px 12px 6px 18px; border-radius: 3px 10px 10px 3px;
+            transform: rotate(-3deg); display: inline-flex; align-items: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.18);
         }
         .price-tag::before {
-            content: '';
-            position: absolute;
-            left: 6px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 5px;
-            height: 5px;
-            background: #F7F5F2;
-            border-radius: 50%;
+            content: ''; position: absolute; left: 6px; top: 50%;
+            transform: translateY(-50%); width: 5px; height: 5px;
+            background: #F7F5F2; border-radius: 50%;
         }
-
         .new-sticker {
-            background: #C8FF4D;
-            color: #0B0B0C;
+            background: #C8FF4D; color: #0B0B0C;
+            font-family: 'Archivo Black', sans-serif; font-size: 8px;
+            padding: 3px 8px; border-radius: 2px 8px 8px 2px;
+            transform: rotate(3deg); box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
+        .pin-reveal {
+            background: #0B0B0C; color: #C8FF4D;
             font-family: 'Archivo Black', sans-serif;
-            font-size: 8px;
-            padding: 3px 8px;
-            border-radius: 2px 8px 8px 2px;
-            transform: rotate(3deg);
-            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            font-size: 2.5rem; letter-spacing: 0.4em;
+            padding: 1rem; border-radius: 1rem; text-align: center;
         }
 
-        .pin-reveal {
-            background: #0B0B0C;
-            color: #C8FF4D;
-            font-family: 'Archivo Black', sans-serif;
-            font-size: 2.5rem;
-            letter-spacing: 0.4em;
-            padding: 1rem;
-            border-radius: 1rem;
-            text-align: center;
-        }
+        /* 🌙 MODE SOMBRE */
+        body.dark-mode { background-color: #0B0B0C !important; color: #e0e0e0 !important; }
+        body.dark-mode header { background-color: #141414 !important; border-color: rgba(255,255,255,0.06) !important; }
+        body.dark-mode .bg-white { background-color: #1a1a1a !important; color: #e0e0e0 !important; }
+        body.dark-mode .bg-gray-100 { background-color: #222 !important; }
+        body.dark-mode .bg-gray-50 { background-color: #1a1a1a !important; }
+        body.dark-mode .text-ink { color: #e0e0e0 !important; }
+        body.dark-mode .text-gray-800 { color: #e0e0e0 !important; }
+        body.dark-mode .text-gray-600 { color: #aaa !important; }
+        body.dark-mode .text-gray-500 { color: #888 !important; }
+        body.dark-mode .text-gray-400 { color: #666 !important; }
+        body.dark-mode .text-black { color: #e0e0e0 !important; }
+        body.dark-mode .border-gray-100 { border-color: rgba(255,255,255,0.07) !important; }
+        body.dark-mode .border-gray-200 { border-color: rgba(255,255,255,0.1) !important; }
+        body.dark-mode .border-transparent { border-color: transparent !important; }
+        body.dark-mode .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.6) !important; }
+        body.dark-mode .shadow-2xl { box-shadow: 0 25px 50px rgba(0,0,0,0.8) !important; }
+        body.dark-mode .skeleton { background: linear-gradient(90deg, #1a1a1a 25%, #262626 37%, #1a1a1a 63%) !important; background-size: 600px 100% !important; }
+        body.dark-mode input, body.dark-mode textarea, body.dark-mode select { background-color: #222 !important; color: #e0e0e0 !important; border-color: rgba(255,255,255,0.1) !important; }
+        body.dark-mode input::placeholder, body.dark-mode textarea::placeholder { color: #555 !important; }
+        body.dark-mode #checkout-modal { background-color: #0B0B0C !important; }
+        body.dark-mode #cart-bar { background-color: #1a1a1a !important; border-color: rgba(255,255,255,0.08) !important; }
+        body.dark-mode .bg-blue-50 { background-color: rgba(59,130,246,0.1) !important; }
+        body.dark-mode .border-blue-100 { border-color: rgba(59,130,246,0.2) !important; }
+        body.dark-mode .text-blue-600 { color: #60a5fa !important; }
+        body.dark-mode .product-card { background-color: #1a1a1a !important; border-color: rgba(255,255,255,0.06) !important; }
+        body.dark-mode .active-cat { background-color: #FF4D1C !important; color: #fff !important; }
+        body.dark-mode .cat-btn:not(.active-cat) { background-color: #1a1a1a !important; border-color: rgba(255,255,255,0.08) !important; color: #aaa !important; }
+        body.dark-mode #settings-panel .bg-gray-50 { background-color: #141414 !important; }
+        body.dark-mode #settings-panel .bg-white { background-color: #1a1a1a !important; }
+        body.dark-mode .price-tag::before { background: #0B0B0C !important; }
     </style>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, push, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        <!-- ✅ CORRECTION 1 : update ajouté -->
+        import { getDatabase, ref, onValue, push, set, get, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
@@ -127,25 +140,45 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
         const auth = getAuth(app);
         signInAnonymously(auth).catch((err) => console.error("Erreur auth anonyme:", err));
 
+        let messaging = null;
+        try { messaging = getMessaging(app); } catch(e) { console.warn('FCM non supporté:', e.message); }
+        const VAPID_KEY = 'BHcec3uYhQHLW4T1gIAWEKW0V1ljifEhLYCRTTJcByj7vTdUnuGtsmQzPlr-mOQqTFnS63VS3Lm29CfTn9adDV8';
+
         const SIMULATION_MODE = false;
-        if (SIMULATION_MODE) {
-            document.getElementById('test-mode-banner').classList.remove('hidden');
-        }
+        if (SIMULATION_MODE) document.getElementById('test-mode-banner').classList.remove('hidden');
 
         const FEDAPAY_PUBLIC_KEY = 'pk_live_1EVs9lvE_nNNKUI2TEOI-qvB';
         const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
         const SHOP_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
         const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
 
+        function loadSettings() {
+            try { return JSON.parse(localStorage.getItem('driprush_client_prefs') || '{}'); } catch(e) { return {}; }
+        }
+        function saveSettings(s) {
+            localStorage.setItem('driprush_client_prefs', JSON.stringify(s));
+        }
+        function getFavorites() {
+            try { return JSON.parse(localStorage.getItem('driprush_favorites') || '[]'); } catch(e) { return []; }
+        }
+        function saveFavorites(favs) {
+            localStorage.setItem('driprush_favorites', JSON.stringify(favs));
+        }
+
+        (function applySettings() {
+            const s = loadSettings();
+            if (s.darkMode) document.body.classList.add('dark-mode');
+            const sizes = { small: '13px', normal: '16px', large: '19px' };
+            document.documentElement.style.fontSize = sizes[s.textSize || 'normal'];
+        })();
+
         function saveValidatedCart() {
             const validatedItems = cart.filter(i => i.validated);
             localStorage.setItem('driprush_validated_cart', JSON.stringify(validatedItems));
         }
-
         function loadValidatedCart() {
             try {
                 const saved = JSON.parse(localStorage.getItem('driprush_validated_cart') || '[]');
@@ -161,7 +194,6 @@
                 : "Votre livraison sera effectuée dans les 6 prochaines heures.";
             document.getElementById('delivery-message-modal').classList.remove('hidden');
         }
-
         window.closeDeliveryModal = () => {
             document.getElementById('delivery-message-modal').classList.add('hidden');
         };
@@ -172,27 +204,212 @@
         let deliveryTypeSelected = "";
         let allProducts = [];
         let lastCreatedBoutique = null;
-
         let calculatedStdFee = 500;
         let calculatedExpFee = 900;
         let clientCoords = null;
         let selectedRating = 0;
 
+        window.openSettingsPanel = () => {
+            const s = loadSettings();
+            document.getElementById('settings-panel').classList.remove('hidden');
+            document.getElementById('settings-name').value = s.clientName || localStorage.getItem('driprush_client_name') || '';
+            document.getElementById('settings-address').value = s.clientAddress || '';
+            document.getElementById('toggle-dark').checked = !!s.darkMode;
+            ['small', 'normal', 'large'].forEach(size => {
+                const btn = document.getElementById('size-' + size);
+                if (!btn) return;
+                const isActive = (s.textSize || 'normal') === size;
+                btn.classList.toggle('bg-black', isActive);
+                btn.classList.toggle('text-white', isActive);
+                btn.classList.toggle('border-black', isActive);
+                btn.classList.toggle('border-gray-200', !isActive);
+            });
+            const notifBtn = document.getElementById('notif-btn');
+            if (notifBtn && 'Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    notifBtn.innerText = '✅ Notifications activées';
+                    notifBtn.disabled = true;
+                    notifBtn.classList.add('opacity-60');
+                } else {
+                    notifBtn.innerText = 'Activer les notifications 🔔';
+                    notifBtn.disabled = false;
+                    notifBtn.classList.remove('opacity-60');
+                }
+            }
+            window.loadFavoritesPanel();
+            window.loadOrderHistory();
+        };
+
+        window.closeSettingsPanel = () => {
+            document.getElementById('settings-panel').classList.add('hidden');
+        };
+
+        window.saveClientProfile = () => {
+            const name = document.getElementById('settings-name').value.trim();
+            const address = document.getElementById('settings-address').value.trim();
+            const s = loadSettings();
+            s.clientName = name;
+            s.clientAddress = address;
+            saveSettings(s);
+            if (name) localStorage.setItem('driprush_client_name', name);
+            window.showToast("Profil sauvegardé ✅");
+        };
+
+        window.toggleDarkMode = (checked) => {
+            const s = loadSettings();
+            s.darkMode = checked;
+            saveSettings(s);
+            document.body.classList.toggle('dark-mode', checked);
+        };
+
+        window.setTextSize = (size) => {
+            const s = loadSettings();
+            s.textSize = size;
+            saveSettings(s);
+            const sizes = { small: '13px', normal: '16px', large: '19px' };
+            document.documentElement.style.fontSize = sizes[size];
+            ['small', 'normal', 'large'].forEach(sz => {
+                const btn = document.getElementById('size-' + sz);
+                if (!btn) return;
+                const isActive = sz === size;
+                btn.classList.toggle('bg-black', isActive);
+                btn.classList.toggle('text-white', isActive);
+                btn.classList.toggle('border-black', isActive);
+                btn.classList.toggle('border-gray-200', !isActive);
+            });
+        };
+
+        window.toggleFavorite = (productId, btn) => {
+            const p = allProducts.find(x => x.id === productId);
+            if (!p) return;
+            let favs = getFavorites();
+            const idx = favs.findIndex(f => f.id === productId);
+            if (idx > -1) {
+                favs.splice(idx, 1);
+                btn.classList.remove('text-red-500');
+                btn.classList.add('text-gray-300');
+                window.showToast("Retiré des favoris");
+            } else {
+                favs.push({ id: productId, name: p.name, price: p.price, image: (p.images && p.images[0]) || p.image || '' });
+                btn.classList.add('text-red-500');
+                btn.classList.remove('text-gray-300');
+                window.showToast("Ajouté aux favoris ❤️");
+            }
+            saveFavorites(favs);
+        };
+
+        window.loadFavoritesPanel = () => {
+            const container = document.getElementById('favorites-list');
+            const favs = getFavorites();
+            if (favs.length === 0) {
+                container.innerHTML = '<p class="text-[10px] text-gray-400 text-center py-4 font-bold uppercase">Aucun favori — appuie sur ❤️ sur un article !</p>';
+                return;
+            }
+            container.innerHTML = favs.map(f => `
+                <div class="flex items-center gap-3 bg-white rounded-xl p-3 mb-2 border border-gray-100">
+                    <img src="${f.image}" class="w-12 h-12 object-cover rounded-lg">
+                    <div class="flex-1">
+                        <p class="text-[10px] font-bold uppercase">${f.name}</p>
+                        <p class="text-[10px] text-drip font-black">${parseInt(f.price).toLocaleString()} F</p>
+                    </div>
+                    <button onclick="window.removeFavorite('${f.id}')" class="text-red-400 text-xs px-2"><i class="fa-solid fa-heart-crack"></i></button>
+                </div>`).join('');
+        };
+
+        window.removeFavorite = (productId) => {
+            let favs = getFavorites();
+            favs = favs.filter(f => f.id !== productId);
+            saveFavorites(favs);
+            window.loadFavoritesPanel();
+            window.renderProducts(allProducts);
+        };
+
+        window.loadOrderHistory = () => {
+            const container = document.getElementById('orders-history-list');
+            const validated = loadValidatedCart();
+            if (validated.length === 0) {
+                container.innerHTML = '<p class="text-[10px] text-gray-400 text-center py-4 font-bold uppercase">Aucune commande récente</p>';
+                return;
+            }
+            container.innerHTML = validated.map(item => {
+                const date = new Date(item.validatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+                return `
+                    <div class="bg-white rounded-xl p-3 mb-2 border border-gray-100 flex items-center gap-3">
+                        <img src="${item.image}" class="w-12 h-12 object-cover rounded-lg">
+                        <div class="flex-1">
+                            <p class="text-[10px] font-bold uppercase">${item.name}</p>
+                            <p class="text-[9px] text-gray-400">${item.shop || 'Driprush'} — ${date}</p>
+                            <p class="text-[10px] text-drip font-black">${parseInt(item.price).toLocaleString()} F</p>
+                        </div>
+                        <span class="text-[7px] font-black text-green-500 bg-green-500/10 px-2 py-1 rounded-full uppercase">Payée ✓</span>
+                    </div>`;
+            }).join('');
+        };
+
+        window.requestClientNotifications = async () => {
+            if (!messaging) {
+                window.showToast("Notifications non supportées sur cet appareil", true);
+                return;
+            }
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    window.showToast("Permission refusée — active les notifs dans les paramètres du navigateur", true);
+                    return;
+                }
+                const swReg = await navigator.serviceWorker.ready;
+                const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+                if (token) {
+                    localStorage.setItem('driprush_client_fcm_token', token);
+                    const s = loadSettings();
+                    s.notificationsEnabled = true;
+                    saveSettings(s);
+                    const notifBtn = document.getElementById('notif-btn');
+                    if (notifBtn) {
+                        notifBtn.innerText = '✅ Notifications activées';
+                        notifBtn.disabled = true;
+                        notifBtn.classList.add('opacity-60');
+                    }
+                    window.showToast("Notifications activées ✅");
+                    onMessage(messaging, (payload) => {
+                        const title = (payload.notification && payload.notification.title) || 'Driprush';
+                        const body = (payload.notification && payload.notification.body) || '';
+                        window.showToast(`${title} — ${body}`);
+                    });
+                }
+            } catch(err) {
+                console.error('Erreur FCM client:', err);
+                window.showToast("Erreur notifications : " + err.message, true);
+            }
+        };
+
+        window.shareApp = () => {
+            const shareData = {
+                title: 'DRIPRUSH 🔥',
+                text: 'Découvre Driprush — sneakers, streetwear et parfums premium au Bénin. Livraison rapide !',
+                url: 'https://lo-maker1.github.io/driprush/'
+            };
+            if (navigator.share) {
+                navigator.share(shareData).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(shareData.url)
+                    .then(() => window.showToast("Lien copié dans le presse-papier 🔗"))
+                    .catch(() => window.showToast("https://lo-maker1.github.io/driprush/"));
+            }
+        };
+
         function containsContactAttempt(text) {
             const digitMatches = text.match(/\d/g);
             if (digitMatches && digitMatches.length >= 3) return true;
             const suspiciousKeywords = ['whatsapp', 'whats app', 'numero', 'numéro', 'appelle', 'appel moi', 'telegram', 'contacte moi', 'mon numero', 'sms'];
-            const lowerText = text.toLowerCase();
-            return suspiciousKeywords.some(kw => lowerText.includes(kw));
+            return suspiciousKeywords.some(kw => text.toLowerCase().includes(kw));
         }
-
         function parseGPSCoords(gpsUrl) {
             if (!gpsUrl) return null;
             const match = gpsUrl.match(/q=([-\d.]+),([-\d.]+)/);
             if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
             return null;
         }
-
         function haversineDistance(lat1, lng1, lat2, lng2) {
             const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -202,19 +419,11 @@
                       Math.sin(dLng/2) * Math.sin(dLng/2);
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
-
-        function roundTo25(amount) {
-            return Math.max(25, Math.round(amount / 25) * 25);
-        }
+        function roundTo25(amount) { return Math.max(25, Math.round(amount / 25) * 25); }
 
         window.calculateAndSetDeliveryFees = (shopGPS) => {
             const shopCoords = parseGPSCoords(shopGPS);
-            if (!shopCoords) {
-                calculatedStdFee = 500;
-                calculatedExpFee = 900;
-                window.updateCartUI();
-                return;
-            }
+            if (!shopCoords) { calculatedStdFee = 500; calculatedExpFee = 900; window.updateCartUI(); return; }
             document.getElementById('lbl-std').innerText = `🚲 Calcul en cours...`;
             document.getElementById('lbl-exp').innerText = `🚀 Calcul en cours...`;
             if (navigator.geolocation) {
@@ -226,16 +435,11 @@
                     calculatedExpFee = roundTo25(withMargin * 0.20);
                     window.updateCartUI();
                 }, () => {
-                    calculatedStdFee = 500;
-                    calculatedExpFee = 900;
+                    calculatedStdFee = 500; calculatedExpFee = 900;
                     window.updateCartUI();
                     window.showToast("GPS non disponible — tarifs forfaitaires appliqués", false);
                 }, { timeout: 8000 });
-            } else {
-                calculatedStdFee = 500;
-                calculatedExpFee = 900;
-                window.updateCartUI();
-            }
+            } else { calculatedStdFee = 500; calculatedExpFee = 900; window.updateCartUI(); }
         };
 
         let toastTimeout;
@@ -259,24 +463,14 @@
                 const { loginTime, boutique } = JSON.parse(saved);
                 if (Date.now() - loginTime < SHOP_SESSION_DURATION_MS && boutique && boutique.name) {
                     loggedInShopName = boutique.name;
-                    if (!forceClientView) {
-                        window.location.href = 'boutiques.html';
-                        return;
-                    }
-                } else {
-                    localStorage.removeItem('driprush_shop_session');
-                }
-            } catch(e) {
-                localStorage.removeItem('driprush_shop_session');
-            }
+                    if (!forceClientView) { window.location.href = 'boutiques.html'; return; }
+                } else { localStorage.removeItem('driprush_shop_session'); }
+            } catch(e) { localStorage.removeItem('driprush_shop_session'); }
         })();
 
         if (loggedInShopName) {
             const banner = document.getElementById('shop-welcome-back');
-            if (banner) {
-                document.getElementById('shop-welcome-name').innerText = loggedInShopName;
-                banner.classList.remove('hidden');
-            }
+            if (banner) { document.getElementById('shop-welcome-name').innerText = loggedInShopName; banner.classList.remove('hidden'); }
             const headerBtn = document.getElementById('shop-dashboard-btn');
             if (headerBtn) headerBtn.classList.remove('hidden');
         }
@@ -293,10 +487,7 @@
         window.enterSite = (mode) => {
             if(mode === 'shop') {
                 get(ref(db, 'driprush_settings/maintenanceMode')).then((snap) => {
-                    if (snap.val() === true) {
-                        document.getElementById('maintenance-modal').classList.remove('hidden');
-                        return;
-                    }
+                    if (snap.val() === true) { document.getElementById('maintenance-modal').classList.remove('hidden'); return; }
                     document.getElementById('welcome-screen').classList.add('hidden');
                     document.getElementById('main-content').classList.remove('hidden');
                 }).catch(() => {
@@ -337,9 +528,7 @@
                     window.showToast("Active ta localisation pour capturer le GPS", true);
                     btn.innerText = "📍 Réessayer";
                 });
-            } else {
-                window.showToast("GPS non supporté par ce téléphone", true);
-            }
+            } else { window.showToast("GPS non supporté par ce téléphone", true); }
         };
 
         window.toggleMomoField = () => {
@@ -354,43 +543,31 @@
             const gps = document.getElementById('p-gps').value.trim();
             const momoSame = document.getElementById('p-momo-same').checked;
             const momo = momoSame ? phone : document.getElementById('p-momo').value.replace(/\D/g, '');
-
             if(!name || !phone || !loc) return window.showToast("Remplissez tous les champs !", true);
             if(phone.length < 8) return window.showToast("Numéro WhatsApp invalide", true);
             if(!gps) return window.showToast("Capture la position de la boutique avant d'envoyer !", true);
             if(!momo || momo.length < 8) return window.showToast("Numéro Mobile Money invalide", true);
-
             const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = "Création en cours...";
-
             get(ref(db, 'driprush_boutiques/' + phone)).then((existingSnap) => {
                 if (existingSnap.exists()) {
                     btn.disabled = false;
                     btn.innerText = originalText;
                     return window.showToast("Ce numéro a déjà un compte ! Utilise plutôt « Me connecter à mon compte ».", true);
                 }
-
                 const pin = String(Math.floor(1000 + Math.random() * 9000));
-
                 set(ref(db, 'driprush_boutiques/' + phone), {
                     name, phone, gps: gps || '', momo, location: loc, pin, createdAt: Date.now()
                 }).then(() => {
                     const message = `Salut DRIPRUSH ! 🔥\n\nNOUVELLE BOUTIQUE INSCRITE :\n🏪 Nom: ${name}\n📞 Contact: ${phone}\n📍 Localisation: ${loc}\n🗺️ GPS: ${gps}\n💰 Mobile Money: ${momo}`;
                     window.open(`https://wa.me/2290147535343?text=${encodeURIComponent(message)}`, '_blank');
-
                     lastCreatedBoutique = { name, phone, gps: gps || '', momo, location: loc, pin };
-                    localStorage.setItem('driprush_shop_session', JSON.stringify({
-                        phone: lastCreatedBoutique.phone,
-                        loginTime: Date.now(),
-                        boutique: lastCreatedBoutique
-                    }));
-
+                    localStorage.setItem('driprush_shop_session', JSON.stringify({ phone: lastCreatedBoutique.phone, loginTime: Date.now(), boutique: lastCreatedBoutique }));
                     document.getElementById('partner-new').classList.add('hidden');
                     document.getElementById('partner-success-name').innerText = name;
                     document.getElementById('partner-success-pin').innerText = pin;
                     document.getElementById('partner-success').classList.remove('hidden');
-
                     document.getElementById('p-name').value = '';
                     document.getElementById('p-phone').value = '';
                     document.getElementById('p-loc').value = '';
@@ -403,33 +580,19 @@
                     const gpsBtn = document.getElementById('p-gps-btn');
                     gpsBtn.innerText = "📍 Appuyez ici pour enregistrer automatiquement vos coordonnées GPS";
                     gpsBtn.classList.replace('bg-green-100', 'bg-gray-100');
-                }).catch((err) => {
-                    btn.disabled = false;
-                    btn.innerText = originalText;
-                    window.showToast("Erreur : " + err.message, true);
-                });
-            }).catch((err) => {
-                btn.disabled = false;
-                btn.innerText = originalText;
-                window.showToast("Erreur : " + err.message, true);
-            });
+                }).catch((err) => { btn.disabled = false; btn.innerText = originalText; window.showToast("Erreur : " + err.message, true); });
+            }).catch((err) => { btn.disabled = false; btn.innerText = originalText; window.showToast("Erreur : " + err.message, true); });
         };
 
-        window.goToMyDashboard = () => {
-            if (!lastCreatedBoutique) return;
-            window.location.href = 'boutiques.html';
-        };
+        window.goToMyDashboard = () => { if (!lastCreatedBoutique) return; window.location.href = 'boutiques.html'; };
 
         window.loginPartner = (btn) => {
             const phone = document.getElementById('l-phone').value.replace(/\D/g, '');
             const pin = document.getElementById('l-pin').value.trim();
-
             if(phone.length < 8 || pin.length !== 4) return window.showToast("Vérifie ton numéro et ton PIN", true);
-
             const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = "Connexion...";
-
             fetch(WEBHOOK_SERVER_URL + '/verify-pin', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -442,31 +605,26 @@
                 if (data.success) {
                     localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now(), boutique: data.boutique }));
                     window.location.href = 'boutiques.html';
-                } else {
-                    window.showToast(data.message || "Numéro ou PIN incorrect", true);
-                }
+                } else { window.showToast(data.message || "Numéro ou PIN incorrect", true); }
             })
-            .catch(() => {
-                btn.disabled = false;
-                btn.innerText = originalText;
-                window.showToast("Erreur de connexion au serveur, réessaie.", true);
-            });
+            .catch(() => { btn.disabled = false; btn.innerText = originalText; window.showToast("Erreur de connexion au serveur, réessaie.", true); });
         };
 
         window.renderProducts = (products) => {
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
+            const favIds = new Set(getFavorites().map(f => f.id));
             products.forEach((p, idx) => {
                 const pShopName = p.shopName && p.shopName.trim() !== "" ? p.shopName : "Driprush";
                 const mainImage = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
                 const safeId = (p.id || "").replace(/'/g, "\\'");
                 const isNew = p.timestamp && (Date.now() - p.timestamp < 48 * 60 * 60 * 1000);
-
+                const isFav = favIds.has(p.id);
                 grid.innerHTML += `
                     <div class="product-card card-enter bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition cursor-pointer" style="animation-delay: ${Math.min(idx * 0.06, 0.6)}s" onclick="window.openModal('${safeId}')">
                         ${isNew ? '<span class="new-sticker absolute top-3 left-3 z-10">NOUVEAU</span>' : ''}
                         ${(p.images && p.images.length > 1) ? `<span class="absolute top-3 right-10 z-10 bg-black/60 text-white text-[8px] font-black px-2 py-1 rounded-full"><i class="fa-solid fa-images mr-1"></i>${p.images.length}</span>` : ''}
-                        <button class="absolute top-3 right-3 z-10 text-gray-300 hover:text-red-500 transition" onclick="event.stopPropagation(); this.classList.toggle('text-red-500')">
+                        <button class="absolute top-3 right-3 z-10 ${isFav ? 'text-red-500' : 'text-gray-300'} hover:text-red-500 transition" onclick="event.stopPropagation(); window.toggleFavorite('${safeId}', this)">
                             <i class="fa-solid fa-heart text-lg"></i>
                         </button>
                         <img src="${mainImage}" class="w-full h-52 object-cover" loading="lazy">
@@ -490,7 +648,7 @@
         window.filterByGenre = (genre) => {
             document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active-cat'));
             document.getElementById(`btn-${genre}`).classList.add('active-cat');
-            if (genre === 'tout') { window.renderProducts(allProducts); } 
+            if (genre === 'tout') { window.renderProducts(allProducts); }
             else { window.renderProducts(allProducts.filter(p => p.genre && p.genre.toLowerCase() === genre.toLowerCase())); }
         };
 
@@ -501,23 +659,17 @@
         window.openModal = (id) => {
             const p = allProducts.find(x => x.id === id);
             if (!p) return;
-
             const images = (p.images && p.images.length > 0) ? p.images : (p.image ? [p.image] : []);
             const pShopMomo = p.shopMomo && String(p.shopMomo).trim() !== "" ? p.shopMomo : (p.shopPhone || "2290147535343");
-
             selectedItem = {
                 id: p.id, name: p.name, price: p.price, image: images[0] || '',
                 shop: p.shopName || 'Driprush', shopGPS: p.shopGPS || '', shopPhone: p.shopPhone || '2290147535343',
-                shopMomo: pShopMomo,
-                internationalDelay: p.internationalDelay || false,
-                size: null, color: null
+                shopMomo: pShopMomo, internationalDelay: p.internationalDelay || false, size: null, color: null
             };
-
             document.getElementById('modal-img').src = images[0] || '';
             document.getElementById('modal-name').innerText = p.name;
             document.getElementById('modal-price').innerText = parseInt(p.price).toLocaleString() + " F";
             document.getElementById('international-delay-notice').classList.toggle('hidden', !p.internationalDelay);
-
             const galleryContainer = document.getElementById('gallery-thumbs');
             galleryContainer.innerHTML = '';
             if (images.length > 1) {
@@ -526,24 +678,20 @@
                     const safeUrl = imgUrl.replace(/'/g, "\\'");
                     galleryContainer.innerHTML += `<img src="${imgUrl}" onclick="window.setMainImage('${safeUrl}')" class="w-14 h-14 object-cover rounded-xl ${idx === 0 ? 'ring-2 ring-black' : 'opacity-60'} cursor-pointer flex-shrink-0">`;
                 });
-            } else {
-                galleryContainer.classList.add('hidden');
-            }
-
+            } else { galleryContainer.classList.add('hidden'); }
             const container = document.getElementById('size-container');
             container.innerHTML = '';
             if(p.sizes && p.sizes !== "N/A" && p.sizes.trim() !== "") {
                 p.sizes.split(',').forEach((s, idx) => {
                     const cleanSize = s.trim().replace(/'/g, "\\'");
                     const isFirst = idx === 0 ? 'bg-black text-white border-black' : '';
-                    if(idx === 0) selectedItem.size = s.trim(); 
+                    if(idx === 0) selectedItem.size = s.trim();
                     container.innerHTML += `<button onclick="window.selectSize(this, '${cleanSize}')" class="size-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black ${isFirst}">${s.trim()}</button>`;
                 });
             } else {
-                selectedItem.size = "Unique"; 
+                selectedItem.size = "Unique";
                 container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn bg-black text-white border-black border px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition">Taille Unique</button>`;
             }
-
             const colorSection = document.getElementById('color-section');
             const colorContainer = document.getElementById('color-container');
             colorContainer.innerHTML = '';
@@ -555,11 +703,7 @@
                     if (idx === 0) selectedItem.color = c.trim();
                     colorContainer.innerHTML += `<button onclick="window.selectColor(this, '${cleanColor}')" class="color-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black ${isFirst}">${c.trim()}</button>`;
                 });
-            } else {
-                colorSection.classList.add('hidden');
-                selectedItem.color = null;
-            }
-
+            } else { colorSection.classList.add('hidden'); selectedItem.color = null; }
             const chatDot = document.getElementById('chat-unread-dot');
             chatDot.classList.add('hidden');
             let myChats = {};
@@ -574,7 +718,6 @@
                     if (hasUnread) chatDot.classList.remove('hidden');
                 }).catch(() => {});
             }
-
             document.getElementById('product-modal').classList.remove('hidden');
         };
 
@@ -604,12 +747,8 @@
 
         window.toggleZoom = (show) => {
             const zoomModal = document.getElementById('zoom-modal');
-            if(show && selectedItem) {
-                document.getElementById('zoom-img').src = selectedItem.image;
-                zoomModal.classList.remove('hidden');
-            } else {
-                zoomModal.classList.add('hidden');
-            }
+            if(show && selectedItem) { document.getElementById('zoom-img').src = selectedItem.image; zoomModal.classList.remove('hidden'); }
+            else { zoomModal.classList.add('hidden'); }
         };
 
         window.selectSize = (element, size) => {
@@ -626,25 +765,19 @@
             icon.classList.add('cart-bounce');
         };
 
-        // 🆕 Correction : on ignore les articles validés pour la vérification boutique unique
         window.addToCart = () => {
-            if(!selectedItem || !selectedItem.size) {
-                return window.showToast("Sélectionne une taille d'abord !", true);
-            }
-
+            if(!selectedItem || !selectedItem.size) return window.showToast("Sélectionne une taille d'abord !", true);
             const pendingCartItems = cart.filter(i => !i.validated);
             if (pendingCartItems.length > 0) {
                 const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
                 const currentCartShopPhone = cleanPhone(pendingCartItems[0].shopPhone || "2290147535343");
                 const newShopPhone = cleanPhone(selectedItem.shopPhone || "2290147535343");
                 const currentCartShopName = pendingCartItems[0].shop || "Driprush";
-
                 if (currentCartShopPhone !== newShopPhone && currentCartShopPhone.length > 5 && newShopPhone.length > 5) {
                     window.showToast(`Ton panier contient déjà "${currentCartShopName}". Termine ou vide-le d'abord !`, true);
                     return;
                 }
             }
-
             cart.push({...selectedItem, validated: false});
             window.showToast("Ajouté ✅ — direction le panier quand tu veux");
             window.updateCartUI();
@@ -656,16 +789,13 @@
             cart = cart.filter(item =>
                 !item.validated || (item.validatedAt && Date.now() - item.validatedAt < FORTY_EIGHT_HOURS)
             );
-
             document.getElementById('nav-cart-count').innerText = cart.length;
             const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
             const hasPending = cart.some(i => !i.validated);
             document.getElementById('cart-bar').classList.toggle('hidden', !hasPending || !isCheckoutHidden);
-            
-            let subtotal = 0; 
+            let subtotal = 0;
             const listContainer = document.getElementById('cart-items-list');
             listContainer.innerHTML = '';
-
             cart.forEach((item, index) => {
                 if(!item.validated) subtotal += parseInt(item.price);
                 const variantLabel = item.size + (item.color ? ', ' + item.color : '');
@@ -681,23 +811,15 @@
                             <p class="text-[10px] font-bold uppercase">${item.name} (${variantLabel})</p>
                             <p class="text-black text-[11px] font-black">${parseInt(item.price).toLocaleString()} F</p>
                         </div>
-                        ${item.validated ? validatedLabel :
-                            `<button onclick="window.removeFromCart(${index})" class="text-red-500 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>`
-                        }
+                        ${item.validated ? validatedLabel : `<button onclick="window.removeFromCart(${index})" class="text-red-500 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>`}
                     </div>`;
             });
-
-            if(cart.length === 0) {
-                listContainer.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Ton panier est vide. Va dénicher ta prochaine pépite 🔥</p>';
-            }
-
+            if(cart.length === 0) listContainer.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Ton panier est vide. Va dénicher ta prochaine pépite 🔥</p>';
             document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
-
             document.getElementById('lbl-std').innerText = `🚲 Normale (+${calculatedStdFee.toLocaleString()} F)`;
             document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${calculatedExpFee.toLocaleString()} F)`;
             if(deliveryTypeSelected === "standard") deliveryFee = calculatedStdFee;
             else if(deliveryTypeSelected === "express") deliveryFee = calculatedExpFee;
-
             const totalDisplay = document.getElementById('final-total-display');
             if(deliveryTypeSelected !== "") {
                 totalDisplay.classList.add('price-tag');
@@ -712,10 +834,8 @@
 
         window.removeFromCart = (index) => {
             cart.splice(index, 1);
-            deliveryFee = 0;
-            deliveryTypeSelected = "";
-            calculatedStdFee = 500;
-            calculatedExpFee = 900;
+            deliveryFee = 0; deliveryTypeSelected = "";
+            calculatedStdFee = 500; calculatedExpFee = 900;
             window.updateCartUI();
         };
 
@@ -733,18 +853,14 @@
             const phone = document.getElementById('c-phone').value.trim();
             const addr = document.getElementById('c-addr').value.trim();
             const pendingItems = cart.filter(i => !i.validated);
-
             if(pendingItems.length === 0) return window.showToast("Aucun article à commander !", true);
             if(!name || !phone || !addr) return window.showToast("Remplis toutes tes infos !", true);
             if(deliveryTypeSelected === "") return window.showToast("Choisis un mode de livraison !", true);
-
             const phoneDigits = phone.replace(/\D/g, '');
             if(phoneDigits.length < 8) return window.showToast("Numéro WhatsApp invalide", true);
-
             const originalText = element.innerText;
             element.innerText = "CONNEXION GPS... ⏳";
             element.disabled = true;
-
             if (clientCoords) {
                 const gps = `https://www.google.com/maps?q=${clientCoords.lat},${clientCoords.lng}`;
                 window.triggerFedaPay(name, phone, addr, gps, element, originalText);
@@ -753,9 +869,7 @@
                     clientCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                     const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                     window.triggerFedaPay(name, phone, addr, gps, element, originalText);
-                }, () => {
-                    window.triggerFedaPay(name, phone, addr, "GPS Refusé", element, originalText);
-                }, { timeout: 8000 });
+                }, () => { window.triggerFedaPay(name, phone, addr, "GPS Refusé", element, originalText); }, { timeout: 8000 });
             }
         };
 
@@ -764,58 +878,41 @@
                 const firstItem = pendingItems[0];
                 const commission = Math.round(finalTotal * 0.10);
                 const montantBoutique = finalTotal - commission;
-
                 const orderRef = push(ref(db, 'driprush_orders'));
                 set(orderRef, {
                     clientName: name, phone, address: addr, clientGPS: gps,
-                    shopName: firstItem.shop || 'Driprush',
-                    shopGPS: firstItem.shopGPS || '',
+                    shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '',
                     shopPhone: firstItem.shopPhone || '2290147535343',
                     shopMomo: firstItem.shopMomo || firstItem.shopPhone || '',
                     items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '),
-                    deliveryMode: deliveryTypeSelected,
-                    deliveryFee: deliveryFee,
-                    total: finalTotal,
-                    commission: commission,
-                    montantBoutique: montantBoutique,
-                    status: 'En attente de paiement',
-                    timestamp: Date.now()
+                    deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee,
+                    total: finalTotal, commission: commission, montantBoutique: montantBoutique,
+                    status: 'En attente de paiement', timestamp: Date.now()
                 }).then(() => resolve(orderRef.key)).catch(reject);
             });
         };
 
         window.triggerFedaPay = (name, phone, addr, gps, btn, originalText) => {
             const pendingItems = cart.filter(i => !i.validated);
-            let subtotal = 0; 
+            let subtotal = 0;
             pendingItems.forEach(i => subtotal += parseInt(i.price));
             const finalTotal = subtotal + deliveryFee;
-
             if (SIMULATION_MODE) {
                 btn.innerText = "PAIEMENT SIMULÉ... ⏳";
                 window.showToast("🧪 Mode simulation activé — paiement fictif");
-                setTimeout(() => {
-                    window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems);
-                }, 2000);
+                setTimeout(() => { window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems); }, 2000);
                 return;
             }
-
             window.createPendingOrder(name, phone, addr, gps, finalTotal, pendingItems).then((orderId) => {
                 const nameParts = name.split(' ');
                 const firstname = nameParts[0] || 'Client';
                 const lastname = nameParts.slice(1).join(' ') || 'Driprush';
-
                 const widget = FedaPay.init({
-                    public_key: FEDAPAY_PUBLIC_KEY,
-                    environment: 'live',
-                    transaction: {
-                        amount: finalTotal,
-                        description: `Commande Driprush #${orderId}`,
-                        custom_metadata: { orderId: orderId }
-                    },
+                    public_key: FEDAPAY_PUBLIC_KEY, environment: 'live',
+                    transaction: { amount: finalTotal, description: `Commande Driprush #${orderId}`, custom_metadata: { orderId: orderId } },
                     currency: { iso: 'XOF' },
                     customer: {
-                        firstname: firstname,
-                        lastname: lastname,
+                        firstname, lastname,
                         email: `client${phone.replace(/\D/g,'')}@driprush.bj`,
                         phone_number: { number: phone, country: 'BJ' }
                     },
@@ -824,15 +921,9 @@
                         btn.innerText = originalText;
                         btn.disabled = false;
                         const orderedItems = cart.filter(i => !i.validated);
-                        cart = cart.map(item => !item.validated
-                            ? { ...item, validated: true, validatedAt: Date.now() }
-                            : item
-                        );
-                        deliveryFee = 0;
-                        deliveryTypeSelected = "";
-                        calculatedStdFee = 500;
-                        calculatedExpFee = 900;
-                        clientCoords = null;
+                        cart = cart.map(item => !item.validated ? { ...item, validated: true, validatedAt: Date.now() } : item);
+                        deliveryFee = 0; deliveryTypeSelected = "";
+                        calculatedStdFee = 500; calculatedExpFee = 900; clientCoords = null;
                         saveValidatedCart();
                         window.updateCartUI();
                         document.getElementById('checkout-modal').classList.add('hidden');
@@ -851,47 +942,37 @@
             const firstItem = pendingItems[0];
             const commission = Math.round(finalTotal * 0.10);
             const montantBoutique = finalTotal - commission;
-
             const orderRef = push(ref(db, 'driprush_orders'));
             set(orderRef, {
                 clientName: name, phone, address: addr, clientGPS: gps,
-                shopName: firstItem.shop || 'Driprush', 
-                shopGPS: firstItem.shopGPS || '', 
+                shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '',
                 shopPhone: firstItem.shopPhone || '2290147535343',
                 shopMomo: firstItem.shopMomo || firstItem.shopPhone || '',
                 items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '),
-                deliveryMode: deliveryTypeSelected,
-                deliveryFee: deliveryFee,
-                total: finalTotal, 
-                commission: commission,
-                montantBoutique: montantBoutique,
-                status: SIMULATION_MODE ? 'Payée (TEST)' : 'Payée', 
-                timestamp: Date.now()
+                deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee,
+                total: finalTotal, commission: commission, montantBoutique: montantBoutique,
+                status: SIMULATION_MODE ? 'Payée (TEST)' : 'Payée', timestamp: Date.now()
             }).then(() => {
                 const orderedItems = [...pendingItems];
-                cart = cart.map(item => !item.validated
-                    ? { ...item, validated: true, validatedAt: Date.now() }
-                    : item
-                );
-                deliveryFee = 0;
-                deliveryTypeSelected = "";
-                calculatedStdFee = 500;
-                calculatedExpFee = 900;
-                clientCoords = null;
+                cart = cart.map(item => !item.validated ? { ...item, validated: true, validatedAt: Date.now() } : item);
+                deliveryFee = 0; deliveryTypeSelected = "";
+                calculatedStdFee = 500; calculatedExpFee = 900; clientCoords = null;
                 saveValidatedCart();
                 window.updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
                 showDeliveryMessage(orderedItems);
-            }).catch((err) => {
-                window.showToast("Erreur : " + err.message, true);
-            });
+            }).catch((err) => { window.showToast("Erreur : " + err.message, true); });
         };
 
         window.toggleCheckout = (show) => {
             document.getElementById('checkout-modal').classList.toggle('hidden', !show);
             if(!show) { window.scrollTo(0,0); window.updateCartUI(); return; }
             window.updateCartUI();
-            // 🆕 Pour le calcul GPS, on prend le premier article EN COURS (pas validé)
+            const s = loadSettings();
+            const nameInput = document.getElementById('c-name');
+            const addrInput = document.getElementById('c-addr');
+            if (s.clientName && nameInput && !nameInput.value) nameInput.value = s.clientName;
+            if (s.clientAddress && addrInput && !addrInput.value) addrInput.value = s.clientAddress;
             const pendingItems = cart.filter(i => !i.validated);
             if (pendingItems.length > 0 && pendingItems[0].shopGPS) {
                 window.calculateAndSetDeliveryFees(pendingItems[0].shopGPS);
@@ -909,9 +990,7 @@
             document.getElementById('chat-name-screen').classList.toggle('hidden', !!clientName);
             document.getElementById('chat-thread-screen').classList.toggle('hidden', !clientName);
             document.getElementById('chat-modal').classList.remove('hidden');
-            if (clientName) {
-                window.startOrLoadChat(clientName);
-            }
+            if (clientName) { window.startOrLoadChat(clientName); }
         };
 
         window.submitClientName = () => {
@@ -926,20 +1005,22 @@
         window.startOrLoadChat = (clientName) => {
             const productId = selectedItem.id;
             const shopPhone = selectedItem.shopPhone || '2290147535343';
-
             let myChats = {};
             try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) { myChats = {}; }
-
             if (myChats[productId] && myChats[productId].chatId) {
                 window.attachChatListener(shopPhone, myChats[productId].chatId);
             } else {
                 const chatRef = push(ref(db, 'driprush_chats/' + shopPhone));
                 set(chatRef, {
-                    clientName, productName: selectedItem.name, productId,
-                    createdAt: Date.now()
+                    clientName, productName: selectedItem.name, productId, createdAt: Date.now()
                 }).then(() => {
                     myChats[productId] = { chatId: chatRef.key, shopPhone };
                     localStorage.setItem('driprush_my_chats', JSON.stringify(myChats));
+                    // ✅ CORRECTION 2 : sauvegarde token FCM client dans Firebase
+                    const clientFCMToken = localStorage.getItem('driprush_client_fcm_token');
+                    if (clientFCMToken) {
+                        update(ref(db, 'driprush_chats/' + shopPhone + '/' + chatRef.key), { clientFCMToken }).catch(() => {});
+                    }
                     window.attachChatListener(shopPhone, chatRef.key);
                 }).catch((err) => window.showToast("Erreur : " + err.message, true));
             }
@@ -948,7 +1029,11 @@
         window.attachChatListener = (shopPhone, chatId) => {
             if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
             currentChatRefPath = { shopPhone, chatId };
-
+            // ✅ CORRECTION 3 : renouvelle le token FCM client à chaque ouverture de chat
+            const clientFCMToken = localStorage.getItem('driprush_client_fcm_token');
+            if (clientFCMToken) {
+                update(ref(db, `driprush_chats/${shopPhone}/${chatId}`), { clientFCMToken }).catch(() => {});
+            }
             if (selectedItem) {
                 let myChats = {};
                 try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) { myChats = {}; }
@@ -958,7 +1043,6 @@
                 }
             }
             document.getElementById('chat-unread-dot').classList.add('hidden');
-
             const messagesRef = ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`);
             currentChatUnsub = onValue(messagesRef, (snapshot) => {
                 const data = snapshot.val();
@@ -970,9 +1054,7 @@
         window.renderChatMessages = (messages) => {
             const container = document.getElementById('chat-messages-list');
             container.innerHTML = '';
-            if (messages.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Pose ta question à la boutique 👋</p>';
-            }
+            if (messages.length === 0) container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Pose ta question à la boutique 👋</p>';
             messages.forEach(m => {
                 const isClient = m.sender === 'client';
                 container.innerHTML += `
@@ -989,16 +1071,25 @@
             const input = document.getElementById('chat-message-input');
             const text = input.value.trim();
             if (!text || !currentChatRefPath) return;
-
             if (containsContactAttempt(text)) {
                 window.showToast("Pour ta sécurité, les échanges de numéros/contacts sont interdits ici — tout passe par Driprush 🔒", true);
                 return;
             }
-
             const { shopPhone, chatId } = currentChatRefPath;
             push(ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`), {
                 sender: 'client', text, timestamp: Date.now()
-            }).then(() => { input.value = ''; }).catch((err) => window.showToast("Erreur : " + err.message, true));
+            }).then(() => {
+                input.value = '';
+                fetch(WEBHOOK_SERVER_URL + '/notify-shop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        shopPhone: shopPhone,
+                        clientName: localStorage.getItem('driprush_client_name') || 'Un client',
+                        productName: selectedItem ? selectedItem.name : 'un article'
+                    })
+                }).catch(() => {});
+            }).catch((err) => window.showToast("Erreur : " + err.message, true));
         };
 
         window.closeChatModal = () => {
@@ -1010,10 +1101,7 @@
             document.getElementById('comments-modal').classList.remove('hidden');
             window.loadComments();
         };
-
-        window.closeCommentsModal = () => {
-            document.getElementById('comments-modal').classList.add('hidden');
-        };
+        window.closeCommentsModal = () => { document.getElementById('comments-modal').classList.add('hidden'); };
 
         window.selectStar = (rating) => {
             selectedRating = rating;
@@ -1029,9 +1117,7 @@
             onValue(ref(db, 'driprush_comments'), (snap) => {
                 const data = snap.val();
                 container.innerHTML = '';
-                const comments = data
-                    ? Object.keys(data).map(id => ({ id, ...data[id] })).sort((a, b) => b.timestamp - a.timestamp)
-                    : [];
+                const comments = data ? Object.keys(data).map(id => ({ id, ...data[id] })).sort((a, b) => b.timestamp - a.timestamp) : [];
                 if (comments.length === 0) {
                     container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10 tracking-widest">Aucun avis pour l\'instant — sois le premier !</p>';
                     return;
@@ -1058,14 +1144,10 @@
             if (!name) return window.showToast("Entre ton prénom !", true);
             if (selectedRating === 0) return window.showToast("Donne une note de 1 à 5 étoiles !", true);
             if (!text) return window.showToast("Écris ton avis avant d'envoyer !", true);
-
             const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = "Envoi...";
-
-            push(ref(db, 'driprush_comments'), {
-                name, text, rating: selectedRating, timestamp: Date.now()
-            }).then(() => {
+            push(ref(db, 'driprush_comments'), { name, text, rating: selectedRating, timestamp: Date.now() }).then(() => {
                 document.getElementById('comment-name').value = '';
                 document.getElementById('comment-text').value = '';
                 selectedRating = 0;
@@ -1073,11 +1155,7 @@
                 btn.disabled = false;
                 btn.innerText = originalText;
                 window.showToast("Merci pour ton avis ✅");
-            }).catch((err) => {
-                btn.disabled = false;
-                btn.innerText = originalText;
-                window.showToast("Erreur : " + err.message, true);
-            });
+            }).catch((err) => { btn.disabled = false; btn.innerText = originalText; window.showToast("Erreur : " + err.message, true); });
         };
 
         if ('serviceWorker' in navigator) {
@@ -1085,29 +1163,18 @@
         }
 
         let deferredInstallPrompt = null;
-
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredInstallPrompt = e;
             document.getElementById('install-banner').classList.remove('hidden');
         });
-
         window.installApp = () => {
             if (!deferredInstallPrompt) return;
             deferredInstallPrompt.prompt();
-            deferredInstallPrompt.userChoice.then(() => {
-                document.getElementById('install-banner').classList.add('hidden');
-                deferredInstallPrompt = null;
-            });
+            deferredInstallPrompt.userChoice.then(() => { document.getElementById('install-banner').classList.add('hidden'); deferredInstallPrompt = null; });
         };
-
-        window.dismissInstallBanner = () => {
-            document.getElementById('install-banner').classList.add('hidden');
-        };
-
-        window.addEventListener('appinstalled', () => {
-            document.getElementById('install-banner').classList.add('hidden');
-        });
+        window.dismissInstallBanner = () => { document.getElementById('install-banner').classList.add('hidden'); };
+        window.addEventListener('appinstalled', () => { document.getElementById('install-banner').classList.add('hidden'); });
     </script>
 </head>
 <body class="pb-24">
@@ -1128,9 +1195,7 @@
             <div id="shop-welcome-back" class="hidden mb-4 bg-lime/10 border border-lime/30 rounded-2xl p-4 text-center backdrop-blur-sm">
                 <p class="text-[10px] text-lime font-black uppercase tracking-widest mb-1">Bon retour 👋</p>
                 <p id="shop-welcome-name" class="text-white font-display text-sm uppercase mb-3"></p>
-                <button onclick="window.location.href='boutiques.html'" class="w-full bg-lime text-black font-display py-3 rounded-xl text-xs uppercase active:scale-95 transition">
-                    Accéder à mon tableau de bord 📊
-                </button>
+                <button onclick="window.location.href='boutiques.html'" class="w-full bg-lime text-black font-display py-3 rounded-xl text-xs uppercase active:scale-95 transition">Accéder à mon tableau de bord 📊</button>
             </div>
             <div class="space-y-4">
                 <button onclick="window.enterSite('shop')" class="w-full bg-white text-ink py-5 rounded-2xl font-display uppercase text-sm shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 transition-all">Démarrer le Shopping 🛍️</button>
@@ -1185,9 +1250,7 @@
 
         <div id="product-modal" onclick="window.closeModalOutside(event)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end hidden cursor-pointer">
             <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up modal-height-fix pb-10 cursor-default relative">
-                <button id="close-modal-btn" onclick="window.closeModalOutside(null)" class="absolute top-4 right-6 text-gray-400 hover:text-black transition text-xl p-2">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+                <button id="close-modal-btn" onclick="window.closeModalOutside(null)" class="absolute top-4 right-6 text-gray-400 hover:text-black transition text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
                 <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2"></div>
                 <div class="flex gap-4">
                     <img id="modal-img" src="" onclick="window.toggleZoom(true)" class="w-32 h-32 object-cover rounded-2xl shadow-lg cursor-zoom-in active:scale-95 transition duration-200">
@@ -1353,10 +1416,16 @@
         </div>
     </div>
 
-    <!-- BOUTON FLOTTANT AVIS -->
+    <!-- BOUTON FLOTTANT AVIS ⭐ -->
     <button onclick="window.openCommentsModal()" class="fixed bottom-28 left-4 z-[65] bg-drip text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(255,77,28,0.4)] flex flex-col items-center justify-center active:scale-95 transition-all">
         <i class="fa-solid fa-star text-sm"></i>
         <span class="text-[7px] font-black uppercase mt-0.5">Avis</span>
+    </button>
+
+    <!-- BOUTON FLOTTANT PARAMÈTRES ⚙️ -->
+    <button onclick="window.openSettingsPanel()" class="fixed bottom-28 right-4 z-[65] bg-ink text-white w-14 h-14 rounded-full shadow-xl flex flex-col items-center justify-center active:scale-95 transition-all border border-white/10">
+        <i class="fa-solid fa-gear text-sm"></i>
+        <span class="text-[7px] font-black uppercase mt-0.5">Menu</span>
     </button>
 
     <!-- MODAL COMMENTAIRES -->
@@ -1382,6 +1451,66 @@
                 </div>
                 <textarea id="comment-text" placeholder="Ton avis sur Driprush..." class="w-full bg-white border border-gray-200 p-3 rounded-2xl outline-none text-xs font-bold h-16 resize-none focus:border-black transition"></textarea>
                 <button onclick="window.submitComment(this)" class="w-full bg-black text-white py-3.5 rounded-2xl font-black uppercase text-xs active:scale-95 transition">Envoyer mon avis ⭐</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANNEAU PARAMÈTRES CLIENT -->
+    <div id="settings-panel" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[68] flex items-end justify-center">
+        <div class="bg-white w-full max-w-md rounded-t-[2.5rem] flex flex-col" style="height: 92vh;">
+            <div class="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
+                <div>
+                    <h3 class="text-sm font-display uppercase tracking-tight text-ink">Mon Espace</h3>
+                    <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Personnalise ton expérience Driprush</p>
+                </div>
+                <button onclick="window.closeSettingsPanel()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-10">
+                <div class="bg-gray-50 rounded-2xl p-4">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">👤 Mon Profil</p>
+                    <input id="settings-name" placeholder="TON PRÉNOM" class="w-full bg-white border border-gray-200 p-3 rounded-xl outline-none text-xs font-bold uppercase focus:border-black transition mb-2">
+                    <textarea id="settings-address" placeholder="TON ADRESSE HABITUELLE (pré-remplie au checkout)" class="w-full bg-white border border-gray-200 p-3 rounded-xl outline-none text-xs font-bold uppercase h-16 resize-none focus:border-black transition mb-3"></textarea>
+                    <button onclick="window.saveClientProfile()" class="w-full bg-black text-white py-3 rounded-xl font-black uppercase text-xs active:scale-95 transition">Enregistrer mon profil ✅</button>
+                </div>
+                <div class="bg-gray-50 rounded-2xl p-4 space-y-4">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">🎨 Apparence</p>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-xs font-bold text-ink">Mode Sombre 🌙</p>
+                            <p class="text-[9px] text-gray-400">Interface noire pour les yeux</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-dark" class="sr-only peer" onchange="window.toggleDarkMode(this.checked)">
+                            <div class="w-11 h-6 bg-gray-200 peer-checked:bg-black rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                        </label>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-ink mb-2">Taille du texte 🔤</p>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button id="size-small" onclick="window.setTextSize('small')" class="py-2.5 rounded-xl border border-gray-200 text-[10px] font-black uppercase transition">Petit</button>
+                            <button id="size-normal" onclick="window.setTextSize('normal')" class="py-2.5 rounded-xl border text-[10px] font-black uppercase transition bg-black text-white border-black">Normal</button>
+                            <button id="size-large" onclick="window.setTextSize('large')" class="py-2.5 rounded-xl border border-gray-200 text-[10px] font-black uppercase transition">Grand</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-2xl p-4">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">🔔 Notifications</p>
+                    <p class="text-[10px] text-gray-500 mb-3">Reçois une alerte quand une boutique répond à ton message.</p>
+                    <button onclick="window.requestClientNotifications()" id="notif-btn" class="w-full bg-black text-white py-3 rounded-xl font-black uppercase text-xs active:scale-95 transition">Activer les notifications 🔔</button>
+                </div>
+                <div class="bg-gray-50 rounded-2xl p-4">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">❤️ Mes Favoris</p>
+                    <div id="favorites-list"></div>
+                </div>
+                <div class="bg-gray-50 rounded-2xl p-4">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">📦 Mes Commandes Récentes</p>
+                    <div id="orders-history-list"></div>
+                </div>
+                <div class="bg-gray-50 rounded-2xl p-4">
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">🔗 Partager Driprush</p>
+                    <p class="text-[10px] text-gray-500 mb-3">Partage Driprush avec tes amis et aide les boutiques locales à grandir 🔥</p>
+                    <button onclick="window.shareApp()" class="w-full bg-drip text-white py-3 rounded-xl font-black uppercase text-xs active:scale-95 transition">Partager le lien 🔗</button>
+                </div>
             </div>
         </div>
     </div>
