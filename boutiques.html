@@ -68,12 +68,7 @@
         .input-dark:focus { border-color: #FF4D1C; }
 
         #drip-bg { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
-        .drip-shape {
-            position: absolute;
-            border-radius: 50% 50% 50% 0;
-            filter: blur(1px);
-            opacity: 0.10;
-        }
+        .drip-shape { position: absolute; border-radius: 50% 50% 50% 0; filter: blur(1px); opacity: 0.10; }
         @keyframes dripPulse {
             0%, 100% { opacity: 0.08; transform: rotate(45deg) scale(1); }
             50% { opacity: 0.18; transform: rotate(45deg) scale(1.12); }
@@ -85,8 +80,18 @@
         }
         .drip-pulse { animation: dripPulse 7s ease-in-out infinite; }
         .drip-float { animation: dripFloat 11s ease-in-out infinite; }
-
         .app-content { position: relative; z-index: 10; }
+
+        /* 🆕 Notification toast interne */
+        #notif-toast {
+            position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+            background: #1c1c1c; border: 1px solid rgba(255,255,255,0.1);
+            color: white; padding: 12px 20px; border-radius: 16px;
+            font-size: 11px; font-weight: 700; z-index: 200;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            max-width: 90vw; text-align: center;
+            transition: opacity 0.3s;
+        }
     </style>
 </head>
 <body class="min-h-screen p-5 pb-16">
@@ -99,6 +104,9 @@
         <div class="drip-shape drip-float" style="width:70px; height:70px; background:#C8FF4D; top:80%; right:8%; transform:rotate(45deg); animation-delay: 4s;"></div>
         <div class="drip-shape" style="width:160px; height:160px; background:#FF4D1C; top:88%; left:30%; transform:rotate(45deg); opacity:0.06;"></div>
     </div>
+
+    <!-- 🆕 Toast notification interne (foreground) -->
+    <div id="notif-toast" class="hidden"></div>
 
     <!-- ÉCRAN 1 : CHOIX DU RÔLE -->
     <div id="landing-card" class="app-content max-w-md mx-auto pt-16 text-center">
@@ -166,7 +174,7 @@
             Enregistrer la boutique 🚀
         </button>
 
-        <!-- 🆕 SECTION MESSAGERIE ADMIN -->
+        <!-- MESSAGERIE ADMIN -->
         <h2 class="text-xl font-display uppercase mb-1 mt-4 tracking-tight">📬 Envoyer un message</h2>
         <p class="text-[10px] text-gray-500 font-bold uppercase mb-4 tracking-widest">Message individuel ou annonce générale à toutes les boutiques</p>
         <div class="space-y-3 mb-4">
@@ -232,7 +240,16 @@
             </p>
         </a>
 
-        <!-- 🆕 5 onglets avec Messages -->
+        <!-- 🆕 Bannière activation notifications -->
+        <div id="notif-banner" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 mb-4 flex items-center gap-3">
+            <span class="text-xl">🔔</span>
+            <div class="flex-1">
+                <p class="text-[10px] text-amber-400 font-black uppercase tracking-wide">Active les notifications</p>
+                <p class="text-[9px] text-gray-400">Pour ne jamais rater une commande ou un message client</p>
+            </div>
+            <button onclick="window.requestFCMPermission()" class="bg-amber-500 text-black text-[9px] font-black uppercase px-3 py-2 rounded-xl active:scale-95 transition">Activer</button>
+        </div>
+
         <div class="grid grid-cols-5 gap-1 mb-5">
             <button onclick="window.setTab('active')" id="tab-active" class="bg-drip text-white py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition">À traiter</button>
             <button onclick="window.setTab('done')" id="tab-done" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition">Livrées</button>
@@ -258,7 +275,6 @@
             <div id="chats-list"></div>
         </div>
 
-        <!-- 🆕 Panneau messages admin -->
         <div id="messages-panel" class="hidden space-y-3 pb-10">
             <div id="messages-list"></div>
         </div>
@@ -341,7 +357,7 @@
         </div>
     </div>
 
-    <!-- 🆕 MODAL : MESSAGE ADMIN (pop-up à l'ouverture du dashboard) -->
+    <!-- MODAL : MESSAGE ADMIN (pop-up) -->
     <div id="admin-message-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
         <div class="bg-ink w-full max-w-sm rounded-3xl p-6 border border-white/10 space-y-4">
             <div class="flex items-center gap-3 mb-1">
@@ -358,6 +374,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, set, get, update, remove, onValue, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBuzgGc5iumNCurtTpVM5X3_3TK95qbQpc",
@@ -371,14 +388,17 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
         const auth = getAuth(app);
         signInAnonymously(auth).catch((err) => console.error("Erreur auth anonyme:", err));
 
+        // 🆕 Firebase Messaging
+        let messaging = null;
+        try { messaging = getMessaging(app); } catch(e) { console.warn('FCM non supporté:', e.message); }
+
+        const VAPID_KEY = 'BHcec3uYhQHLW4T1gIAWEKW0V1ljifEhLYCRTTJcByj7vTdUnuGtsmQzPlr-mOQqTFnS63VS3Lm29CfTn9adDV8';
         const CLOUDINARY_CLOUD_NAME = "dshzay8cf";
         const CLOUDINARY_UPLOAD_PRESET = "drip_rush";
         const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
-
         const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
         const ADMIN_SESSION_MS = 24 * 60 * 60 * 1000;
         const MAX_PHOTOS = 10;
@@ -392,17 +412,106 @@
         let currentShopChatRef = null;
         let currentShopChatUnsub = null;
         let chatBadgeUnsub = null;
-        let pendingAdminMessages = []; // 🆕 file d'attente des messages non lus
+        let pendingAdminMessages = [];
 
         const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
 
-        // 🆕 Restriction anti-contact dans le chat
+        // 🆕 Toast notification interne (quand le site est ouvert)
+        let notifToastTimeout;
+        function showNotifToast(title, body, url) {
+            const toast = document.getElementById('notif-toast');
+            toast.innerHTML = `<span class="text-drip mr-1">🔔</span> <strong>${title}</strong><br><span class="text-gray-400 text-[10px]">${body}</span>`;
+            toast.classList.remove('hidden');
+            toast.style.opacity = '1';
+            toast.style.cursor = url ? 'pointer' : 'default';
+            if (url) toast.onclick = () => { window.location.href = url; };
+            clearTimeout(notifToastTimeout);
+            notifToastTimeout = setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 5000);
+        }
+
+        // 🆕 Demande de permission + enregistrement token FCM boutique
+        window.requestFCMPermission = async () => {
+            if (!messaging) {
+                alert("Les notifications push ne sont pas supportées sur cet appareil ou navigateur.");
+                return;
+            }
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    alert("Tu as refusé les notifications. Pour les activer, va dans les paramètres de ton navigateur.");
+                    return;
+                }
+
+                const swReg = await navigator.serviceWorker.ready;
+                const token = await getToken(messaging, {
+                    vapidKey: VAPID_KEY,
+                    serviceWorkerRegistration: swReg
+                });
+
+                if (token && currentShopPhone) {
+                    await update(ref(db, 'driprush_fcm_tokens/' + currentShopPhone), {
+                        token,
+                        type: 'shop',
+                        phone: currentShopPhone,
+                        updatedAt: Date.now()
+                    });
+                    document.getElementById('notif-banner').classList.add('hidden');
+                    showNotifToast('Notifications activées ✅', 'Tu recevras une alerte à chaque commande ou message client', null);
+                    console.log('✅ Token FCM boutique enregistré');
+                }
+
+                // Notifications reçues quand le site est ouvert (foreground)
+                onMessage(messaging, (payload) => {
+                    console.log('Message FCM foreground :', payload);
+                    const title = (payload.notification && payload.notification.title) || 'Driprush';
+                    const body = (payload.notification && payload.notification.body) || '';
+                    const url = (payload.data && payload.data.url) || null;
+                    showNotifToast(title, body, url);
+                });
+
+            } catch(err) {
+                console.error('Erreur FCM:', err);
+                alert("Impossible d'activer les notifications : " + err.message);
+            }
+        };
+
+        // 🆕 Vérifie si les notifs sont déjà activées au login
+        async function checkFCMStatus() {
+            if (!messaging || !('Notification' in window)) return;
+            if (Notification.permission === 'granted') {
+                try {
+                    const swReg = await navigator.serviceWorker.ready;
+                    const token = await getToken(messaging, {
+                        vapidKey: VAPID_KEY,
+                        serviceWorkerRegistration: swReg
+                    });
+                    if (token && currentShopPhone) {
+                        await update(ref(db, 'driprush_fcm_tokens/' + currentShopPhone), {
+                            token, type: 'shop', phone: currentShopPhone, updatedAt: Date.now()
+                        });
+                        // Écoute les messages foreground
+                        onMessage(messaging, (payload) => {
+                            const title = (payload.notification && payload.notification.title) || 'Driprush';
+                            const body = (payload.notification && payload.notification.body) || '';
+                            const url = (payload.data && payload.data.url) || null;
+                            showNotifToast(title, body, url);
+                        });
+                    }
+                } catch(e) { console.warn('FCM refresh token:', e.message); }
+            } else if (Notification.permission === 'default') {
+                // Montre la bannière d'invitation
+                document.getElementById('notif-banner').classList.remove('hidden');
+            }
+        }
+
         function containsContactAttempt(text) {
             const digitMatches = text.match(/\d/g);
             if (digitMatches && digitMatches.length >= 3) return true;
             const suspiciousKeywords = ['whatsapp', 'whats app', 'numero', 'numéro', 'appelle', 'appel moi', 'telegram', 'contacte moi', 'mon numero', 'sms'];
-            const lowerText = text.toLowerCase();
-            return suspiciousKeywords.some(kw => lowerText.includes(kw));
+            return suspiciousKeywords.some(kw => text.toLowerCase().includes(kw));
         }
 
         function formatRelativeTime(timestamp) {
@@ -448,9 +557,7 @@
             if (saved) {
                 try {
                     const { loginTime } = JSON.parse(saved);
-                    if (Date.now() - loginTime < ADMIN_SESSION_MS) {
-                        return window.showPanel('admin');
-                    }
+                    if (Date.now() - loginTime < ADMIN_SESSION_MS) return window.showPanel('admin');
                 } catch(e) {}
             }
             document.getElementById('admin-password-error').classList.add('hidden');
@@ -513,7 +620,6 @@
             document.getElementById('b-momo').classList.toggle('hidden', same);
         };
 
-        // 🆕 Charge les boutiques dans le select du formulaire de message
         window.loadAdminMessageTargets = () => {
             get(ref(db, 'driprush_boutiques')).then((snap) => {
                 const data = snap.val();
@@ -527,14 +633,12 @@
             }).catch(() => {});
         };
 
-        // 🆕 Envoie un message admin vers une ou toutes les boutiques
         window.sendAdminMessage = () => {
             const text = document.getElementById('msg-text').value.trim();
             const targetPhone = document.getElementById('msg-target').value;
             if (!text) return alert("Écris un message avant d'envoyer !");
             push(ref(db, 'driprush_messages'), {
-                text,
-                timestamp: Date.now(),
+                text, timestamp: Date.now(),
                 targetPhone: targetPhone || null,
                 readBy: {}
             }).then(() => {
@@ -670,7 +774,7 @@
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <span class="text-drip font-display pin-digit text-sm">${b.pin}</span>
-                                    <button onclick="event.stopPropagation(); window.deleteBoutique('${b.phone}', '${safeName}')" class="text-red-500 text-xs px-2" title="Supprimer cette boutique"><i class="fa-solid fa-trash-can"></i></button>
+                                    <button onclick="event.stopPropagation(); window.deleteBoutique('${b.phone}', '${safeName}')" class="text-red-500 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>
                                 </div>
                             </div>
                             <div class="boutique-details hidden mt-2 pt-2 border-t border-white/10">
@@ -684,19 +788,14 @@
         };
 
         window.deleteBoutique = (phone, name) => {
-            if (!confirm(`Supprimer définitivement "${name}" et tous ses articles ? Cette action est irréversible.`)) return;
+            if (!confirm(`Supprimer définitivement "${name}" et tous ses articles ?`)) return;
             const productsQuery = query(ref(db, 'driprush_products'), orderByChild('shopPhone'), equalTo(phone));
             get(productsQuery).then((snapshot) => {
                 const data = snapshot.val();
-                const deletions = [];
-                if (data) {
-                    Object.keys(data).forEach((productId) => {
-                        deletions.push(remove(ref(db, 'driprush_products/' + productId)));
-                    });
-                }
+                const deletions = data ? Object.keys(data).map(id => remove(ref(db, 'driprush_products/' + id))) : [];
                 Promise.all(deletions).then(() => {
                     remove(ref(db, 'driprush_boutiques/' + phone))
-                        .then(() => alert(`"${name}" et ses articles ont été supprimés.`))
+                        .then(() => alert(`"${name}" supprimée.`))
                         .catch((err) => alert("Erreur : " + err.message));
                 });
             }).catch((err) => alert("Erreur : " + err.message));
@@ -798,7 +897,6 @@
             });
         };
 
-        // 🆕 Vérifie les messages admin non lus à l'ouverture du dashboard
         window.checkUnreadAdminMessages = () => {
             get(ref(db, 'driprush_messages')).then((snap) => {
                 const data = snap.val();
@@ -811,7 +909,6 @@
                         return isForMe && isUnread;
                     })
                     .sort((a, b) => a.timestamp - b.timestamp);
-
                 if (unread.length > 0) {
                     document.getElementById('messages-unread-badge').classList.remove('hidden');
                     pendingAdminMessages = unread;
@@ -820,17 +917,14 @@
             }).catch(() => {});
         };
 
-        // 🆕 Affiche le premier message non lu dans le pop-up
         window.showNextAdminMessage = () => {
             if (pendingAdminMessages.length === 0) return;
             const msg = pendingAdminMessages[0];
-            const date = new Date(msg.timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
             document.getElementById('admin-message-modal-content').innerText = msg.text;
             document.getElementById('admin-message-modal').classList.remove('hidden');
             document.getElementById('admin-message-modal').dataset.currentMsgId = msg.id;
         };
 
-        // 🆕 Ferme le pop-up et marque comme lu, puis affiche le suivant si besoin
         window.closeAdminMessageModal = () => {
             const msgId = document.getElementById('admin-message-modal').dataset.currentMsgId;
             if (msgId && currentShopPhone) {
@@ -840,7 +934,6 @@
             }
             pendingAdminMessages.shift();
             document.getElementById('admin-message-modal').classList.add('hidden');
-
             if (pendingAdminMessages.length > 0) {
                 setTimeout(() => window.showNextAdminMessage(), 300);
             } else {
@@ -848,7 +941,6 @@
             }
         };
 
-        // 🆕 Charge les messages dans l'onglet 📬 Admin du dashboard boutique
         window.loadMyMessages = () => {
             const container = document.getElementById('messages-list');
             container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-6 tracking-widest">Chargement...</p>';
@@ -860,12 +952,10 @@
                         .filter(m => !m.targetPhone || m.targetPhone === currentShopPhone)
                         .sort((a, b) => b.timestamp - a.timestamp)
                     : [];
-
                 if (messages.length === 0) {
                     container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-16 tracking-widest">Aucun message de l\'admin pour l\'instant</p>';
                     return;
                 }
-
                 messages.forEach((m, idx) => {
                     const isRead = m.readBy && m.readBy[currentShopPhone];
                     const date = new Date(m.timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
@@ -885,14 +975,11 @@
             });
         };
 
-        // 🆕 Marque un message comme lu depuis l'onglet
         window.markMessageRead = (msgId, btn) => {
             if (!currentShopPhone) return;
             const readByUpdate = {};
             readByUpdate[currentShopPhone] = true;
             update(ref(db, 'driprush_messages/' + msgId + '/readBy'), readByUpdate).then(() => {
-                btn.parentElement.querySelector('p.text-[9px]') && btn.remove();
-                btn.outerHTML = '<p class="text-[9px] text-gray-600 mt-2 font-bold uppercase">✓ Lu</p>';
                 window.loadMyMessages();
             }).catch(() => {});
         };
@@ -908,8 +995,11 @@
 
             window.attachChatBadgeListener();
 
-            // 🆕 Vérifie les messages admin non lus après un court délai (auth anonyme complète)
-            setTimeout(() => window.checkUnreadAdminMessages(), 1500);
+            // 🆕 Vérifie et enregistre le token FCM
+            setTimeout(() => {
+                checkFCMStatus();
+                window.checkUnreadAdminMessages();
+            }, 1500);
 
             const ordersQuery = query(ref(db, 'driprush_orders'), orderByChild('shopPhone'), equalTo(currentShopPhone));
             onValue(ordersQuery, (snapshot) => {
@@ -1015,8 +1105,7 @@
                 document.getElementById('prod-delivery-std').value = p.deliveryStandard || '';
                 document.getElementById('prod-delivery-exp').value = p.deliveryExpress || '';
                 window.renderImagePreviews();
-                const btn = document.getElementById('img-upload-btn');
-                btn.innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
+                document.getElementById('img-upload-btn').innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
                 document.getElementById('add-product-modal-title').innerText = "Modifier l'article";
                 document.getElementById('submit-product-btn').innerText = "Enregistrer les modifications ✅";
                 document.getElementById('add-product-modal').classList.remove('hidden');
@@ -1077,23 +1166,16 @@
         window.removeImagePreview = (idx) => {
             uploadedImageURLs.splice(idx, 1);
             window.renderImagePreviews();
-            const btn = document.getElementById('img-upload-btn');
-            btn.innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
+            document.getElementById('img-upload-btn').innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
         };
 
         window.handleImageUpload = async (event) => {
             const files = Array.from(event.target.files);
             if (files.length === 0) return;
             const remainingSlots = MAX_PHOTOS - uploadedImageURLs.length;
-            if (remainingSlots <= 0) {
-                alert(`Tu as déjà atteint le maximum de ${MAX_PHOTOS} photos !`);
-                event.target.value = '';
-                return;
-            }
+            if (remainingSlots <= 0) { alert(`Maximum de ${MAX_PHOTOS} photos atteint !`); event.target.value = ''; return; }
             const filesToProcess = files.slice(0, remainingSlots);
-            if (files.length > remainingSlots) {
-                alert(`Tu peux ajouter encore ${remainingSlots} photo(s) seulement (limite de ${MAX_PHOTOS}). Le reste n'a pas été pris en compte.`);
-            }
+            if (files.length > remainingSlots) alert(`Tu peux ajouter encore ${remainingSlots} photo(s) seulement.`);
             const btn = document.getElementById('img-upload-btn');
             btn.disabled = true;
             for (let i = 0; i < filesToProcess.length; i++) {
@@ -1102,9 +1184,7 @@
                     const url = await window.processAndUploadFile(filesToProcess[i]);
                     uploadedImageURLs.push(url);
                     window.renderImagePreviews();
-                } catch (err) {
-                    alert("Erreur d'envoi d'une photo : " + err.message);
-                }
+                } catch (err) { alert("Erreur d'envoi : " + err.message); }
             }
             btn.disabled = false;
             btn.innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
@@ -1122,17 +1202,13 @@
             const deliveryStandard = parseInt(document.getElementById('prod-delivery-std').value) || 0;
             const deliveryExpress = parseInt(document.getElementById('prod-delivery-exp').value) || 0;
             if (!name || !price) return alert("Donne au moins un nom et un prix !");
-            if (uploadedImageURLs.length === 0) return alert("Ajoute au moins une photo avant de continuer !");
+            if (uploadedImageURLs.length === 0) return alert("Ajoute au moins une photo !");
             const productData = {
                 name, price,
-                image: uploadedImageURLs[0],
-                images: uploadedImageURLs,
-                type, genre, sizes, colors,
-                internationalDelay,
-                shopName: currentBoutique.name,
-                shopPhone: currentBoutique.phone,
-                shopGPS: currentBoutique.gps || '',
-                shopMomo: currentBoutique.momo || currentBoutique.phone || '',
+                image: uploadedImageURLs[0], images: uploadedImageURLs,
+                type, genre, sizes, colors, internationalDelay,
+                shopName: currentBoutique.name, shopPhone: currentBoutique.phone,
+                shopGPS: currentBoutique.gps || '', shopMomo: currentBoutique.momo || currentBoutique.phone || '',
                 deliveryStandard, deliveryExpress
             };
             if (editingProductId) {
@@ -1144,7 +1220,7 @@
                 const productRef = push(ref(db, 'driprush_products'));
                 set(productRef, { ...productData, timestamp: Date.now() }).then(() => {
                     window.closeAddProductForm();
-                    alert("Article ajouté à ton catalogue ✅");
+                    alert("Article ajouté ✅");
                 }).catch((e) => alert("Erreur : " + e.message));
             }
         };
@@ -1157,7 +1233,7 @@
                 container.innerHTML = '';
                 const products = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
                 if (products.length === 0) {
-                    container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-10 tracking-widest">Aucun article encore. Ajoute le premier ! 🛍️</p>';
+                    container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-10 tracking-widest">Aucun article encore 🛍️</p>';
                     return;
                 }
                 products.forEach((p, idx) => {
@@ -1216,8 +1292,7 @@
             document.getElementById('shop-chat-modal').classList.remove('hidden');
             if (currentShopChatUnsub) { currentShopChatUnsub(); currentShopChatUnsub = null; }
             currentShopChatRef = chatId;
-            update(ref(db, `driprush_chats/${currentShopPhone}/${chatId}`), { lastReadByShop: Date.now() })
-                .catch((err) => console.error("Erreur marquage lu:", err));
+            update(ref(db, `driprush_chats/${currentShopPhone}/${chatId}`), { lastReadByShop: Date.now() }).catch(() => {});
             const messagesRef = ref(db, `driprush_chats/${currentShopPhone}/${chatId}/messages`);
             currentShopChatUnsub = onValue(messagesRef, (snapshot) => {
                 const data = snapshot.val();
@@ -1244,17 +1319,14 @@
             container.scrollTop = container.scrollHeight;
         };
 
-        // 🆕 Restriction anti-contact côté boutique
         window.sendShopMessage = () => {
             const input = document.getElementById('shop-chat-message-input');
             const text = input.value.trim();
             if (!text || !currentShopChatRef) return;
-
             if (containsContactAttempt(text)) {
                 alert("⚠️ Les échanges de numéros/contacts sont interdits dans ce chat pour la sécurité de la plateforme.");
                 return;
             }
-
             push(ref(db, `driprush_chats/${currentShopPhone}/${currentShopChatRef}/messages`), {
                 sender: 'shop', text, timestamp: Date.now()
             }).then(() => { input.value = ''; }).catch((err) => alert("Erreur : " + err.message));
@@ -1313,6 +1385,7 @@
             }).catch((err) => alert("Erreur : " + err.message));
         };
 
+        // Restauration session
         const savedSession = localStorage.getItem('driprush_shop_session');
         if (savedSession) {
             try {
