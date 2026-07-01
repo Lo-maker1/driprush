@@ -147,12 +147,15 @@
         let allProducts = [];
         let lastCreatedBoutique = null;
 
-        // 🆕 Variables pour le calcul de livraison par distance
+        // Variables pour le calcul de livraison par distance
         let calculatedStdFee = 500;
         let calculatedExpFee = 900;
         let clientCoords = null;
 
-        // 🆕 Restriction anti-contact dans le chat
+        // 🆕 Variable pour les étoiles commentaires
+        let selectedRating = 0;
+
+        // Restriction anti-contact dans le chat
         function containsContactAttempt(text) {
             const digitMatches = text.match(/\d/g);
             if (digitMatches && digitMatches.length >= 3) return true;
@@ -161,7 +164,7 @@
             return suspiciousKeywords.some(kw => lowerText.includes(kw));
         }
 
-        // 🆕 Fonctions de calcul de distance GPS (vol d'oiseau + majoration 25%)
+        // Fonctions de calcul de distance GPS (vol d'oiseau + majoration 25%)
         function parseGPSCoords(gpsUrl) {
             if (!gpsUrl) return null;
             const match = gpsUrl.match(/q=([-\d.]+),([-\d.]+)/);
@@ -183,7 +186,7 @@
             return Math.max(25, Math.round(amount / 25) * 25);
         }
 
-        // 🆕 Calcule les frais de livraison à partir du GPS boutique et du GPS client
+        // Calcule les frais de livraison à partir du GPS boutique et du GPS client
         window.calculateAndSetDeliveryFees = (shopGPS) => {
             const shopCoords = parseGPSCoords(shopGPS);
             if (!shopCoords) {
@@ -199,8 +202,9 @@
                     clientCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                     const distanceM = haversineDistance(shopCoords.lat, shopCoords.lng, clientCoords.lat, clientCoords.lng);
                     const withMargin = distanceM * 1.25;
-                    calculatedStdFee = roundTo25(withMargin * 0.20);
-                    calculatedExpFee = roundTo25(withMargin * 0.37);
+                    // 🆕 Nouveaux tarifs : 0.179 F/m standard, 0.20 F/m express
+                    calculatedStdFee = roundTo25(withMargin * 0.179);
+                    calculatedExpFee = roundTo25(withMargin * 0.20);
                     window.updateCartUI();
                 }, () => {
                     calculatedStdFee = 500;
@@ -659,7 +663,6 @@
 
             document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
 
-            // 🆕 Utilise les frais calculés par distance plutôt que les frais fixes de la boutique
             document.getElementById('lbl-std').innerText = `🚲 Normale (+${calculatedStdFee.toLocaleString()} F)`;
             document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${calculatedExpFee.toLocaleString()} F)`;
             if(deliveryTypeSelected === "standard") deliveryFee = calculatedStdFee;
@@ -686,7 +689,6 @@
             window.updateCartUI();
         };
 
-        // 🆕 setShipping utilise les frais calculés
         window.setShipping = (type, element) => {
             if(cart.length === 0) return;
             deliveryTypeSelected = type;
@@ -713,7 +715,6 @@
             element.innerText = "CONNEXION GPS... ⏳";
             element.disabled = true;
 
-            // 🆕 Si on a déjà les coords client du calcul de livraison, on les réutilise
             if (clientCoords) {
                 const gps = `https://www.google.com/maps?q=${clientCoords.lat},${clientCoords.lng}`;
                 window.triggerFedaPay(name, phone, addr, gps, element, originalText);
@@ -846,7 +847,6 @@
             });
         };
 
-        // 🆕 toggleCheckout déclenche le calcul de frais dès l'ouverture
         window.toggleCheckout = (show) => {
             document.getElementById('checkout-modal').classList.toggle('hidden', !show);
             if(!show) { window.scrollTo(0,0); window.updateCartUI(); return; }
@@ -943,7 +943,7 @@
             container.scrollTop = container.scrollHeight;
         };
 
-        // 🆕 Restriction anti-contact côté client
+        // Restriction anti-contact côté client
         window.sendClientMessage = () => {
             const input = document.getElementById('chat-message-input');
             const text = input.value.trim();
@@ -963,6 +963,81 @@
         window.closeChatModal = () => {
             if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
             document.getElementById('chat-modal').classList.add('hidden');
+        };
+
+        // 🆕 Commentaires / Avis clients
+        window.openCommentsModal = () => {
+            document.getElementById('comments-modal').classList.remove('hidden');
+            window.loadComments();
+        };
+
+        window.closeCommentsModal = () => {
+            document.getElementById('comments-modal').classList.add('hidden');
+        };
+
+        window.selectStar = (rating) => {
+            selectedRating = rating;
+            document.querySelectorAll('.star-btn').forEach((btn, idx) => {
+                btn.classList.toggle('text-yellow-400', idx < rating);
+                btn.classList.toggle('text-gray-300', idx >= rating);
+            });
+        };
+
+        window.loadComments = () => {
+            const container = document.getElementById('comments-list');
+            container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-6 tracking-widest">Chargement...</p>';
+            onValue(ref(db, 'driprush_comments'), (snap) => {
+                const data = snap.val();
+                container.innerHTML = '';
+                const comments = data
+                    ? Object.keys(data).map(id => ({ id, ...data[id] })).sort((a, b) => b.timestamp - a.timestamp)
+                    : [];
+                if (comments.length === 0) {
+                    container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10 tracking-widest">Aucun avis pour l\'instant — sois le premier !</p>';
+                    return;
+                }
+                comments.forEach((c, idx) => {
+                    const stars = '★'.repeat(c.rating) + '☆'.repeat(5 - c.rating);
+                    const date = new Date(c.timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+                    container.innerHTML += `
+                        <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm card-enter" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s">
+                            <div class="flex justify-between items-center mb-2">
+                                <p class="text-xs font-black uppercase text-ink">${c.name}</p>
+                                <span class="text-[8px] text-gray-400">${date}</span>
+                            </div>
+                            <p class="text-yellow-400 text-sm mb-2 tracking-wider">${stars}</p>
+                            <p class="text-xs text-gray-600 leading-relaxed">${c.text}</p>
+                        </div>`;
+                });
+            });
+        };
+
+        window.submitComment = (btn) => {
+            const name = document.getElementById('comment-name').value.trim();
+            const text = document.getElementById('comment-text').value.trim();
+            if (!name) return window.showToast("Entre ton prénom !", true);
+            if (selectedRating === 0) return window.showToast("Donne une note de 1 à 5 étoiles !", true);
+            if (!text) return window.showToast("Écris ton avis avant d'envoyer !", true);
+
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Envoi...";
+
+            push(ref(db, 'driprush_comments'), {
+                name, text, rating: selectedRating, timestamp: Date.now()
+            }).then(() => {
+                document.getElementById('comment-name').value = '';
+                document.getElementById('comment-text').value = '';
+                selectedRating = 0;
+                window.selectStar(0);
+                btn.disabled = false;
+                btn.innerText = originalText;
+                window.showToast("Merci pour ton avis ✅");
+            }).catch((err) => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                window.showToast("Erreur : " + err.message, true);
+            });
         };
 
         if ('serviceWorker' in navigator) {
@@ -1127,7 +1202,6 @@
             <div id="cart-items-list" class="flex-1 px-2 mb-4"></div>
 
             <div class="space-y-6 pb-10">
-                <!-- 🆕 Note explicative sur le calcul automatique des frais -->
                 <div class="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-center">
                     <p class="text-[9px] text-blue-600 font-bold uppercase tracking-wide"><i class="fa-solid fa-location-dot mr-1"></i> Frais calculés automatiquement selon la distance boutique → toi</p>
                 </div>
@@ -1174,13 +1248,11 @@
                 <input id="p-loc" placeholder="QUARTIER & VILLE" class="w-full bg-gray-100 p-4 rounded-xl text-xs font-bold uppercase outline-none border">
                 <button type="button" id="p-gps-btn" onclick="window.getPartnerGPS()" class="w-full bg-gray-100 border border-gray-200 p-4 rounded-xl text-[10px] font-black text-black uppercase active:scale-95 transition">📍 Appuyez ici pour enregistrer automatiquement vos coordonnées GPS</button>
                 <input id="p-gps" placeholder="Ou colle un lien Google Maps" class="w-full bg-gray-100 p-4 rounded-xl border outline-none text-[10px] text-gray-500">
-
                 <label class="flex items-center gap-2 text-[10px] font-bold text-gray-600 uppercase px-1 pt-2">
                     <input type="checkbox" id="p-momo-same" checked onchange="window.toggleMomoField()" class="w-4 h-4 accent-black">
                     Mon Mobile Money est le même numéro que mon WhatsApp
                 </label>
                 <input id="p-momo" placeholder="NUMÉRO MOBILE MONEY (pour recevoir tes paiements)" class="hidden w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
-
                 <button onclick="window.submitPartner(this)" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Créer mon compte 🚀</button>
             </div>
 
@@ -1247,6 +1319,41 @@
         </div>
         <button onclick="window.installApp()" class="bg-drip text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">Installer</button>
         <button onclick="window.dismissInstallBanner()" class="text-gray-500 text-sm"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- 🆕 BOUTON FLOTTANT AVIS -->
+    <button onclick="window.openCommentsModal()" class="fixed bottom-28 left-4 z-[65] bg-drip text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(255,77,28,0.4)] flex flex-col items-center justify-center active:scale-95 transition-all">
+        <i class="fa-solid fa-star text-sm"></i>
+        <span class="text-[7px] font-black uppercase mt-0.5">Avis</span>
+    </button>
+
+    <!-- 🆕 MODAL COMMENTAIRES -->
+    <div id="comments-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-end justify-center">
+        <div class="bg-white w-full max-w-md rounded-t-[2.5rem] flex flex-col border-t border-gray-100" style="height: 88vh;">
+            <div class="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
+                <div>
+                    <h3 class="text-sm font-display uppercase tracking-tight text-ink">Avis clients</h3>
+                    <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Dis-nous ce que tu penses de Driprush</p>
+                </div>
+                <button onclick="window.closeCommentsModal()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div id="comments-list" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+
+            <div class="border-t border-gray-100 p-4 space-y-3 shrink-0 bg-gray-50">
+                <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Laisse ton avis</p>
+                <input id="comment-name" placeholder="TON PRÉNOM" class="w-full bg-white border border-gray-200 p-3 rounded-2xl outline-none text-xs font-bold uppercase focus:border-black transition">
+                <div class="flex justify-center gap-3 py-1">
+                    <button class="star-btn text-gray-300 text-2xl transition active:scale-110" onclick="window.selectStar(1)"><i class="fa-solid fa-star"></i></button>
+                    <button class="star-btn text-gray-300 text-2xl transition active:scale-110" onclick="window.selectStar(2)"><i class="fa-solid fa-star"></i></button>
+                    <button class="star-btn text-gray-300 text-2xl transition active:scale-110" onclick="window.selectStar(3)"><i class="fa-solid fa-star"></i></button>
+                    <button class="star-btn text-gray-300 text-2xl transition active:scale-110" onclick="window.selectStar(4)"><i class="fa-solid fa-star"></i></button>
+                    <button class="star-btn text-gray-300 text-2xl transition active:scale-110" onclick="window.selectStar(5)"><i class="fa-solid fa-star"></i></button>
+                </div>
+                <textarea id="comment-text" placeholder="Ton avis sur Driprush..." class="w-full bg-white border border-gray-200 p-3 rounded-2xl outline-none text-xs font-bold h-16 resize-none focus:border-black transition"></textarea>
+                <button onclick="window.submitComment(this)" class="w-full bg-black text-white py-3.5 rounded-2xl font-black uppercase text-xs active:scale-95 transition">Envoyer mon avis ⭐</button>
+            </div>
+        </div>
     </div>
 
     <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-ink text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl z-[60] max-w-[85%] text-center"></div>
