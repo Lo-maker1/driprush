@@ -123,7 +123,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        <!-- ✅ CORRECTION 1 : update ajouté -->
         import { getDatabase, ref, onValue, push, set, get, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
@@ -1016,7 +1015,6 @@
                 }).then(() => {
                     myChats[productId] = { chatId: chatRef.key, shopPhone };
                     localStorage.setItem('driprush_my_chats', JSON.stringify(myChats));
-                    // ✅ CORRECTION 2 : sauvegarde token FCM client dans Firebase
                     const clientFCMToken = localStorage.getItem('driprush_client_fcm_token');
                     if (clientFCMToken) {
                         update(ref(db, 'driprush_chats/' + shopPhone + '/' + chatRef.key), { clientFCMToken }).catch(() => {});
@@ -1029,7 +1027,6 @@
         window.attachChatListener = (shopPhone, chatId) => {
             if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
             currentChatRefPath = { shopPhone, chatId };
-            // ✅ CORRECTION 3 : renouvelle le token FCM client à chaque ouverture de chat
             const clientFCMToken = localStorage.getItem('driprush_client_fcm_token');
             if (clientFCMToken) {
                 update(ref(db, `driprush_chats/${shopPhone}/${chatId}`), { clientFCMToken }).catch(() => {});
@@ -1405,7 +1402,6 @@
         <button onclick="window.dismissInstallBanner()" class="text-gray-500 text-sm"><i class="fa-solid fa-xmark"></i></button>
     </div>
 
-    <!-- MODAL MESSAGE LIVRAISON -->
     <div id="delivery-message-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[75] flex items-center justify-center p-6">
         <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-4 animate-slide-up shadow-2xl">
             <div id="delivery-message-icon" class="text-5xl">🚀</div>
@@ -1416,19 +1412,16 @@
         </div>
     </div>
 
-    <!-- BOUTON FLOTTANT AVIS ⭐ -->
     <button onclick="window.openCommentsModal()" class="fixed bottom-28 left-4 z-[65] bg-drip text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(255,77,28,0.4)] flex flex-col items-center justify-center active:scale-95 transition-all">
         <i class="fa-solid fa-star text-sm"></i>
         <span class="text-[7px] font-black uppercase mt-0.5">Avis</span>
     </button>
 
-    <!-- BOUTON FLOTTANT PARAMÈTRES ⚙️ -->
     <button onclick="window.openSettingsPanel()" class="fixed bottom-28 right-4 z-[65] bg-ink text-white w-14 h-14 rounded-full shadow-xl flex flex-col items-center justify-center active:scale-95 transition-all border border-white/10">
         <i class="fa-solid fa-gear text-sm"></i>
         <span class="text-[7px] font-black uppercase mt-0.5">Menu</span>
     </button>
 
-    <!-- MODAL COMMENTAIRES -->
     <div id="comments-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-end justify-center">
         <div class="bg-white w-full max-w-md rounded-t-[2.5rem] flex flex-col border-t border-gray-100" style="height: 88vh;">
             <div class="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
@@ -1455,7 +1448,6 @@
         </div>
     </div>
 
-    <!-- PANNEAU PARAMÈTRES CLIENT -->
     <div id="settings-panel" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[68] flex items-end justify-center">
         <div class="bg-white w-full max-w-md rounded-t-[2.5rem] flex flex-col" style="height: 92vh;">
             <div class="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
