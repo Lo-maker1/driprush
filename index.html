@@ -83,7 +83,6 @@
         body.dark-mode #settings-panel .bg-white { background-color: #1a1a1a !important; }
         body.dark-mode .price-tag::before { background: #0B0B0C !important; }
     </style>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, push, set, get, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -298,7 +297,7 @@
             }).join('');
         };
 
-        // ✅ FIX NOTIFICATIONS
+        // ✅ FIX NOTIFICATIONS : vérif Notification + flag onMessage unique
         window.requestClientNotifications = async () => {
             if (!messaging) {
                 window.showToast("Notifications non supportées sur cet appareil", true);
@@ -328,6 +327,19 @@
                         notifBtn.classList.add('opacity-60');
                     }
                     window.showToast("Notifications activées ✅");
+                    // 🆕 FIX : sauvegarde le token dans TOUS les chats existants
+                    let myChats = {};
+                    try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) { myChats = {}; }
+                    const chatEntries = Object.values(myChats);
+                    if (chatEntries.length > 0) {
+                        chatEntries.forEach(chatInfo => {
+                            if (chatInfo.chatId && chatInfo.shopPhone) {
+                                update(ref(db, `driprush_chats/${chatInfo.shopPhone}/${chatInfo.chatId}`), {
+                                    clientFCMToken: token
+                                }).catch(() => {});
+                            }
+                        });
+                    }
                     if (!fcmMessageListenerActive) {
                         fcmMessageListenerActive = true;
                         onMessage(messaging, (payload) => {
@@ -348,7 +360,11 @@
         };
 
         window.shareApp = () => {
-            const shareData = { title: 'DRIPRUSH 🔥', text: 'Découvre Driprush — sneakers, streetwear et parfums premium au Bénin. Livraison rapide !', url: 'https://lo-maker1.github.io/driprush/' };
+            const shareData = {
+                title: 'DRIPRUSH 🔥',
+                text: 'Découvre Driprush — sneakers, streetwear et parfums premium au Bénin. Livraison rapide !',
+                url: 'https://lo-maker1.github.io/driprush/'
+            };
             if (navigator.share) { navigator.share(shareData).catch(() => {}); }
             else { navigator.clipboard.writeText(shareData.url).then(() => window.showToast("Lien copié dans le presse-papier 🔗")).catch(() => window.showToast("https://lo-maker1.github.io/driprush/")); }
         };
@@ -360,7 +376,7 @@
             return suspiciousKeywords.some(kw => text.toLowerCase().includes(kw));
         }
 
-        // ✅ FIX 1 — parseGPSCoords : 3 formats Google Maps
+        // ✅ FIX 1 — parseGPSCoords : regex étendue (3 formats Google Maps)
         function parseGPSCoords(gpsUrl) {
             if (!gpsUrl) return null;
             let match = gpsUrl.match(/[?&]q=([-\d.]+),([-\d.]+)/);
@@ -678,7 +694,9 @@
                 const currentCartShopPhone = cleanPhone(pendingCartItems[0].shopPhone || "2290147535343");
                 const newShopPhone = cleanPhone(selectedItem.shopPhone || "2290147535343");
                 const currentCartShopName = pendingCartItems[0].shop || "Driprush";
-                if (currentCartShopPhone !== newShopPhone && currentCartShopPhone.length > 5 && newShopPhone.length > 5) { window.showToast(`Ton panier contient déjà "${currentCartShopName}". Termine ou vide-le d'abord !`, true); return; }
+                if (currentCartShopPhone !== newShopPhone && currentCartShopPhone.length > 5 && newShopPhone.length > 5) {
+                    window.showToast(`Ton panier contient déjà "${currentCartShopName}". Termine ou vide-le d'abord !`, true); return;
+                }
             }
             cart.push({...selectedItem, validated: false});
             window.showToast("Ajouté ✅ — direction le panier quand tu veux");
@@ -729,7 +747,7 @@
             }
         };
 
-        // ✅ FIX 3 — reset visuel boutons livraison
+        // ✅ FIX 3 — removeFromCart : reset visuel boutons livraison
         window.removeFromCart = (index) => {
             cart.splice(index, 1);
             deliveryFee = 0; deliveryTypeSelected = "";
@@ -824,7 +842,7 @@
             }).catch((err) => { window.showToast("Erreur : " + err.message, true); });
         };
 
-        // ✅ FIX 2 — fallback Firebase si shopGPS vide
+        // ✅ FIX 2 — toggleCheckout : fallback Firebase si shopGPS vide
         window.toggleCheckout = (show) => {
             document.getElementById('checkout-modal').classList.toggle('hidden', !show);
             if(!show) { window.scrollTo(0,0); window.updateCartUI(); return; }
@@ -936,6 +954,7 @@
         };
 
         window.closeChatModal = () => { if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; } document.getElementById('chat-modal').classList.add('hidden'); };
+
         window.openCommentsModal = () => { document.getElementById('comments-modal').classList.remove('hidden'); window.loadComments(); };
         window.closeCommentsModal = () => { document.getElementById('comments-modal').classList.add('hidden'); };
 
@@ -1011,7 +1030,7 @@
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-2xl font-display tracking-tighter text-ink uppercase">DRIPRUSH</h1>
                 <div class="flex items-center gap-5 text-xl">
-                    <button id="shop-dashboard-btn" onclick="window.location.href='boutiques.html'" class="hidden relative"><i class="fa-solid fa-store text-drip"></i></button>
+                    <button id="shop-dashboard-btn" onclick="window.location.href='boutiques.html'" class="hidden relative" title="Mon tableau de bord"><i class="fa-solid fa-store text-drip"></i></button>
                     <i class="fa-solid fa-heart text-gray-200"></i>
                     <div id="nav-cart-icon" onclick="window.toggleCheckout(true)" class="relative cursor-pointer">
                         <i class="fa-solid fa-bag-shopping"></i>
@@ -1054,7 +1073,7 @@
                 <div id="gallery-thumbs" class="hidden flex gap-2 overflow-x-auto hide-scrollbar"></div>
                 <div id="international-delay-notice" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
                     <span class="text-lg">⏳</span>
-                    <p class="text-[10px] text-amber-700 font-medium leading-snug">Cet article est disponible à l'étranger — le délai de livraison peut être plus long. <strong>Discute avec la boutique</strong> pour connaître le délai exact avant de commander.</p>
+                    <p class="text-[10px] text-amber-700 font-medium leading-snug">Cet article est disponible à l'étranger — le délai de livraison peut être plus long que d'habitude. <strong>Discute avec la boutique</strong> (bouton ci-dessous) pour connaître le délai exact avant de commander.</p>
                 </div>
                 <div><p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Taille</p><div id="size-container" class="flex flex-wrap gap-2"></div></div>
                 <div id="color-section" class="hidden"><p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Couleur</p><div id="color-container" class="flex flex-wrap gap-2"></div></div>
@@ -1117,7 +1136,7 @@
                     <input type="checkbox" id="p-momo-same" checked onchange="window.toggleMomoField()" class="w-4 h-4 accent-black">
                     Mon Mobile Money est le même numéro que mon WhatsApp
                 </label>
-                <input id="p-momo" placeholder="NUMÉRO MOBILE MONEY" class="hidden w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
+                <input id="p-momo" placeholder="NUMÉRO MOBILE MONEY (pour recevoir tes paiements)" class="hidden w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
                 <button onclick="window.submitPartner(this)" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Créer mon compte 🚀</button>
             </div>
             <div id="partner-success" class="hidden space-y-4 text-center">
@@ -1125,7 +1144,7 @@
                 <h3 class="text-sm font-display tracking-tight">Compte créé, <span id="partner-success-name"></span> !</h3>
                 <p class="text-[11px] text-gray-500 font-medium px-2">Voici ton code de connexion personnel.</p>
                 <div class="pin-reveal" id="partner-success-pin"></div>
-                <p class="text-[10px] text-gray-400 font-medium">Note bien ce code quelque part.</p>
+                <p class="text-[10px] text-gray-400 font-medium">Note bien ce code quelque part, au cas où tu doives un jour te reconnecter depuis un autre appareil.</p>
                 <button onclick="window.goToMyDashboard()" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Accéder à mon tableau de bord 🚀</button>
             </div>
             <div id="partner-login" class="hidden space-y-3">
@@ -1162,7 +1181,7 @@
         <div class="bg-white rounded-3xl p-8 max-w-sm text-center space-y-4">
             <div class="text-5xl">🔧</div>
             <h3 class="text-lg font-display uppercase tracking-tight">Maintenance en cours</h3>
-            <p class="text-xs text-gray-500 font-medium">On améliore le site pour toi ! Reviens dans quelques instants.</p>
+            <p class="text-xs text-gray-500 font-medium">On améliore le site pour toi ! Reviens dans quelques instants — ça ne devrait pas être long.</p>
             <button onclick="document.getElementById('maintenance-modal').classList.add('hidden')" class="w-full bg-black text-white py-3 rounded-xl text-xs font-black uppercase">D'accord</button>
         </div>
     </div>
