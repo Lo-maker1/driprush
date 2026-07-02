@@ -165,6 +165,20 @@
         let selectedRating = 0;
         let fcmMessageListenerActive = false;
 
+        // ✅ PROMOS — état des promotions
+        let promos = {
+            reduction: { active: false, percent: 0 },
+            flashSale: { active: false, endsAt: 0 },
+            livraisonGratuite: { active: false },
+            livraisonGratuiteDes: { active: false, montant: 0 },
+            unAchetUnOffert: { active: false },
+            codePromo: { active: false, code: '', percent: 0 },
+            articlesDuJour: { active: false, ids: [] }
+        };
+        let promosShop = {};
+        let flashSaleInterval = null;
+        let appliedCodePromo = null;
+
         window.openSettingsPanel = () => {
             const s = loadSettings();
             document.getElementById('settings-panel').classList.remove('hidden');
@@ -369,6 +383,132 @@
             else { navigator.clipboard.writeText(shareData.url).then(() => window.showToast("Lien copié dans le presse-papier 🔗")).catch(() => window.showToast("https://lo-maker1.github.io/driprush/")); }
         };
 
+        // ============================================================
+        // ✅ FONCTIONS PROMO
+        // ============================================================
+
+        function getPrixFinal(product) {
+            const shopPhone = product.shopPhone;
+            const shopPromo = promosShop[shopPhone];
+            // Priorité 1 : promo boutique
+            if (shopPromo && shopPromo.reduction && shopPromo.reduction.active && shopPromo.reduction.percent > 0) {
+                return Math.round(parseInt(product.price) * (1 - shopPromo.reduction.percent / 100));
+            }
+            // Priorité 2 : promo admin globale
+            if (promos.reduction && promos.reduction.active && promos.reduction.percent > 0) {
+                return Math.round(parseInt(product.price) * (1 - promos.reduction.percent / 100));
+            }
+            return parseInt(product.price);
+        }
+
+        function getReductionPercent(product) {
+            const shopPhone = product.shopPhone;
+            const shopPromo = promosShop[shopPhone];
+            if (shopPromo && shopPromo.reduction && shopPromo.reduction.active && shopPromo.reduction.percent > 0) {
+                return shopPromo.reduction.percent;
+            }
+            if (promos.reduction && promos.reduction.active && promos.reduction.percent > 0) {
+                return promos.reduction.percent;
+            }
+            return 0;
+        }
+
+        function getStockLimite(productId, shopPhone) {
+            const shopPromo = promosShop[shopPhone];
+            if (shopPromo && shopPromo.stockLimite && shopPromo.stockLimite[productId] && shopPromo.stockLimite[productId].active) {
+                return shopPromo.stockLimite[productId].stock;
+            }
+            return null;
+        }
+
+        function isArticleDuJour(productId) {
+            return promos.articlesDuJour && promos.articlesDuJour.active &&
+                   promos.articlesDuJour.ids && promos.articlesDuJour.ids.includes(productId);
+        }
+
+        window.updateFlashSaleBanner = () => {
+            const banner = document.getElementById('flash-sale-banner');
+            if (!banner) return;
+            if (promos.flashSale && promos.flashSale.active && promos.flashSale.endsAt > Date.now()) {
+                banner.classList.remove('hidden');
+                if (flashSaleInterval) clearInterval(flashSaleInterval);
+                flashSaleInterval = setInterval(() => {
+                    const remaining = promos.flashSale.endsAt - Date.now();
+                    if (remaining <= 0) { clearInterval(flashSaleInterval); banner.classList.add('hidden'); return; }
+                    const h = Math.floor(remaining / 3600000);
+                    const m = Math.floor((remaining % 3600000) / 60000);
+                    const s = Math.floor((remaining % 60000) / 1000);
+                    const el = document.getElementById('flash-countdown');
+                    if (el) el.innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                }, 1000);
+            } else {
+                banner.classList.add('hidden');
+                if (flashSaleInterval) { clearInterval(flashSaleInterval); flashSaleInterval = null; }
+            }
+        };
+
+        window.updatePromosBanners = () => {
+            const livrBanner = document.getElementById('livraison-gratuite-banner');
+            if (livrBanner) livrBanner.classList.toggle('hidden', !(promos.livraisonGratuite && promos.livraisonGratuite.active));
+            const uaoBanner = document.getElementById('uao-banner');
+            if (uaoBanner) uaoBanner.classList.toggle('hidden', !(promos.unAchetUnOffert && promos.unAchetUnOffert.active));
+        };
+
+        window.updateArticlesDuJour = () => {
+            const section = document.getElementById('articles-du-jour-section');
+            const grid = document.getElementById('articles-du-jour-grid');
+            if (!section || !grid) return;
+            if (!promos.articlesDuJour || !promos.articlesDuJour.active || !promos.articlesDuJour.ids || promos.articlesDuJour.ids.length === 0 || allProducts.length === 0) {
+                section.classList.add('hidden'); return;
+            }
+            const featured = allProducts.filter(p => promos.articlesDuJour.ids.includes(p.id));
+            if (featured.length === 0) { section.classList.add('hidden'); return; }
+            section.classList.remove('hidden');
+            grid.innerHTML = '';
+            featured.forEach(p => {
+                const mainImage = (p.images && p.images[0]) || p.image || '';
+                const safeId = (p.id || "").replace(/'/g, "\'");
+                const prixFinal = getPrixFinal(p);
+                const reduction = getReductionPercent(p);
+                grid.innerHTML += `
+                    <div class="flex-shrink-0 w-44 bg-white rounded-2xl overflow-hidden shadow-sm border-2 border-amber-300 relative cursor-pointer active:scale-95 transition" onclick="window.openModal('${safeId}')">
+                        <div class="absolute top-2 left-2 z-10 bg-amber-400 text-black text-[8px] font-black px-2 py-1 rounded-full">⭐ DU JOUR</div>
+                        ${reduction > 0 ? `<div class="absolute top-2 right-2 z-10 bg-red-500 text-white text-[8px] font-black px-2 py-1 rounded-full">-${reduction}%</div>` : ''}
+                        <img src="${mainImage}" class="w-full h-36 object-cover">
+                        <div class="p-2">
+                            <p class="text-[10px] font-bold uppercase truncate">${p.name}</p>
+                            <div class="flex items-center gap-1 mt-1 flex-wrap">
+                                ${reduction > 0 ? `<span class="text-[9px] text-gray-400 line-through">${parseInt(p.price).toLocaleString()} F</span>` : ''}
+                                <span class="text-[11px] font-black text-drip">${prixFinal.toLocaleString()} F</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        };
+
+        window.validateCodePromo = () => {
+            const input = document.getElementById('code-promo-input');
+            if (!input) return;
+            const code = input.value.trim().toUpperCase();
+            if (!promos.codePromo || !promos.codePromo.active) {
+                window.showToast("Aucun code promo actif en ce moment", true); return;
+            }
+            if (code === promos.codePromo.code.toUpperCase()) {
+                appliedCodePromo = promos.codePromo.percent;
+                input.disabled = true;
+                input.classList.add('border-green-400');
+                document.getElementById('code-promo-result').innerText = `Code appliqué ✅ -${appliedCodePromo}% sur ta commande !`;
+                document.getElementById('code-promo-result').classList.remove('hidden', 'text-red-500');
+                document.getElementById('code-promo-result').classList.add('text-green-500');
+                window.updateCartUI();
+            } else {
+                appliedCodePromo = null;
+                document.getElementById('code-promo-result').innerText = "Code invalide ❌";
+                document.getElementById('code-promo-result').classList.remove('hidden', 'text-green-500');
+                document.getElementById('code-promo-result').classList.add('text-red-500');
+            }
+        };
+
         function containsContactAttempt(text) {
             const digitMatches = text.match(/\d/g);
             if (digitMatches && digitMatches.length >= 3) return true;
@@ -398,6 +538,20 @@
         function roundTo25(amount) { return Math.max(25, Math.round(amount / 25) * 25); }
 
         window.calculateAndSetDeliveryFees = (shopGPS) => {
+            // ✅ PROMO : Livraison gratuite activée
+            if (promos.livraisonGratuite && promos.livraisonGratuite.active) {
+                calculatedStdFee = 0; calculatedExpFee = 0;
+                window.updateCartUI(); return;
+            }
+            // ✅ PROMO : Livraison gratuite dès X F — vérifier le total
+            if (promos.livraisonGratuiteDes && promos.livraisonGratuiteDes.active) {
+                const pendingItems = cart.filter(i => !i.validated);
+                const subtotal = pendingItems.reduce((sum, i) => sum + getPrixFinal(i), 0);
+                if (subtotal >= promos.livraisonGratuiteDes.montant) {
+                    calculatedStdFee = 0; calculatedExpFee = 0;
+                    window.updateCartUI(); return;
+                }
+            }
             const shopCoords = parseGPSCoords(shopGPS);
             if (!shopCoords) { calculatedStdFee = 500; calculatedExpFee = 900; window.updateCartUI(); return; }
             document.getElementById('lbl-std').innerText = '🚲 Calcul en cours...';
@@ -456,6 +610,22 @@
             allProducts = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
             window.renderProducts(allProducts);
         }, (error) => { console.error("Erreur Firebase:", error); window.showToast("Erreur de connexion au catalogue", true); });
+
+        // ✅ LISTENERS PROMOS FIREBASE
+        onValue(ref(db, 'driprush_promos/global'), (snap) => {
+            const data = snap.val();
+            promos = data || { reduction:{active:false,percent:0}, flashSale:{active:false,endsAt:0}, livraisonGratuite:{active:false}, livraisonGratuiteDes:{active:false,montant:0}, unAchetUnOffert:{active:false}, codePromo:{active:false,code:'',percent:0}, articlesDuJour:{active:false,ids:[]} };
+            window.renderProducts(allProducts);
+            window.updateCartUI();
+            window.updateFlashSaleBanner();
+            window.updatePromosBanners();
+        });
+
+        onValue(ref(db, 'driprush_promos/boutiques'), (snap) => {
+            promosShop = snap.val() || {};
+            window.renderProducts(allProducts);
+            window.updateCartUI();
+        });
 
         window.enterSite = (mode) => {
             if(mode === 'shop') {
@@ -557,12 +727,21 @@
             products.forEach((p, idx) => {
                 const pShopName = p.shopName && p.shopName.trim() !== "" ? p.shopName : "Driprush";
                 const mainImage = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
-                const safeId = (p.id || "").replace(/'/g, "\\'");
+                const safeId = (p.id || "").replace(/'/g, "\'");
                 const isNew = p.timestamp && (Date.now() - p.timestamp < 48 * 60 * 60 * 1000);
                 const isFav = favIds.has(p.id);
+                const prixFinal = getPrixFinal(p);
+                const reduction = getReductionPercent(p);
+                const stockLimite = getStockLimite(p.id, p.shopPhone);
+                const artJour = isArticleDuJour(p.id);
+                const isUAO = promos.unAchetUnOffert && promos.unAchetUnOffert.active;
+                const hasPromo = reduction > 0;
                 grid.innerHTML += `
-                    <div class="product-card card-enter bg-white rounded-2xl overflow-hidden shadow-sm relative border border-gray-50 active:scale-95 transition cursor-pointer" style="animation-delay: ${Math.min(idx * 0.06, 0.6)}s" onclick="window.openModal('${safeId}')">
-                        ${isNew ? '<span class="new-sticker absolute top-3 left-3 z-10">NOUVEAU</span>' : ''}
+                    <div class="product-card card-enter bg-white rounded-2xl overflow-hidden shadow-sm relative border ${artJour ? 'border-amber-300' : 'border-gray-50'} active:scale-95 transition cursor-pointer" style="animation-delay: ${Math.min(idx * 0.06, 0.6)}s" onclick="window.openModal('${safeId}')">
+                        ${artJour ? '<span class="absolute top-3 left-3 z-10 bg-amber-400 text-black text-[7px] font-black px-2 py-1 rounded-full">⭐ DU JOUR</span>' : isNew ? '<span class="new-sticker absolute top-3 left-3 z-10">NOUVEAU</span>' : ''}
+                        ${hasPromo ? `<span class="absolute top-3 ${artJour || isNew ? 'left-20' : 'left-3'} z-10 bg-red-500 text-white text-[8px] font-black px-2 py-1 rounded-full">-${reduction}%</span>` : ''}
+                        ${stockLimite !== null ? `<span class="absolute bottom-14 left-0 right-0 z-10 bg-red-500/90 text-white text-[8px] font-black px-2 py-1 text-center">🔴 Plus que ${stockLimite} en stock !</span>` : ''}
+                        ${isUAO ? '<span class="absolute top-10 right-2 z-10 bg-lime text-black text-[7px] font-black px-1.5 py-1 rounded-full">🎁 1A=1O</span>' : ''}
                         ${(p.images && p.images.length > 1) ? `<span class="absolute top-3 right-10 z-10 bg-black/60 text-white text-[8px] font-black px-2 py-1 rounded-full"><i class="fa-solid fa-images mr-1"></i>${p.images.length}</span>` : ''}
                         <button class="absolute top-3 right-3 z-10 ${isFav ? 'text-red-500' : 'text-gray-300'} hover:text-red-500 transition" onclick="event.stopPropagation(); window.toggleFavorite('${safeId}', this)">
                             <i class="fa-solid fa-heart text-lg"></i>
@@ -572,15 +751,18 @@
                             <p class="text-[9px] text-gray-400 font-black uppercase mb-1">${pShopName}</p>
                             <h3 class="text-[11px] font-bold text-gray-800 leading-tight h-8 line-clamp-2 uppercase">${p.name}</h3>
                             <div class="mt-3 flex items-center justify-between">
-                                <span class="price-tag">${parseInt(p.price).toLocaleString()} F</span>
+                                <div class="flex flex-col items-start">
+                                    ${hasPromo ? `<span class="text-[9px] text-gray-400 line-through">${parseInt(p.price).toLocaleString()} F</span>` : ''}
+                                    <span class="price-tag ${hasPromo ? '!bg-red-600' : ''}">${prixFinal.toLocaleString()} F</span>
+                                </div>
                                 <div class="bg-black text-white w-7 h-7 rounded-full flex items-center justify-center"><i class="fa-solid fa-plus text-[10px]"></i></div>
                             </div>
                         </div>
                     </div>`;
             });
             if(products.length === 0) grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-400 font-bold uppercase text-xs">Aucune pépite ici pour l\'instant... 👀</div>';
-        };
-
+            window.updateArticlesDuJour();
+        }
         window.filterByGenre = (genre) => {
             document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active-cat'));
             document.getElementById(`btn-${genre}`).classList.add('active-cat');
@@ -732,6 +914,36 @@
                     </div>`;
             });
             if(cart.length === 0) listContainer.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Ton panier est vide. Va dénicher ta prochaine pépite 🔥</p>';
+
+            // ✅ PROMO : Livraison gratuite dès X F — barre de progression
+            const promoBarContainer = document.getElementById('livraison-des-bar');
+            if (promoBarContainer) {
+                if (promos.livraisonGratuiteDes && promos.livraisonGratuiteDes.active && subtotal > 0) {
+                    const montant = promos.livraisonGratuiteDes.montant;
+                    const pct = Math.min(100, Math.round(subtotal / montant * 100));
+                    const reste = Math.max(0, montant - subtotal);
+                    promoBarContainer.classList.remove('hidden');
+                    promoBarContainer.innerHTML = `
+                        <div class="bg-green-50 border border-green-200 rounded-2xl p-3 mb-3">
+                            <p class="text-[10px] font-bold text-green-700 mb-2">
+                                ${reste === 0 ? '🎉 Livraison gratuite débloquée !' : `🚚 Plus que ${reste.toLocaleString()} F pour la livraison gratuite !`}
+                            </p>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-green-500 h-2 rounded-full transition-all" style="width: ${pct}%"></div>
+                            </div>
+                        </div>`;
+                } else {
+                    promoBarContainer.classList.add('hidden');
+                    promoBarContainer.innerHTML = '';
+                }
+            }
+
+            // ✅ PROMO : 1 acheté = 1 offert — bandeau dans le panier
+            const uaoCartBanner = document.getElementById('uao-cart-banner');
+            if (uaoCartBanner) {
+                uaoCartBanner.classList.toggle('hidden', !(promos.unAchetUnOffert && promos.unAchetUnOffert.active && cart.filter(i => !i.validated).length > 0));
+            }
+
             document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
             document.getElementById('lbl-std').innerText = `🚲 Normale (+${calculatedStdFee.toLocaleString()} F)`;
             document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${calculatedExpFee.toLocaleString()} F)`;
@@ -794,14 +1006,19 @@
                 const commission = Math.round(finalTotal * 0.10);
                 const montantBoutique = finalTotal - commission;
                 const orderRef = push(ref(db, 'driprush_orders'));
-                set(orderRef, { clientName: name, phone, address: addr, clientGPS: gps, shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343', shopMomo: firstItem.shopMomo || firstItem.shopPhone || '', items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '), deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee, total: finalTotal, commission: commission, montantBoutique: montantBoutique, status: 'En attente de paiement', timestamp: Date.now() }).then(() => resolve(orderRef.key)).catch(reject);
+                set(orderRef, { clientName: name, phone, address: addr, clientGPS: gps, shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343', shopMomo: firstItem.shopMomo || firstItem.shopPhone || '', items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '), deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee, total: finalTotal, commission: commission, montantBoutique: montantBoutique, codePromo: appliedCodePromo ? promos.codePromo.code : null, status: 'En attente de paiement', timestamp: Date.now() }).then(() => resolve(orderRef.key)).catch(reject);
             });
         };
 
         window.triggerFedaPay = (name, phone, addr, gps, btn, originalText) => {
             const pendingItems = cart.filter(i => !i.validated);
-            let subtotal = 0; pendingItems.forEach(i => subtotal += parseInt(i.price));
-            const finalTotal = subtotal + deliveryFee;
+            let subtotal = 0;
+            pendingItems.forEach(i => subtotal += getPrixFinal(i));
+            // ✅ PROMO : Code promo appliqué
+            let finalTotal = subtotal + deliveryFee;
+            if (appliedCodePromo && appliedCodePromo > 0) {
+                finalTotal = Math.round(finalTotal * (1 - appliedCodePromo / 100));
+            }
             if (SIMULATION_MODE) { btn.innerText = "PAIEMENT SIMULÉ... ⏳"; window.showToast("🧪 Mode simulation activé — paiement fictif"); setTimeout(() => { window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems); }, 2000); return; }
             window.createPendingOrder(name, phone, addr, gps, finalTotal, pendingItems).then((orderId) => {
                 const nameParts = name.split(' ');
@@ -1004,6 +1221,23 @@
 </head>
 <body class="pb-24">
     <div id="test-mode-banner" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center text-[10px] font-black uppercase py-1.5 z-[100] tracking-widest">🧪 Mode Test — Paiement simulé, aucun vrai débit</div>
+    <!-- ✅ FLASH SALE BANNER -->
+    <div id="flash-sale-banner" class="hidden fixed top-0 left-0 right-0 bg-drip text-white z-[101] py-2 px-4 text-center">
+        <p class="text-[11px] font-black uppercase tracking-widest">
+            ⚡ FLASH SALE — Se termine dans <span id="flash-countdown" class="font-display text-lime">00:00:00</span>
+        </p>
+    </div>
+
+    <!-- ✅ LIVRAISON GRATUITE BANNER -->
+    <div id="livraison-gratuite-banner" class="hidden fixed top-0 left-0 right-0 bg-green-500 text-white z-[101] py-2 px-4 text-center">
+        <p class="text-[11px] font-black uppercase tracking-widest">🚚 LIVRAISON GRATUITE sur toutes les commandes !</p>
+    </div>
+
+    <!-- ✅ 1 ACHETÉ = 1 OFFERT BANNER -->
+    <div id="uao-banner" class="hidden fixed top-0 left-0 right-0 bg-lime text-black z-[101] py-2 px-4 text-center">
+        <p class="text-[11px] font-black uppercase tracking-widest">🎁 OFFRE SPÉCIALE — 1 article acheté = 1 article offert !</p>
+    </div>
+
     <div id="welcome-screen" class="fixed inset-0 z-50 bg-ink flex flex-col items-center justify-end pb-20 px-6 text-center overflow-hidden">
         <div class="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-transparent"></div>
@@ -1049,6 +1283,15 @@
             </div>
         </header>
         <main class="p-3">
+            <!-- ✅ ARTICLES DU JOUR -->
+            <div id="articles-du-jour-section" class="hidden mb-4">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <h2 class="text-sm font-display uppercase tracking-tight text-ink">⭐ Articles du Jour</h2>
+                    <span class="text-[9px] text-amber-500 font-black uppercase">Sélection exclusive</span>
+                </div>
+                <div id="articles-du-jour-grid" class="flex gap-3 overflow-x-auto hide-scrollbar pb-2"></div>
+            </div>
+
             <div id="products-grid" class="grid grid-cols-2 gap-3">
                 <div class="skeleton rounded-2xl h-64"></div><div class="skeleton rounded-2xl h-64"></div>
                 <div class="skeleton rounded-2xl h-64"></div><div class="skeleton rounded-2xl h-64"></div>
@@ -1108,6 +1351,24 @@
                     <input id="c-phone" type="tel" placeholder="NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase border">
                     <textarea id="c-addr" placeholder="ADRESSE DE LIVRAISON" class="w-full bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold uppercase h-20 border"></textarea>
                 </div>
+                <!-- ✅ BARRE PROGRESSION LIVRAISON GRATUITE -->
+                <div id="livraison-des-bar" class="hidden"></div>
+
+                <!-- ✅ 1 ACHETÉ = 1 OFFERT BANDEAU PANIER -->
+                <div id="uao-cart-banner" class="hidden bg-lime/20 border border-lime rounded-2xl p-3 text-center">
+                    <p class="text-[11px] font-black text-black uppercase">🎁 1 article acheté = 1 article offert — ton cadeau sera glissé dans ton colis !</p>
+                </div>
+
+                <!-- ✅ CODE PROMO -->
+                <div id="code-promo-section" class="">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">🏷️ Code promo</p>
+                    <div class="flex gap-2">
+                        <input id="code-promo-input" placeholder="ENTRE TON CODE" class="flex-1 bg-gray-100 p-3 rounded-xl outline-none text-xs font-bold uppercase border focus:border-drip transition">
+                        <button onclick="window.validateCodePromo()" class="bg-drip text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">OK</button>
+                    </div>
+                    <p id="code-promo-result" class="hidden text-[10px] font-bold mt-1 px-1"></p>
+                </div>
+
                 <button onclick="window.confirmOrder(this)" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase italic shadow-2xl text-sm">Confirmer la commande ✅</button>
             </div>
         </div>
