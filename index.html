@@ -4,24 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DRIPRUSH - Premium Store</title>
-
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://vroomiam.web.app/">
     <meta property="og:title" content="DRIPRUSH - Premium Store">
     <meta property="og:description" content="Livraison en 15min chrono au Bénin. Qualité premium uniquement. 🔥">
     <meta property="og:image" content="https://i.ibb.co/b58wJF0B/IMG-3395.png">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        ink: '#0B0B0C',
-                        paper: '#F7F5F2',
-                        drip: '#FF4D1C',
-                        dripdark: '#C23700',
-                        lime: '#C8FF4D'
+                        ink: '#0B0B0C', paper: '#F7F5F2', drip: '#FF4D1C', dripdark: '#C23700', lime: '#C8FF4D'
                     }
                 }
             }
@@ -34,61 +28,30 @@
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
     <meta name="theme-color" content="#FF4D1C">
     <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
-
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #F7F5F2; color: #0B0B0C; overflow-x: hidden; }
         .font-display { font-family: 'Archivo Black', sans-serif; }
         .active-cat { background-color: #0B0B0C !important; color: #fff !important; transform: scale(1.05); }
         .product-card { transition: all 0.3s ease; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .animate-marquee { display: inline-block; animation: marquee 18s linear infinite; }
-
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-slide-up { animation: slideUp 0.3s ease-out; }
-
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-fade-in { animation: fadeIn 0.2s ease-out; }
-
         .modal-height-fix { max-height: 90vh; overflow-y: auto; }
         .pin-input { letter-spacing: 0.5em; }
-
         @keyframes cardEnter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         .card-enter { animation: cardEnter 0.45s ease-out backwards; }
-
         @keyframes cartBounce { 0%,100% { transform: scale(1); } 30% { transform: scale(1.35); } 60% { transform: scale(0.92); } }
         .cart-bounce { animation: cartBounce 0.45s ease-out; }
-
         @keyframes shimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
         .skeleton { background: linear-gradient(90deg, #ececec 25%, #f6f6f6 37%, #ececec 63%); background-size: 600px 100%; animation: shimmer 1.4s infinite linear; }
-
-        .price-tag {
-            position: relative; background: #0B0B0C; color: #fff;
-            font-family: 'Archivo Black', sans-serif; font-size: 11px;
-            padding: 6px 12px 6px 18px; border-radius: 3px 10px 10px 3px;
-            transform: rotate(-3deg); display: inline-flex; align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-        }
-        .price-tag::before {
-            content: ''; position: absolute; left: 6px; top: 50%;
-            transform: translateY(-50%); width: 5px; height: 5px;
-            background: #F7F5F2; border-radius: 50%;
-        }
-        .new-sticker {
-            background: #C8FF4D; color: #0B0B0C;
-            font-family: 'Archivo Black', sans-serif; font-size: 8px;
-            padding: 3px 8px; border-radius: 2px 8px 8px 2px;
-            transform: rotate(3deg); box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-        }
-        .pin-reveal {
-            background: #0B0B0C; color: #C8FF4D;
-            font-family: 'Archivo Black', sans-serif;
-            font-size: 2.5rem; letter-spacing: 0.4em;
-            padding: 1rem; border-radius: 1rem; text-align: center;
-        }
-
-        /* 🌙 MODE SOMBRE */
+        .price-tag { position: relative; background: #0B0B0C; color: #fff; font-family: 'Archivo Black', sans-serif; font-size: 11px; padding: 6px 12px 6px 18px; border-radius: 3px 10px 10px 3px; transform: rotate(-3deg); display: inline-flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.18); }
+        .price-tag::before { content: ''; position: absolute; left: 6px; top: 50%; transform: translateY(-50%); width: 5px; height: 5px; background: #F7F5F2; border-radius: 50%; }
+        .new-sticker { background: #C8FF4D; color: #0B0B0C; font-family: 'Archivo Black', sans-serif; font-size: 8px; padding: 3px 8px; border-radius: 2px 8px 8px 2px; transform: rotate(3deg); box-shadow: 0 3px 8px rgba(0,0,0,0.15); }
+        .pin-reveal { background: #0B0B0C; color: #C8FF4D; font-family: 'Archivo Black', sans-serif; font-size: 2.5rem; letter-spacing: 0.4em; padding: 1rem; border-radius: 1rem; text-align: center; }
         body.dark-mode { background-color: #0B0B0C !important; color: #e0e0e0 !important; }
         body.dark-mode header { background-color: #141414 !important; border-color: rgba(255,255,255,0.06) !important; }
         body.dark-mode .bg-white { background-color: #1a1a1a !important; color: #e0e0e0 !important; }
@@ -157,15 +120,11 @@
         function loadSettings() {
             try { return JSON.parse(localStorage.getItem('driprush_client_prefs') || '{}'); } catch(e) { return {}; }
         }
-        function saveSettings(s) {
-            localStorage.setItem('driprush_client_prefs', JSON.stringify(s));
-        }
+        function saveSettings(s) { localStorage.setItem('driprush_client_prefs', JSON.stringify(s)); }
         function getFavorites() {
             try { return JSON.parse(localStorage.getItem('driprush_favorites') || '[]'); } catch(e) { return []; }
         }
-        function saveFavorites(favs) {
-            localStorage.setItem('driprush_favorites', JSON.stringify(favs));
-        }
+        function saveFavorites(favs) { localStorage.setItem('driprush_favorites', JSON.stringify(favs)); }
 
         (function applySettings() {
             const s = loadSettings();
@@ -193,9 +152,7 @@
                 : "Votre livraison sera effectuée dans les 6 prochaines heures.";
             document.getElementById('delivery-message-modal').classList.remove('hidden');
         }
-        window.closeDeliveryModal = () => {
-            document.getElementById('delivery-message-modal').classList.add('hidden');
-        };
+        window.closeDeliveryModal = () => { document.getElementById('delivery-message-modal').classList.add('hidden'); };
 
         let cart = loadValidatedCart();
         let selectedItem = null;
@@ -207,6 +164,7 @@
         let calculatedExpFee = 900;
         let clientCoords = null;
         let selectedRating = 0;
+        let fcmMessageListenerActive = false;
 
         window.openSettingsPanel = () => {
             const s = loadSettings();
@@ -234,37 +192,34 @@
                     notifBtn.disabled = false;
                     notifBtn.classList.remove('opacity-60');
                 }
+            } else if (notifBtn) {
+                notifBtn.innerText = 'Non supporté sur cet appareil';
+                notifBtn.disabled = true;
+                notifBtn.classList.add('opacity-40');
             }
             window.loadFavoritesPanel();
             window.loadOrderHistory();
         };
 
-        window.closeSettingsPanel = () => {
-            document.getElementById('settings-panel').classList.add('hidden');
-        };
+        window.closeSettingsPanel = () => { document.getElementById('settings-panel').classList.add('hidden'); };
 
         window.saveClientProfile = () => {
             const name = document.getElementById('settings-name').value.trim();
             const address = document.getElementById('settings-address').value.trim();
             const s = loadSettings();
-            s.clientName = name;
-            s.clientAddress = address;
+            s.clientName = name; s.clientAddress = address;
             saveSettings(s);
             if (name) localStorage.setItem('driprush_client_name', name);
             window.showToast("Profil sauvegardé ✅");
         };
 
         window.toggleDarkMode = (checked) => {
-            const s = loadSettings();
-            s.darkMode = checked;
-            saveSettings(s);
+            const s = loadSettings(); s.darkMode = checked; saveSettings(s);
             document.body.classList.toggle('dark-mode', checked);
         };
 
         window.setTextSize = (size) => {
-            const s = loadSettings();
-            s.textSize = size;
-            saveSettings(s);
+            const s = loadSettings(); s.textSize = size; saveSettings(s);
             const sizes = { small: '13px', normal: '16px', large: '19px' };
             document.documentElement.style.fontSize = sizes[size];
             ['small', 'normal', 'large'].forEach(sz => {
@@ -285,13 +240,11 @@
             const idx = favs.findIndex(f => f.id === productId);
             if (idx > -1) {
                 favs.splice(idx, 1);
-                btn.classList.remove('text-red-500');
-                btn.classList.add('text-gray-300');
+                btn.classList.remove('text-red-500'); btn.classList.add('text-gray-300');
                 window.showToast("Retiré des favoris");
             } else {
                 favs.push({ id: productId, name: p.name, price: p.price, image: (p.images && p.images[0]) || p.image || '' });
-                btn.classList.add('text-red-500');
-                btn.classList.remove('text-gray-300');
+                btn.classList.add('text-red-500'); btn.classList.remove('text-gray-300');
                 window.showToast("Ajouté aux favoris ❤️");
             }
             saveFavorites(favs);
@@ -345,9 +298,14 @@
             }).join('');
         };
 
+        // ✅ FIX NOTIFICATIONS
         window.requestClientNotifications = async () => {
             if (!messaging) {
                 window.showToast("Notifications non supportées sur cet appareil", true);
+                return;
+            }
+            if (!('Notification' in window)) {
+                window.showToast("Ton navigateur ne supporte pas les notifications push", true);
                 return;
             }
             try {
@@ -370,31 +328,29 @@
                         notifBtn.classList.add('opacity-60');
                     }
                     window.showToast("Notifications activées ✅");
-                    onMessage(messaging, (payload) => {
-                        const title = (payload.notification && payload.notification.title) || 'Driprush';
-                        const body = (payload.notification && payload.notification.body) || '';
-                        window.showToast(`${title} — ${body}`);
-                    });
+                    if (!fcmMessageListenerActive) {
+                        fcmMessageListenerActive = true;
+                        onMessage(messaging, (payload) => {
+                            const title = (payload.notification && payload.notification.title) || 'Driprush';
+                            const body = (payload.notification && payload.notification.body) || '';
+                            window.showToast(`${title} — ${body}`);
+                        });
+                    }
                 }
             } catch(err) {
                 console.error('Erreur FCM client:', err);
-                window.showToast("Erreur notifications : " + err.message, true);
+                if (err.name === 'AbortError' || (err.code && err.code === 'messaging/permission-blocked')) {
+                    window.showToast("Notifications bloquées — autorise-les dans les paramètres du navigateur", true);
+                } else {
+                    window.showToast("Erreur activation notifications : " + err.message, true);
+                }
             }
         };
 
         window.shareApp = () => {
-            const shareData = {
-                title: 'DRIPRUSH 🔥',
-                text: 'Découvre Driprush — sneakers, streetwear et parfums premium au Bénin. Livraison rapide !',
-                url: 'https://lo-maker1.github.io/driprush/'
-            };
-            if (navigator.share) {
-                navigator.share(shareData).catch(() => {});
-            } else {
-                navigator.clipboard.writeText(shareData.url)
-                    .then(() => window.showToast("Lien copié dans le presse-papier 🔗"))
-                    .catch(() => window.showToast("https://lo-maker1.github.io/driprush/"));
-            }
+            const shareData = { title: 'DRIPRUSH 🔥', text: 'Découvre Driprush — sneakers, streetwear et parfums premium au Bénin. Livraison rapide !', url: 'https://lo-maker1.github.io/driprush/' };
+            if (navigator.share) { navigator.share(shareData).catch(() => {}); }
+            else { navigator.clipboard.writeText(shareData.url).then(() => window.showToast("Lien copié dans le presse-papier 🔗")).catch(() => window.showToast("https://lo-maker1.github.io/driprush/")); }
         };
 
         function containsContactAttempt(text) {
@@ -403,19 +359,24 @@
             const suspiciousKeywords = ['whatsapp', 'whats app', 'numero', 'numéro', 'appelle', 'appel moi', 'telegram', 'contacte moi', 'mon numero', 'sms'];
             return suspiciousKeywords.some(kw => text.toLowerCase().includes(kw));
         }
+
+        // ✅ FIX 1 — parseGPSCoords : 3 formats Google Maps
         function parseGPSCoords(gpsUrl) {
             if (!gpsUrl) return null;
-            const match = gpsUrl.match(/q=([-\d.]+),([-\d.]+)/);
+            let match = gpsUrl.match(/[?&]q=([-\d.]+),([-\d.]+)/);
+            if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+            match = gpsUrl.match(/@([-\d.]+),([-\d.]+)/);
+            if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+            match = gpsUrl.match(/ll=([-\d.]+),([-\d.]+)/);
             if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
             return null;
         }
+
         function haversineDistance(lat1, lng1, lat2, lng2) {
             const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng/2) * Math.sin(dLng/2);
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
         function roundTo25(amount) { return Math.max(25, Math.round(amount / 25) * 25); }
@@ -423,8 +384,8 @@
         window.calculateAndSetDeliveryFees = (shopGPS) => {
             const shopCoords = parseGPSCoords(shopGPS);
             if (!shopCoords) { calculatedStdFee = 500; calculatedExpFee = 900; window.updateCartUI(); return; }
-            document.getElementById('lbl-std').innerText = `🚲 Calcul en cours...`;
-            document.getElementById('lbl-exp').innerText = `🚀 Calcul en cours...`;
+            document.getElementById('lbl-std').innerText = '🚲 Calcul en cours...';
+            document.getElementById('lbl-exp').innerText = '🚀 Calcul en cours...';
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((pos) => {
                     clientCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -478,10 +439,7 @@
             const data = snapshot.val();
             allProducts = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
             window.renderProducts(allProducts);
-        }, (error) => {
-            console.error("Erreur Firebase:", error);
-            window.showToast("Erreur de connexion au catalogue", true);
-        });
+        }, (error) => { console.error("Erreur Firebase:", error); window.showToast("Erreur de connexion au catalogue", true); });
 
         window.enterSite = (mode) => {
             if(mode === 'shop') {
@@ -489,17 +447,9 @@
                     if (snap.val() === true) { document.getElementById('maintenance-modal').classList.remove('hidden'); return; }
                     document.getElementById('welcome-screen').classList.add('hidden');
                     document.getElementById('main-content').classList.remove('hidden');
-                }).catch(() => {
-                    document.getElementById('welcome-screen').classList.add('hidden');
-                    document.getElementById('main-content').classList.remove('hidden');
-                });
-            } else if(mode === 'partner') {
-                window.showPartnerPanel('choice');
-                document.getElementById('partner-modal').classList.remove('hidden');
-            } else if(mode === 'login') {
-                window.showPartnerPanel('login');
-                document.getElementById('partner-modal').classList.remove('hidden');
-            }
+                }).catch(() => { document.getElementById('welcome-screen').classList.add('hidden'); document.getElementById('main-content').classList.remove('hidden'); });
+            } else if(mode === 'partner') { window.showPartnerPanel('choice'); document.getElementById('partner-modal').classList.remove('hidden'); }
+            else if(mode === 'login') { window.showPartnerPanel('login'); document.getElementById('partner-modal').classList.remove('hidden'); }
         };
 
         window.showPartnerPanel = (panel) => {
@@ -523,10 +473,7 @@
                     document.getElementById('p-gps').value = link;
                     btn.innerText = "📍 Position capturée !";
                     btn.classList.replace('bg-gray-100', 'bg-green-100');
-                }, () => {
-                    window.showToast("Active ta localisation pour capturer le GPS", true);
-                    btn.innerText = "📍 Réessayer";
-                });
+                }, () => { window.showToast("Active ta localisation pour capturer le GPS", true); btn.innerText = "📍 Réessayer"; });
             } else { window.showToast("GPS non supporté par ce téléphone", true); }
         };
 
@@ -546,19 +493,11 @@
             if(phone.length < 8) return window.showToast("Numéro WhatsApp invalide", true);
             if(!gps) return window.showToast("Capture la position de la boutique avant d'envoyer !", true);
             if(!momo || momo.length < 8) return window.showToast("Numéro Mobile Money invalide", true);
-            const originalText = btn.innerText;
-            btn.disabled = true;
-            btn.innerText = "Création en cours...";
+            const originalText = btn.innerText; btn.disabled = true; btn.innerText = "Création en cours...";
             get(ref(db, 'driprush_boutiques/' + phone)).then((existingSnap) => {
-                if (existingSnap.exists()) {
-                    btn.disabled = false;
-                    btn.innerText = originalText;
-                    return window.showToast("Ce numéro a déjà un compte ! Utilise plutôt « Me connecter à mon compte ».", true);
-                }
+                if (existingSnap.exists()) { btn.disabled = false; btn.innerText = originalText; return window.showToast("Ce numéro a déjà un compte ! Utilise plutôt « Me connecter à mon compte ».", true); }
                 const pin = String(Math.floor(1000 + Math.random() * 9000));
-                set(ref(db, 'driprush_boutiques/' + phone), {
-                    name, phone, gps: gps || '', momo, location: loc, pin, createdAt: Date.now()
-                }).then(() => {
+                set(ref(db, 'driprush_boutiques/' + phone), { name, phone, gps: gps || '', momo, location: loc, pin, createdAt: Date.now() }).then(() => {
                     const message = `Salut DRIPRUSH ! 🔥\n\nNOUVELLE BOUTIQUE INSCRITE :\n🏪 Nom: ${name}\n📞 Contact: ${phone}\n📍 Localisation: ${loc}\n🗺️ GPS: ${gps}\n💰 Mobile Money: ${momo}`;
                     window.open(`https://wa.me/2290147535343?text=${encodeURIComponent(message)}`, '_blank');
                     lastCreatedBoutique = { name, phone, gps: gps || '', momo, location: loc, pin };
@@ -567,15 +506,10 @@
                     document.getElementById('partner-success-name').innerText = name;
                     document.getElementById('partner-success-pin').innerText = pin;
                     document.getElementById('partner-success').classList.remove('hidden');
-                    document.getElementById('p-name').value = '';
-                    document.getElementById('p-phone').value = '';
-                    document.getElementById('p-loc').value = '';
-                    document.getElementById('p-gps').value = '';
-                    document.getElementById('p-momo').value = '';
-                    document.getElementById('p-momo-same').checked = true;
-                    window.toggleMomoField();
-                    btn.disabled = false;
-                    btn.innerText = originalText;
+                    document.getElementById('p-name').value = ''; document.getElementById('p-phone').value = '';
+                    document.getElementById('p-loc').value = ''; document.getElementById('p-gps').value = '';
+                    document.getElementById('p-momo').value = ''; document.getElementById('p-momo-same').checked = true;
+                    window.toggleMomoField(); btn.disabled = false; btn.innerText = originalText;
                     const gpsBtn = document.getElementById('p-gps-btn');
                     gpsBtn.innerText = "📍 Appuyez ici pour enregistrer automatiquement vos coordonnées GPS";
                     gpsBtn.classList.replace('bg-green-100', 'bg-gray-100');
@@ -589,22 +523,13 @@
             const phone = document.getElementById('l-phone').value.replace(/\D/g, '');
             const pin = document.getElementById('l-pin').value.trim();
             if(phone.length < 8 || pin.length !== 4) return window.showToast("Vérifie ton numéro et ton PIN", true);
-            const originalText = btn.innerText;
-            btn.disabled = true;
-            btn.innerText = "Connexion...";
-            fetch(WEBHOOK_SERVER_URL + '/verify-pin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone, pin })
-            })
+            const originalText = btn.innerText; btn.disabled = true; btn.innerText = "Connexion...";
+            fetch(WEBHOOK_SERVER_URL + '/verify-pin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, pin }) })
             .then(res => res.json())
             .then(data => {
-                btn.disabled = false;
-                btn.innerText = originalText;
-                if (data.success) {
-                    localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now(), boutique: data.boutique }));
-                    window.location.href = 'boutiques.html';
-                } else { window.showToast(data.message || "Numéro ou PIN incorrect", true); }
+                btn.disabled = false; btn.innerText = originalText;
+                if (data.success) { localStorage.setItem('driprush_shop_session', JSON.stringify({ phone, loginTime: Date.now(), boutique: data.boutique })); window.location.href = 'boutiques.html'; }
+                else { window.showToast(data.message || "Numéro ou PIN incorrect", true); }
             })
             .catch(() => { btn.disabled = false; btn.innerText = originalText; window.showToast("Erreur de connexion au serveur, réessaie.", true); });
         };
@@ -632,16 +557,12 @@
                             <h3 class="text-[11px] font-bold text-gray-800 leading-tight h-8 line-clamp-2 uppercase">${p.name}</h3>
                             <div class="mt-3 flex items-center justify-between">
                                 <span class="price-tag">${parseInt(p.price).toLocaleString()} F</span>
-                                <div class="bg-black text-white w-7 h-7 rounded-full flex items-center justify-center">
-                                    <i class="fa-solid fa-plus text-[10px]"></i>
-                                </div>
+                                <div class="bg-black text-white w-7 h-7 rounded-full flex items-center justify-center"><i class="fa-solid fa-plus text-[10px]"></i></div>
                             </div>
                         </div>
                     </div>`;
             });
-            if(products.length === 0) {
-                grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-400 font-bold uppercase text-xs">Aucune pépite ici pour l\'instant... 👀</div>';
-            }
+            if(products.length === 0) grid.innerHTML = '<div class="col-span-2 text-center py-20 text-gray-400 font-bold uppercase text-xs">Aucune pépite ici pour l\'instant... 👀</div>';
         };
 
         window.filterByGenre = (genre) => {
@@ -651,20 +572,14 @@
             else { window.renderProducts(allProducts.filter(p => p.genre && p.genre.toLowerCase() === genre.toLowerCase())); }
         };
 
-        window.searchProducts = (query) => {
-            window.renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(query.toLowerCase().trim())));
-        };
+        window.searchProducts = (query) => { window.renderProducts(allProducts.filter(p => p.name.toLowerCase().includes(query.toLowerCase().trim()))); };
 
         window.openModal = (id) => {
             const p = allProducts.find(x => x.id === id);
             if (!p) return;
             const images = (p.images && p.images.length > 0) ? p.images : (p.image ? [p.image] : []);
             const pShopMomo = p.shopMomo && String(p.shopMomo).trim() !== "" ? p.shopMomo : (p.shopPhone || "2290147535343");
-            selectedItem = {
-                id: p.id, name: p.name, price: p.price, image: images[0] || '',
-                shop: p.shopName || 'Driprush', shopGPS: p.shopGPS || '', shopPhone: p.shopPhone || '2290147535343',
-                shopMomo: pShopMomo, internationalDelay: p.internationalDelay || false, size: null, color: null
-            };
+            selectedItem = { id: p.id, name: p.name, price: p.price, image: images[0] || '', shop: p.shopName || 'Driprush', shopGPS: p.shopGPS || '', shopPhone: p.shopPhone || '2290147535343', shopMomo: pShopMomo, internationalDelay: p.internationalDelay || false, size: null, color: null };
             document.getElementById('modal-img').src = images[0] || '';
             document.getElementById('modal-name').innerText = p.name;
             document.getElementById('modal-price').innerText = parseInt(p.price).toLocaleString() + " F";
@@ -687,10 +602,7 @@
                     if(idx === 0) selectedItem.size = s.trim();
                     container.innerHTML += `<button onclick="window.selectSize(this, '${cleanSize}')" class="size-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black ${isFirst}">${s.trim()}</button>`;
                 });
-            } else {
-                selectedItem.size = "Unique";
-                container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn bg-black text-white border-black border px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition">Taille Unique</button>`;
-            }
+            } else { selectedItem.size = "Unique"; container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn bg-black text-white border-black border px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition">Taille Unique</button>`; }
             const colorSection = document.getElementById('color-section');
             const colorContainer = document.getElementById('color-container');
             colorContainer.innerHTML = '';
@@ -725,9 +637,7 @@
             if (selectedItem) selectedItem.image = url;
             document.querySelectorAll('#gallery-thumbs img').forEach(img => {
                 const match = img.getAttribute('src') === url;
-                img.classList.toggle('ring-2', match);
-                img.classList.toggle('ring-black', match);
-                img.classList.toggle('opacity-60', !match);
+                img.classList.toggle('ring-2', match); img.classList.toggle('ring-black', match); img.classList.toggle('opacity-60', !match);
             });
         };
 
@@ -739,9 +649,7 @@
         };
 
         window.closeModalOutside = (event) => {
-            if(!event || event.target.id === 'product-modal' || event.target.closest('#close-modal-btn')) {
-                document.getElementById('product-modal').classList.add('hidden');
-            }
+            if(!event || event.target.id === 'product-modal' || event.target.closest('#close-modal-btn')) document.getElementById('product-modal').classList.add('hidden');
         };
 
         window.toggleZoom = (show) => {
@@ -759,9 +667,7 @@
 
         window.bounceCartIcon = () => {
             const icon = document.getElementById('nav-cart-icon');
-            icon.classList.remove('cart-bounce');
-            void icon.offsetWidth;
-            icon.classList.add('cart-bounce');
+            icon.classList.remove('cart-bounce'); void icon.offsetWidth; icon.classList.add('cart-bounce');
         };
 
         window.addToCart = () => {
@@ -772,22 +678,16 @@
                 const currentCartShopPhone = cleanPhone(pendingCartItems[0].shopPhone || "2290147535343");
                 const newShopPhone = cleanPhone(selectedItem.shopPhone || "2290147535343");
                 const currentCartShopName = pendingCartItems[0].shop || "Driprush";
-                if (currentCartShopPhone !== newShopPhone && currentCartShopPhone.length > 5 && newShopPhone.length > 5) {
-                    window.showToast(`Ton panier contient déjà "${currentCartShopName}". Termine ou vide-le d'abord !`, true);
-                    return;
-                }
+                if (currentCartShopPhone !== newShopPhone && currentCartShopPhone.length > 5 && newShopPhone.length > 5) { window.showToast(`Ton panier contient déjà "${currentCartShopName}". Termine ou vide-le d'abord !`, true); return; }
             }
             cart.push({...selectedItem, validated: false});
             window.showToast("Ajouté ✅ — direction le panier quand tu veux");
-            window.updateCartUI();
-            window.bounceCartIcon();
+            window.updateCartUI(); window.bounceCartIcon();
             document.getElementById('product-modal').classList.add('hidden');
         };
 
         window.updateCartUI = () => {
-            cart = cart.filter(item =>
-                !item.validated || (item.validatedAt && Date.now() - item.validatedAt < FORTY_EIGHT_HOURS)
-            );
+            cart = cart.filter(item => !item.validated || (item.validatedAt && Date.now() - item.validatedAt < FORTY_EIGHT_HOURS));
             document.getElementById('nav-cart-count').innerText = cart.length;
             const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
             const hasPending = cart.some(i => !i.validated);
@@ -821,20 +721,20 @@
             else if(deliveryTypeSelected === "express") deliveryFee = calculatedExpFee;
             const totalDisplay = document.getElementById('final-total-display');
             if(deliveryTypeSelected !== "") {
-                totalDisplay.classList.add('price-tag');
-                totalDisplay.classList.remove('text-gray-400');
+                totalDisplay.classList.add('price-tag'); totalDisplay.classList.remove('text-gray-400');
                 totalDisplay.innerText = (subtotal + deliveryFee).toLocaleString() + " F";
             } else {
-                totalDisplay.classList.remove('price-tag');
-                totalDisplay.classList.add('text-gray-400');
+                totalDisplay.classList.remove('price-tag'); totalDisplay.classList.add('text-gray-400');
                 totalDisplay.innerText = "Choisir livraison";
             }
         };
 
+        // ✅ FIX 3 — reset visuel boutons livraison
         window.removeFromCart = (index) => {
             cart.splice(index, 1);
             deliveryFee = 0; deliveryTypeSelected = "";
             calculatedStdFee = 500; calculatedExpFee = 900;
+            document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('bg-black', 'text-white'));
             window.updateCartUI();
         };
 
@@ -857,9 +757,7 @@
             if(deliveryTypeSelected === "") return window.showToast("Choisis un mode de livraison !", true);
             const phoneDigits = phone.replace(/\D/g, '');
             if(phoneDigits.length < 8) return window.showToast("Numéro WhatsApp invalide", true);
-            const originalText = element.innerText;
-            element.innerText = "CONNEXION GPS... ⏳";
-            element.disabled = true;
+            const originalText = element.innerText; element.innerText = "CONNEXION GPS... ⏳"; element.disabled = true;
             if (clientCoords) {
                 const gps = `https://www.google.com/maps?q=${clientCoords.lat},${clientCoords.lng}`;
                 window.triggerFedaPay(name, phone, addr, gps, element, originalText);
@@ -878,30 +776,15 @@
                 const commission = Math.round(finalTotal * 0.10);
                 const montantBoutique = finalTotal - commission;
                 const orderRef = push(ref(db, 'driprush_orders'));
-                set(orderRef, {
-                    clientName: name, phone, address: addr, clientGPS: gps,
-                    shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '',
-                    shopPhone: firstItem.shopPhone || '2290147535343',
-                    shopMomo: firstItem.shopMomo || firstItem.shopPhone || '',
-                    items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '),
-                    deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee,
-                    total: finalTotal, commission: commission, montantBoutique: montantBoutique,
-                    status: 'En attente de paiement', timestamp: Date.now()
-                }).then(() => resolve(orderRef.key)).catch(reject);
+                set(orderRef, { clientName: name, phone, address: addr, clientGPS: gps, shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343', shopMomo: firstItem.shopMomo || firstItem.shopPhone || '', items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '), deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee, total: finalTotal, commission: commission, montantBoutique: montantBoutique, status: 'En attente de paiement', timestamp: Date.now() }).then(() => resolve(orderRef.key)).catch(reject);
             });
         };
 
         window.triggerFedaPay = (name, phone, addr, gps, btn, originalText) => {
             const pendingItems = cart.filter(i => !i.validated);
-            let subtotal = 0;
-            pendingItems.forEach(i => subtotal += parseInt(i.price));
+            let subtotal = 0; pendingItems.forEach(i => subtotal += parseInt(i.price));
             const finalTotal = subtotal + deliveryFee;
-            if (SIMULATION_MODE) {
-                btn.innerText = "PAIEMENT SIMULÉ... ⏳";
-                window.showToast("🧪 Mode simulation activé — paiement fictif");
-                setTimeout(() => { window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems); }, 2000);
-                return;
-            }
+            if (SIMULATION_MODE) { btn.innerText = "PAIEMENT SIMULÉ... ⏳"; window.showToast("🧪 Mode simulation activé — paiement fictif"); setTimeout(() => { window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems); }, 2000); return; }
             window.createPendingOrder(name, phone, addr, gps, finalTotal, pendingItems).then((orderId) => {
                 const nameParts = name.split(' ');
                 const firstname = nameParts[0] || 'Client';
@@ -910,31 +793,20 @@
                     public_key: FEDAPAY_PUBLIC_KEY, environment: 'live',
                     transaction: { amount: finalTotal, description: `Commande Driprush #${orderId}`, custom_metadata: { orderId: orderId } },
                     currency: { iso: 'XOF' },
-                    customer: {
-                        firstname, lastname,
-                        email: `client${phone.replace(/\D/g,'')}@driprush.bj`,
-                        phone_number: { number: phone, country: 'BJ' }
-                    },
+                    customer: { firstname, lastname, email: `client${phone.replace(/\D/g,'')}@driprush.bj`, phone_number: { number: phone, country: 'BJ' } },
                     onComplete: function(response) {
                         console.log("Réponse FedaPay :", response);
-                        btn.innerText = originalText;
-                        btn.disabled = false;
+                        btn.innerText = originalText; btn.disabled = false;
                         const orderedItems = cart.filter(i => !i.validated);
                         cart = cart.map(item => !item.validated ? { ...item, validated: true, validatedAt: Date.now() } : item);
-                        deliveryFee = 0; deliveryTypeSelected = "";
-                        calculatedStdFee = 500; calculatedExpFee = 900; clientCoords = null;
-                        saveValidatedCart();
-                        window.updateCartUI();
+                        deliveryFee = 0; deliveryTypeSelected = ""; calculatedStdFee = 500; calculatedExpFee = 900; clientCoords = null;
+                        saveValidatedCart(); window.updateCartUI();
                         document.getElementById('checkout-modal').classList.add('hidden');
                         showDeliveryMessage(orderedItems);
                     }
                 });
                 widget.open();
-            }).catch((err) => {
-                window.showToast("Erreur : " + err.message, true);
-                btn.innerText = originalText;
-                btn.disabled = false;
-            });
+            }).catch((err) => { window.showToast("Erreur : " + err.message, true); btn.innerText = originalText; btn.disabled = false; });
         };
 
         window.saveAutomatedOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
@@ -942,27 +814,17 @@
             const commission = Math.round(finalTotal * 0.10);
             const montantBoutique = finalTotal - commission;
             const orderRef = push(ref(db, 'driprush_orders'));
-            set(orderRef, {
-                clientName: name, phone, address: addr, clientGPS: gps,
-                shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '',
-                shopPhone: firstItem.shopPhone || '2290147535343',
-                shopMomo: firstItem.shopMomo || firstItem.shopPhone || '',
-                items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '),
-                deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee,
-                total: finalTotal, commission: commission, montantBoutique: montantBoutique,
-                status: SIMULATION_MODE ? 'Payée (TEST)' : 'Payée', timestamp: Date.now()
-            }).then(() => {
+            set(orderRef, { clientName: name, phone, address: addr, clientGPS: gps, shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343', shopMomo: firstItem.shopMomo || firstItem.shopPhone || '', items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '), deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee, total: finalTotal, commission: commission, montantBoutique: montantBoutique, status: SIMULATION_MODE ? 'Payée (TEST)' : 'Payée', timestamp: Date.now() }).then(() => {
                 const orderedItems = [...pendingItems];
                 cart = cart.map(item => !item.validated ? { ...item, validated: true, validatedAt: Date.now() } : item);
-                deliveryFee = 0; deliveryTypeSelected = "";
-                calculatedStdFee = 500; calculatedExpFee = 900; clientCoords = null;
-                saveValidatedCart();
-                window.updateCartUI();
+                deliveryFee = 0; deliveryTypeSelected = ""; calculatedStdFee = 500; calculatedExpFee = 900; clientCoords = null;
+                saveValidatedCart(); window.updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
                 showDeliveryMessage(orderedItems);
             }).catch((err) => { window.showToast("Erreur : " + err.message, true); });
         };
 
+        // ✅ FIX 2 — fallback Firebase si shopGPS vide
         window.toggleCheckout = (show) => {
             document.getElementById('checkout-modal').classList.toggle('hidden', !show);
             if(!show) { window.scrollTo(0,0); window.updateCartUI(); return; }
@@ -973,8 +835,19 @@
             if (s.clientName && nameInput && !nameInput.value) nameInput.value = s.clientName;
             if (s.clientAddress && addrInput && !addrInput.value) addrInput.value = s.clientAddress;
             const pendingItems = cart.filter(i => !i.validated);
-            if (pendingItems.length > 0 && pendingItems[0].shopGPS) {
-                window.calculateAndSetDeliveryFees(pendingItems[0].shopGPS);
+            if (pendingItems.length > 0) {
+                const shopGPS = pendingItems[0].shopGPS;
+                const shopPhone = pendingItems[0].shopPhone;
+                if (shopGPS) {
+                    window.calculateAndSetDeliveryFees(shopGPS);
+                } else if (shopPhone) {
+                    get(ref(db, 'driprush_boutiques/' + shopPhone)).then((snap) => {
+                        const boutique = snap.val();
+                        if (boutique && boutique.gps) {
+                            window.calculateAndSetDeliveryFees(boutique.gps);
+                        }
+                    }).catch(() => {});
+                }
             }
         };
 
@@ -1010,15 +883,11 @@
                 window.attachChatListener(shopPhone, myChats[productId].chatId);
             } else {
                 const chatRef = push(ref(db, 'driprush_chats/' + shopPhone));
-                set(chatRef, {
-                    clientName, productName: selectedItem.name, productId, createdAt: Date.now()
-                }).then(() => {
+                set(chatRef, { clientName, productName: selectedItem.name, productId, createdAt: Date.now() }).then(() => {
                     myChats[productId] = { chatId: chatRef.key, shopPhone };
                     localStorage.setItem('driprush_my_chats', JSON.stringify(myChats));
                     const clientFCMToken = localStorage.getItem('driprush_client_fcm_token');
-                    if (clientFCMToken) {
-                        update(ref(db, 'driprush_chats/' + shopPhone + '/' + chatRef.key), { clientFCMToken }).catch(() => {});
-                    }
+                    if (clientFCMToken) { update(ref(db, 'driprush_chats/' + shopPhone + '/' + chatRef.key), { clientFCMToken }).catch(() => {}); }
                     window.attachChatListener(shopPhone, chatRef.key);
                 }).catch((err) => window.showToast("Erreur : " + err.message, true));
             }
@@ -1028,16 +897,11 @@
             if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
             currentChatRefPath = { shopPhone, chatId };
             const clientFCMToken = localStorage.getItem('driprush_client_fcm_token');
-            if (clientFCMToken) {
-                update(ref(db, `driprush_chats/${shopPhone}/${chatId}`), { clientFCMToken }).catch(() => {});
-            }
+            if (clientFCMToken) { update(ref(db, `driprush_chats/${shopPhone}/${chatId}`), { clientFCMToken }).catch(() => {}); }
             if (selectedItem) {
                 let myChats = {};
                 try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) { myChats = {}; }
-                if (myChats[selectedItem.id]) {
-                    myChats[selectedItem.id].lastReadByClient = Date.now();
-                    localStorage.setItem('driprush_my_chats', JSON.stringify(myChats));
-                }
+                if (myChats[selectedItem.id]) { myChats[selectedItem.id].lastReadByClient = Date.now(); localStorage.setItem('driprush_my_chats', JSON.stringify(myChats)); }
             }
             document.getElementById('chat-unread-dot').classList.add('hidden');
             const messagesRef = ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`);
@@ -1054,12 +918,7 @@
             if (messages.length === 0) container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Pose ta question à la boutique 👋</p>';
             messages.forEach(m => {
                 const isClient = m.sender === 'client';
-                container.innerHTML += `
-                    <div class="flex ${isClient ? 'justify-end' : 'justify-start'} mb-2">
-                        <div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs ${isClient ? 'bg-black text-white' : 'bg-gray-100 text-black'}">
-                            ${m.text}
-                        </div>
-                    </div>`;
+                container.innerHTML += `<div class="flex ${isClient ? 'justify-end' : 'justify-start'} mb-2"><div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs ${isClient ? 'bg-black text-white' : 'bg-gray-100 text-black'}">${m.text}</div></div>`;
             });
             container.scrollTop = container.scrollHeight;
         };
@@ -1068,44 +927,21 @@
             const input = document.getElementById('chat-message-input');
             const text = input.value.trim();
             if (!text || !currentChatRefPath) return;
-            if (containsContactAttempt(text)) {
-                window.showToast("Pour ta sécurité, les échanges de numéros/contacts sont interdits ici — tout passe par Driprush 🔒", true);
-                return;
-            }
+            if (containsContactAttempt(text)) { window.showToast("Pour ta sécurité, les échanges de numéros/contacts sont interdits ici — tout passe par Driprush 🔒", true); return; }
             const { shopPhone, chatId } = currentChatRefPath;
-            push(ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`), {
-                sender: 'client', text, timestamp: Date.now()
-            }).then(() => {
+            push(ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`), { sender: 'client', text, timestamp: Date.now() }).then(() => {
                 input.value = '';
-                fetch(WEBHOOK_SERVER_URL + '/notify-shop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        shopPhone: shopPhone,
-                        clientName: localStorage.getItem('driprush_client_name') || 'Un client',
-                        productName: selectedItem ? selectedItem.name : 'un article'
-                    })
-                }).catch(() => {});
+                fetch(WEBHOOK_SERVER_URL + '/notify-shop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopPhone: shopPhone, clientName: localStorage.getItem('driprush_client_name') || 'Un client', productName: selectedItem ? selectedItem.name : 'un article' }) }).catch(() => {});
             }).catch((err) => window.showToast("Erreur : " + err.message, true));
         };
 
-        window.closeChatModal = () => {
-            if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
-            document.getElementById('chat-modal').classList.add('hidden');
-        };
-
-        window.openCommentsModal = () => {
-            document.getElementById('comments-modal').classList.remove('hidden');
-            window.loadComments();
-        };
+        window.closeChatModal = () => { if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; } document.getElementById('chat-modal').classList.add('hidden'); };
+        window.openCommentsModal = () => { document.getElementById('comments-modal').classList.remove('hidden'); window.loadComments(); };
         window.closeCommentsModal = () => { document.getElementById('comments-modal').classList.add('hidden'); };
 
         window.selectStar = (rating) => {
             selectedRating = rating;
-            document.querySelectorAll('.star-btn').forEach((btn, idx) => {
-                btn.classList.toggle('text-yellow-400', idx < rating);
-                btn.classList.toggle('text-gray-300', idx >= rating);
-            });
+            document.querySelectorAll('.star-btn').forEach((btn, idx) => { btn.classList.toggle('text-yellow-400', idx < rating); btn.classList.toggle('text-gray-300', idx >= rating); });
         };
 
         window.loadComments = () => {
@@ -1115,22 +951,11 @@
                 const data = snap.val();
                 container.innerHTML = '';
                 const comments = data ? Object.keys(data).map(id => ({ id, ...data[id] })).sort((a, b) => b.timestamp - a.timestamp) : [];
-                if (comments.length === 0) {
-                    container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10 tracking-widest">Aucun avis pour l\'instant — sois le premier !</p>';
-                    return;
-                }
+                if (comments.length === 0) { container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10 tracking-widest">Aucun avis pour l\'instant — sois le premier !</p>'; return; }
                 comments.forEach((c, idx) => {
                     const stars = '★'.repeat(c.rating) + '☆'.repeat(5 - c.rating);
                     const date = new Date(c.timestamp).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-                    container.innerHTML += `
-                        <div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm card-enter" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s">
-                            <div class="flex justify-between items-center mb-2">
-                                <p class="text-xs font-black uppercase text-ink">${c.name}</p>
-                                <span class="text-[8px] text-gray-400">${date}</span>
-                            </div>
-                            <p class="text-yellow-400 text-sm mb-2 tracking-wider">${stars}</p>
-                            <p class="text-xs text-gray-600 leading-relaxed">${c.text}</p>
-                        </div>`;
+                    container.innerHTML += `<div class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm card-enter" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s"><div class="flex justify-between items-center mb-2"><p class="text-xs font-black uppercase text-ink">${c.name}</p><span class="text-[8px] text-gray-400">${date}</span></div><p class="text-yellow-400 text-sm mb-2 tracking-wider">${stars}</p><p class="text-xs text-gray-600 leading-relaxed">${c.text}</p></div>`;
                 });
             });
         };
@@ -1141,45 +966,25 @@
             if (!name) return window.showToast("Entre ton prénom !", true);
             if (selectedRating === 0) return window.showToast("Donne une note de 1 à 5 étoiles !", true);
             if (!text) return window.showToast("Écris ton avis avant d'envoyer !", true);
-            const originalText = btn.innerText;
-            btn.disabled = true;
-            btn.innerText = "Envoi...";
+            const originalText = btn.innerText; btn.disabled = true; btn.innerText = "Envoi...";
             push(ref(db, 'driprush_comments'), { name, text, rating: selectedRating, timestamp: Date.now() }).then(() => {
-                document.getElementById('comment-name').value = '';
-                document.getElementById('comment-text').value = '';
-                selectedRating = 0;
-                window.selectStar(0);
-                btn.disabled = false;
-                btn.innerText = originalText;
+                document.getElementById('comment-name').value = ''; document.getElementById('comment-text').value = '';
+                selectedRating = 0; window.selectStar(0); btn.disabled = false; btn.innerText = originalText;
                 window.showToast("Merci pour ton avis ✅");
             }).catch((err) => { btn.disabled = false; btn.innerText = originalText; window.showToast("Erreur : " + err.message, true); });
         };
 
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch((err) => console.error('Erreur service worker:', err));
-        }
+        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch((err) => console.error('Erreur service worker:', err)); }
 
         let deferredInstallPrompt = null;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredInstallPrompt = e;
-            document.getElementById('install-banner').classList.remove('hidden');
-        });
-        window.installApp = () => {
-            if (!deferredInstallPrompt) return;
-            deferredInstallPrompt.prompt();
-            deferredInstallPrompt.userChoice.then(() => { document.getElementById('install-banner').classList.add('hidden'); deferredInstallPrompt = null; });
-        };
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstallPrompt = e; document.getElementById('install-banner').classList.remove('hidden'); });
+        window.installApp = () => { if (!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); deferredInstallPrompt.userChoice.then(() => { document.getElementById('install-banner').classList.add('hidden'); deferredInstallPrompt = null; }); };
         window.dismissInstallBanner = () => { document.getElementById('install-banner').classList.add('hidden'); };
         window.addEventListener('appinstalled', () => { document.getElementById('install-banner').classList.add('hidden'); });
     </script>
 </head>
 <body class="pb-24">
-
-    <div id="test-mode-banner" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center text-[10px] font-black uppercase py-1.5 z-[100] tracking-widest">
-        🧪 Mode Test — Paiement simulé, aucun vrai débit
-    </div>
-
+    <div id="test-mode-banner" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center text-[10px] font-black uppercase py-1.5 z-[100] tracking-widest">🧪 Mode Test — Paiement simulé, aucun vrai débit</div>
     <div id="welcome-screen" class="fixed inset-0 z-50 bg-ink flex flex-col items-center justify-end pb-20 px-6 text-center overflow-hidden">
         <div class="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-transparent"></div>
@@ -1201,15 +1006,12 @@
             </div>
         </div>
     </div>
-
     <div id="main-content" class="hidden">
         <header class="bg-white px-4 pt-4 pb-2 sticky top-0 z-40 shadow-sm">
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-2xl font-display tracking-tighter text-ink uppercase">DRIPRUSH</h1>
                 <div class="flex items-center gap-5 text-xl">
-                    <button id="shop-dashboard-btn" onclick="window.location.href='boutiques.html'" class="hidden relative" title="Mon tableau de bord">
-                        <i class="fa-solid fa-store text-drip"></i>
-                    </button>
+                    <button id="shop-dashboard-btn" onclick="window.location.href='boutiques.html'" class="hidden relative"><i class="fa-solid fa-store text-drip"></i></button>
                     <i class="fa-solid fa-heart text-gray-200"></i>
                     <div id="nav-cart-icon" onclick="window.toggleCheckout(true)" class="relative cursor-pointer">
                         <i class="fa-solid fa-bag-shopping"></i>
@@ -1227,24 +1029,16 @@
                 <button onclick="window.filterByGenre('femme')" id="btn-femme" class="cat-btn bg-white border border-gray-100 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-tight shadow-sm transition-all">Femme</button>
             </div>
         </header>
-
         <main class="p-3">
             <div id="products-grid" class="grid grid-cols-2 gap-3">
-                <div class="skeleton rounded-2xl h-64"></div>
-                <div class="skeleton rounded-2xl h-64"></div>
-                <div class="skeleton rounded-2xl h-64"></div>
-                <div class="skeleton rounded-2xl h-64"></div>
+                <div class="skeleton rounded-2xl h-64"></div><div class="skeleton rounded-2xl h-64"></div>
+                <div class="skeleton rounded-2xl h-64"></div><div class="skeleton rounded-2xl h-64"></div>
             </div>
         </main>
-
         <div id="cart-bar" class="fixed bottom-20 left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-30 border border-gray-100">
-            <div>
-                <p class="text-[8px] font-black uppercase opacity-40">Sous-total</p>
-                <p id="cart-total" class="text-lg font-black italic tracking-tighter">0 F</p>
-            </div>
+            <div><p class="text-[8px] font-black uppercase opacity-40">Sous-total</p><p id="cart-total" class="text-lg font-black italic tracking-tighter">0 F</p></div>
             <button onclick="window.toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] italic active:scale-95 transition">Commander 🚀</button>
         </div>
-
         <div id="product-modal" onclick="window.closeModalOutside(event)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end hidden cursor-pointer">
             <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up modal-height-fix pb-10 cursor-default relative">
                 <button id="close-modal-btn" onclick="window.closeModalOutside(null)" class="absolute top-4 right-6 text-gray-400 hover:text-black transition text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
@@ -1260,29 +1054,18 @@
                 <div id="gallery-thumbs" class="hidden flex gap-2 overflow-x-auto hide-scrollbar"></div>
                 <div id="international-delay-notice" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-start gap-2">
                     <span class="text-lg">⏳</span>
-                    <p class="text-[10px] text-amber-700 font-medium leading-snug">Cet article est disponible à l'étranger — le délai de livraison peut être plus long que d'habitude. <strong>Discute avec la boutique</strong> (bouton ci-dessous) pour connaître le délai exact avant de commander.</p>
+                    <p class="text-[10px] text-amber-700 font-medium leading-snug">Cet article est disponible à l'étranger — le délai de livraison peut être plus long. <strong>Discute avec la boutique</strong> pour connaître le délai exact avant de commander.</p>
                 </div>
-                <div>
-                    <p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Taille</p>
-                    <div id="size-container" class="flex flex-wrap gap-2"></div>
-                </div>
-                <div id="color-section" class="hidden">
-                    <p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Couleur</p>
-                    <div id="color-container" class="flex flex-wrap gap-2"></div>
-                </div>
-                <button onclick="window.openChatModal()" class="w-full bg-gray-100 text-black py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition relative">
-                    💬 Discuter avec la boutique
-                    <span id="chat-unread-dot" class="hidden absolute top-2 right-4 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-                </button>
+                <div><p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Taille</p><div id="size-container" class="flex flex-wrap gap-2"></div></div>
+                <div id="color-section" class="hidden"><p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Couleur</p><div id="color-container" class="flex flex-wrap gap-2"></div></div>
+                <button onclick="window.openChatModal()" class="w-full bg-gray-100 text-black py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition relative">💬 Discuter avec la boutique<span id="chat-unread-dot" class="hidden absolute top-2 right-4 w-2.5 h-2.5 bg-red-500 rounded-full"></span></button>
                 <button onclick="window.addToCart()" class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase italic shadow-xl text-sm active:scale-95 transition">Ajouter au panier 🛍️</button>
             </div>
         </div>
-
         <div id="zoom-modal" onclick="window.toggleZoom(false)" class="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 hidden animate-fade-in cursor-zoom-out">
             <button onclick="window.toggleZoom(false)" class="absolute top-6 right-6 text-white text-2xl opacity-70 hover:opacity-100 transition"><i class="fa-solid fa-xmark"></i></button>
             <img id="zoom-img" src="" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl">
         </div>
-
         <div id="checkout-modal" class="fixed inset-0 bg-white z-50 p-4 flex flex-col hidden overflow-y-auto">
             <div class="flex items-center justify-between mb-6 pt-4 shrink-0">
                 <button onclick="window.toggleCheckout(false)" class="flex items-center gap-2 font-bold text-xs uppercase"><i class="fa-solid fa-chevron-left text-xl"></i> Retour</button>
@@ -1291,9 +1074,7 @@
             </div>
             <div id="cart-items-list" class="flex-1 px-2 mb-4"></div>
             <div class="space-y-6 pb-10">
-                <div class="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-center">
-                    <p class="text-[9px] text-blue-600 font-bold uppercase tracking-wide"><i class="fa-solid fa-location-dot mr-1"></i> Frais calculés automatiquement selon la distance boutique → toi</p>
-                </div>
+                <div class="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-center"><p class="text-[9px] text-blue-600 font-bold uppercase tracking-wide"><i class="fa-solid fa-location-dot mr-1"></i> Frais calculés automatiquement selon la distance boutique → toi</p></div>
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Mode de Livraison</p>
                 <div class="grid grid-cols-2 gap-3">
                     <button onclick="window.setShipping('standard', this)" class="ship-btn border border-gray-200 p-4 rounded-2xl text-[10px] font-black uppercase shadow-sm transition" id="lbl-std">🚲 Normale</button>
@@ -1312,7 +1093,6 @@
             </div>
         </div>
     </div>
-
     <div id="partner-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white text-black p-6 rounded-3xl w-full max-w-sm space-y-4 relative">
             <button onclick="window.closePartnerModal()" class="absolute top-4 right-5 text-gray-400 text-lg"><i class="fa-solid fa-xmark"></i></button>
@@ -1337,7 +1117,7 @@
                     <input type="checkbox" id="p-momo-same" checked onchange="window.toggleMomoField()" class="w-4 h-4 accent-black">
                     Mon Mobile Money est le même numéro que mon WhatsApp
                 </label>
-                <input id="p-momo" placeholder="NUMÉRO MOBILE MONEY (pour recevoir tes paiements)" class="hidden w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
+                <input id="p-momo" placeholder="NUMÉRO MOBILE MONEY" class="hidden w-full bg-gray-100 p-4 rounded-xl text-xs font-bold outline-none border">
                 <button onclick="window.submitPartner(this)" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Créer mon compte 🚀</button>
             </div>
             <div id="partner-success" class="hidden space-y-4 text-center">
@@ -1345,7 +1125,7 @@
                 <h3 class="text-sm font-display tracking-tight">Compte créé, <span id="partner-success-name"></span> !</h3>
                 <p class="text-[11px] text-gray-500 font-medium px-2">Voici ton code de connexion personnel.</p>
                 <div class="pin-reveal" id="partner-success-pin"></div>
-                <p class="text-[10px] text-gray-400 font-medium">Note bien ce code quelque part, au cas où tu doives un jour te reconnecter depuis un autre appareil.</p>
+                <p class="text-[10px] text-gray-400 font-medium">Note bien ce code quelque part.</p>
                 <button onclick="window.goToMyDashboard()" class="w-full bg-black text-white py-4 rounded-xl text-[11px] font-black uppercase mt-2">Accéder à mon tableau de bord 🚀</button>
             </div>
             <div id="partner-login" class="hidden space-y-3">
@@ -1358,14 +1138,10 @@
             </div>
         </div>
     </div>
-
     <div id="chat-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[55] flex items-end">
         <div class="w-full bg-white rounded-t-[2.5rem] flex flex-col" style="height: 85vh;">
             <div class="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
-                <div>
-                    <p id="chat-shop-name" class="text-sm font-display uppercase"></p>
-                    <p id="chat-product-name" class="text-[10px] text-gray-400 font-bold uppercase"></p>
-                </div>
+                <div><p id="chat-shop-name" class="text-sm font-display uppercase"></p><p id="chat-product-name" class="text-[10px] text-gray-400 font-bold uppercase"></p></div>
                 <button onclick="window.closeChatModal()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="chat-name-screen" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -1382,26 +1158,20 @@
             </div>
         </div>
     </div>
-
     <div id="maintenance-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[80] flex items-center justify-center p-6">
         <div class="bg-white rounded-3xl p-8 max-w-sm text-center space-y-4">
             <div class="text-5xl">🔧</div>
             <h3 class="text-lg font-display uppercase tracking-tight">Maintenance en cours</h3>
-            <p class="text-xs text-gray-500 font-medium">On améliore le site pour toi ! Reviens dans quelques instants — ça ne devrait pas être long.</p>
+            <p class="text-xs text-gray-500 font-medium">On améliore le site pour toi ! Reviens dans quelques instants.</p>
             <button onclick="document.getElementById('maintenance-modal').classList.add('hidden')" class="w-full bg-black text-white py-3 rounded-xl text-xs font-black uppercase">D'accord</button>
         </div>
     </div>
-
     <div id="install-banner" class="hidden fixed bottom-4 left-4 right-4 bg-ink text-white p-4 rounded-2xl shadow-2xl z-[70] flex items-center gap-3">
         <i class="fa-solid fa-download text-drip text-lg"></i>
-        <div class="flex-1">
-            <p class="text-xs font-display uppercase">Installer Driprush</p>
-            <p class="text-[10px] text-gray-400">Accède au site en 1 tap, comme une vraie appli</p>
-        </div>
+        <div class="flex-1"><p class="text-xs font-display uppercase">Installer Driprush</p><p class="text-[10px] text-gray-400">Accède au site en 1 tap, comme une vraie appli</p></div>
         <button onclick="window.installApp()" class="bg-drip text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">Installer</button>
         <button onclick="window.dismissInstallBanner()" class="text-gray-500 text-sm"><i class="fa-solid fa-xmark"></i></button>
     </div>
-
     <div id="delivery-message-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[75] flex items-center justify-center p-6">
         <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-4 animate-slide-up shadow-2xl">
             <div id="delivery-message-icon" class="text-5xl">🚀</div>
@@ -1411,24 +1181,18 @@
             <button onclick="window.closeDeliveryModal()" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition">Super, merci ! 🙌</button>
         </div>
     </div>
-
     <button onclick="window.openCommentsModal()" class="fixed bottom-28 left-4 z-[65] bg-drip text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(255,77,28,0.4)] flex flex-col items-center justify-center active:scale-95 transition-all">
         <i class="fa-solid fa-star text-sm"></i>
         <span class="text-[7px] font-black uppercase mt-0.5">Avis</span>
     </button>
-
     <button onclick="window.openSettingsPanel()" class="fixed bottom-28 right-4 z-[65] bg-ink text-white w-14 h-14 rounded-full shadow-xl flex flex-col items-center justify-center active:scale-95 transition-all border border-white/10">
         <i class="fa-solid fa-gear text-sm"></i>
         <span class="text-[7px] font-black uppercase mt-0.5">Menu</span>
     </button>
-
     <div id="comments-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-end justify-center">
         <div class="bg-white w-full max-w-md rounded-t-[2.5rem] flex flex-col border-t border-gray-100" style="height: 88vh;">
             <div class="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
-                <div>
-                    <h3 class="text-sm font-display uppercase tracking-tight text-ink">Avis clients</h3>
-                    <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Dis-nous ce que tu penses de Driprush</p>
-                </div>
+                <div><h3 class="text-sm font-display uppercase tracking-tight text-ink">Avis clients</h3><p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Dis-nous ce que tu penses de Driprush</p></div>
                 <button onclick="window.closeCommentsModal()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="comments-list" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
@@ -1447,14 +1211,10 @@
             </div>
         </div>
     </div>
-
     <div id="settings-panel" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[68] flex items-end justify-center">
         <div class="bg-white w-full max-w-md rounded-t-[2.5rem] flex flex-col" style="height: 92vh;">
             <div class="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
-                <div>
-                    <h3 class="text-sm font-display uppercase tracking-tight text-ink">Mon Espace</h3>
-                    <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Personnalise ton expérience Driprush</p>
-                </div>
+                <div><h3 class="text-sm font-display uppercase tracking-tight text-ink">Mon Espace</h3><p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Personnalise ton expérience Driprush</p></div>
                 <button onclick="window.closeSettingsPanel()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-10">
@@ -1467,10 +1227,7 @@
                 <div class="bg-gray-50 rounded-2xl p-4 space-y-4">
                     <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">🎨 Apparence</p>
                     <div class="flex justify-between items-center">
-                        <div>
-                            <p class="text-xs font-bold text-ink">Mode Sombre 🌙</p>
-                            <p class="text-[9px] text-gray-400">Interface noire pour les yeux</p>
-                        </div>
+                        <div><p class="text-xs font-bold text-ink">Mode Sombre 🌙</p><p class="text-[9px] text-gray-400">Interface noire pour les yeux</p></div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="toggle-dark" class="sr-only peer" onchange="window.toggleDarkMode(this.checked)">
                             <div class="w-11 h-6 bg-gray-200 peer-checked:bg-black rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
@@ -1506,8 +1263,6 @@
             </div>
         </div>
     </div>
-
     <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-ink text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl z-[60] max-w-[85%] text-center"></div>
-
 </body>
 </html>
