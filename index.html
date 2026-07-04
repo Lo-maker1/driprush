@@ -1048,6 +1048,26 @@
                     onComplete: function(response) {
                         console.log("Réponse FedaPay :", response);
                         btn.innerText = originalText; btn.disabled = false;
+
+                        // ✅ Vérifier que le paiement est réellement approuvé
+                        const status = response && response.transaction && response.transaction.status;
+                        if (status !== 'approved' && status !== 'approved_partially') {
+                            // Paiement annulé, échoué ou en attente — on ne valide rien
+                            if (status === 'declined') {
+                                window.showToast("❌ Paiement refusé — réessaie ou change de moyen de paiement", true);
+                            } else if (status === 'canceled' || status === 'cancelled') {
+                                window.showToast("⚠️ Paiement annulé — ta commande n'a pas été validée", true);
+                            } else {
+                                window.showToast("⏳ Paiement non confirmé — contacte-nous si tu as été débité", true);
+                            }
+                            // Supprimer la commande en attente non payée
+                            if (orderId) {
+                                update(ref(db, 'driprush_orders/' + orderId), { status: 'Annulée' }).catch(() => {});
+                            }
+                            return;
+                        }
+
+                        // ✅ Paiement confirmé — valider le panier et afficher la confirmation
                         const orderedItems = cart.filter(i => !i.validated);
                         cart = cart.map(item => !item.validated ? { ...item, validated: true, validatedAt: Date.now() } : item);
                         deliveryFee = 0; deliveryTypeSelected = ""; calculatedStdFee = 500; calculatedExpFee = 900; clientCoords = null;
