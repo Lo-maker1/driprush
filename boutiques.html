@@ -1216,6 +1216,19 @@
             }
             filtered.forEach((o, idx) => {
                 const isTest = o.status === 'Payée (TEST)';
+                // Photos des articles
+                const photos = o.itemImages && o.itemImages.length > 0 ? o.itemImages : [];
+                const photosHtml = photos.length > 0
+                    ? `<div class="flex gap-2 mb-3 overflow-x-auto hide-scrollbar">
+                        ${photos.map(img => `<img src="${img}" class="w-16 h-16 object-cover rounded-xl flex-shrink-0 border border-white/10">`).join('')}
+                       </div>`
+                    : '';
+                // Frais de livraison
+                const deliveryLabel = o.deliveryMode === 'express' ? '🚀 Livraison rapide' : '🚲 Livraison normale';
+                const deliveryFeeDisplay = o.deliveryFee > 0
+                    ? `<span class="font-black text-white">${o.deliveryFee.toLocaleString()} F</span>`
+                    : `<span class="text-lime font-black">Gratuite</span>`;
+
                 container.innerHTML += `
                     <div class="card-surface rounded-3xl p-5 card-enter ${o.status === 'Livrée' ? 'opacity-50' : ''}" style="animation-delay: ${Math.min(idx * 0.06, 0.4)}s">
                         ${isTest ? '<p class="text-[9px] text-amber-400 font-black uppercase mb-2 tracking-widest">🧪 Commande Test</p>' : ''}
@@ -1223,9 +1236,16 @@
                             <p class="text-sm font-display uppercase tracking-tight">${o.clientName}</p>
                             <span class="text-[9px] font-black px-3 py-1.5 rounded-full ${o.status === 'Livrée' ? 'bg-blue-500/15 text-blue-400' : 'bg-drip/15 text-drip'} uppercase tracking-widest">${o.status}</span>
                         </div>
-                        <p class="text-[9px] text-gray-500 font-medium mb-1"><i class="fa-solid fa-clock mr-1"></i>${formatOrderDateTime(o.timestamp)}</p>
-                        <p class="text-[11px] text-gray-300 mb-1">${o.items}</p>
-                        <p class="text-[10px] text-gray-500 mb-4">${o.deliveryMode === 'express' ? '🚀 Livraison rapide' : '🚲 Livraison normale'}</p>
+                        <p class="text-[9px] text-gray-500 font-medium mb-2"><i class="fa-solid fa-clock mr-1"></i>${formatOrderDateTime(o.timestamp)}</p>
+                        ${photosHtml}
+                        <p class="text-[11px] text-gray-300 mb-3">${o.items}</p>
+                        <div class="bg-black/40 rounded-2xl p-3 mb-3 space-y-1.5">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-gray-400">${deliveryLabel}</span>
+                                ${deliveryFeeDisplay}
+                            </div>
+                            ${o.codePromo ? `<p class="text-[9px] text-drip font-black">🏷️ Code promo : ${o.codePromo}</p>` : ''}
+                        </div>
                         <div class="bg-black/40 rounded-2xl p-3 mb-4 space-y-1.5">
                             <p class="text-[10px] text-gray-400"><i class="fa-solid fa-phone mr-2 text-drip"></i><a href="tel:${o.phone}" class="underline">${o.phone}</a></p>
                             <p class="text-[10px] text-gray-400"><i class="fa-solid fa-location-dot mr-2 text-drip"></i>${o.address}</p>

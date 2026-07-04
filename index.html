@@ -1022,7 +1022,7 @@
                 const commission = Math.round(finalTotal * 0.10);
                 const montantBoutique = finalTotal - commission;
                 const orderRef = push(ref(db, 'driprush_orders'));
-                set(orderRef, { clientName: name, phone, address: addr, clientGPS: gps, shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343', shopMomo: firstItem.shopMomo || firstItem.shopPhone || '', items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '), deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee, total: finalTotal, commission: commission, montantBoutique: montantBoutique, codePromo: appliedCodePromo ? promos.codePromo.code : null, status: 'En attente de paiement', timestamp: Date.now() }).then(() => resolve(orderRef.key)).catch(reject);
+                set(orderRef, { clientName: name, phone, address: addr, clientGPS: gps, shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343', shopMomo: firstItem.shopMomo || firstItem.shopPhone || '', items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '), itemImages: pendingItems.map(i => i.image || '').filter(Boolean), deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee, total: finalTotal, commission: commission, montantBoutique: montantBoutique, codePromo: appliedCodePromo ? promos.codePromo.code : null, status: 'En attente de paiement', timestamp: Date.now() }).then(() => resolve(orderRef.key)).catch(reject);
             });
         };
 
