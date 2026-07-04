@@ -809,14 +809,53 @@
             } else { galleryContainer.classList.add('hidden'); }
             const container = document.getElementById('size-container');
             container.innerHTML = '';
+            // Stocker les sizePrices du produit pour les utiliser dans selectSize
+            window._currentSizePrices = p.sizePrices || null;
+            window._currentBasePrice = getPrixFinal(p);
             if(p.sizes && p.sizes !== "N/A" && p.sizes.trim() !== "") {
                 p.sizes.split(',').forEach((s, idx) => {
-                    const cleanSize = s.trim().replace(/'/g, "\\'");
+                    const cleanSize = s.trim().replace(/'/g, "\'");
                     const isFirst = idx === 0 ? 'bg-black text-white border-black' : '';
-                    if(idx === 0) selectedItem.size = s.trim();
+                    if(idx === 0) {
+                        selectedItem.size = s.trim();
+                        // Appliquer le prix de la 1ère taille si sizePrices existe
+                        if (p.sizePrices && p.sizePrices[s.trim()]) {
+                            document.getElementById('modal-price').innerText = p.sizePrices[s.trim()].toLocaleString() + ' F';
+                        }
+                    }
                     container.innerHTML += `<button onclick="window.selectSize(this, '${cleanSize}')" class="size-btn border border-gray-200 px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition hover:border-black ${isFirst}">${s.trim()}</button>`;
                 });
-            } else { selectedItem.size = "Unique"; container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn bg-black text-white border-black border px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition">Taille Unique</button>`; }
+                // Message prix fixe ou variable
+                const hasSizePrices = p.sizePrices && Object.keys(p.sizePrices).length > 0;
+                const priceNotice = document.getElementById('size-price-notice');
+                if (priceNotice) {
+                    if (hasSizePrices) {
+                        priceNotice.innerText = '💡 Le prix varie selon la taille — sélectionne ta taille pour voir le prix';
+                        priceNotice.classList.remove('hidden', 'text-gray-400');
+                        priceNotice.classList.add('text-drip');
+                    } else {
+                        priceNotice.innerText = '✅ Prix fixe quelle que soit la taille';
+                        priceNotice.classList.remove('hidden', 'text-drip');
+                        priceNotice.classList.add('text-gray-400');
+                    }
+                }
+            } else {
+                selectedItem.size = "Unique";
+                container.innerHTML = `<button onclick="window.selectSize(this, 'Unique')" class="size-btn bg-black text-white border-black border px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition">Taille Unique</button>`;
+                const priceNotice = document.getElementById('size-price-notice');
+                if (priceNotice) priceNotice.classList.add('hidden');
+            }
+
+            // Afficher délai de livraison
+            const deliveryTimeEl = document.getElementById('modal-delivery-time');
+            if (deliveryTimeEl) {
+                if (p.deliveryTime) {
+                    deliveryTimeEl.innerText = '⏱️ Délai de livraison max : ' + p.deliveryTime;
+                    deliveryTimeEl.classList.remove('hidden');
+                } else {
+                    deliveryTimeEl.classList.add('hidden');
+                }
+            }
             const colorSection = document.getElementById('color-section');
             const colorContainer = document.getElementById('color-container');
             colorContainer.innerHTML = '';
@@ -1008,11 +1047,20 @@
                 const gps = `https://www.google.com/maps?q=${clientCoords.lat},${clientCoords.lng}`;
                 window.triggerFedaPay(name, phone, addr, gps, element, originalText);
             } else {
+                element.innerText = "📍 LOCALISATION...";
                 navigator.geolocation.getCurrentPosition((pos) => {
                     clientCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
                     const gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                     window.triggerFedaPay(name, phone, addr, gps, element, originalText);
-                }, () => { window.triggerFedaPay(name, phone, addr, "GPS Refusé", element, originalText); }, { timeout: 8000 });
+                }, (err) => {
+                    // ❌ GPS refusé ou indisponible — on bloque la commande
+                    element.innerText = originalText;
+                    element.disabled = false;
+                    window.showToast("📍 Partage ta localisation pour qu'on puisse te livrer — active le GPS et réessaie", true);
+                    // Afficher un modal explicatif
+                    const gpsModal = document.getElementById('gps-required-modal');
+                    if (gpsModal) gpsModal.classList.remove('hidden');
+                }, { timeout: 10000, enableHighAccuracy: false });
             }
         };
 
