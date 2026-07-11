@@ -1386,10 +1386,10 @@
             const nameEl = document.getElementById('checkout-name');
             const phoneEl = document.getElementById('checkout-phone');
             const addrEl = document.getElementById('checkout-address');
-            if (!nameEl || !nameEl.value.trim()) return window.showToast('Remplis ton nom d'abord !', true);
-            if (!phoneEl || !phoneEl.value.trim()) return window.showToast('Remplis ton numéro d'abord !', true);
-            if (!addrEl || !addrEl.value.trim()) return window.showToast('Remplis ton adresse d'abord !', true);
-            if (!clientCoords) return window.showToast('📍 Active ta localisation d'abord !', true);
+            if (!nameEl || !nameEl.value.trim()) return window.showToast("Remplis ton nom d'abord !", true);
+            if (!phoneEl || !phoneEl.value.trim()) return window.showToast("Remplis ton numéro d'abord !", true);
+            if (!addrEl || !addrEl.value.trim()) return window.showToast("Remplis ton adresse d'abord !", true);
+            if (!clientCoords) return window.showToast("📍 Active ta localisation d'abord !", true);
             const name = nameEl.value.trim();
             const phone = phoneEl.value.trim();
             const addr = addrEl.value.trim();
@@ -1409,7 +1409,7 @@
             }).then(() => {
                 const payUrl = window.location.origin + window.location.pathname + '?pay=' + linkId;
                 if (navigator.share) {
-                    navigator.share({ title: '💳 Paye ma commande Driprush !', text: name + ' t'envoie un lien de paiement 🛍️', url: payUrl }).catch(() => navigator.clipboard.writeText(payUrl).then(() => window.showToast('Lien copié ! 🔗')));
+                    navigator.share({ title: '💳 Paye ma commande Driprush !', text: name + " t'envoie un lien de paiement 🛍️", url: payUrl }).catch(() => navigator.clipboard.writeText(payUrl).then(() => window.showToast('Lien copié ! 🔗')));
                 } else {
                     navigator.clipboard.writeText(payUrl).then(() => window.showToast('Lien de paiement copié ! Envoie-le 🔗'));
                 }
@@ -1430,7 +1430,7 @@
                 container.innerHTML = '<div style="background:linear-gradient(145deg,#141414,#1c1c1c);border:1px solid rgba(255,255,255,0.06);border-radius:1.5rem;padding:1rem;margin-bottom:1rem"><p class="text-[9px] text-drip font-black uppercase tracking-widest mb-3">📦 Articles</p><div class="grid grid-cols-2 gap-2 mb-4">' + photosHtml + '</div><div class="space-y-1">' + itemsHtml + '</div></div>'
                 + '<div style="background:linear-gradient(145deg,#141414,#1c1c1c);border:1px solid rgba(255,255,255,0.06);border-radius:1.5rem;padding:1rem;margin-bottom:1rem"><p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-2">📋 Détails</p><div class="space-y-2"><div class="flex justify-between"><span class="text-[10px] text-gray-400">Client</span><span class="text-[10px] font-bold text-white">' + data.clientName + '</span></div><div class="flex justify-between"><span class="text-[10px] text-gray-400">Adresse</span><span class="text-[10px] font-bold text-white text-right max-w-xs">' + data.address + '</span></div><div class="flex justify-between"><span class="text-[10px] text-gray-400">Livraison</span><span class="text-[10px] font-bold text-white">' + (data.deliveryFee > 0 ? data.deliveryFee.toLocaleString() + ' F' : 'Gratuite') + '</span></div><div class="flex justify-between items-center pt-2" style="border-top:1px solid rgba(255,255,255,0.1)"><span class="text-xs font-black text-white uppercase">Total</span><span class="text-xl font-black" style="font-family:Archivo Black,sans-serif;color:#C8FF4D">' + data.total.toLocaleString() + ' F</span></div></div></div>'
                 + '<div style="background:rgba(255,77,28,0.1);border:1px solid rgba(255,77,28,0.3);border-radius:1rem;padding:1rem;margin-bottom:1rem"><p class="text-[10px] text-drip font-black uppercase mb-1">ℹ️ Comment payer</p><p class="text-[9px] text-gray-300 leading-relaxed">Clique sur le bouton → Choisis Mobile Money ou carte → Valide → Commande confirmée ✅</p></div>'
-                + '<button onclick="window.payFromLink('' + linkId + '')" style="width:100%;background:#FF4D1C;color:white;padding:1.25rem;border-radius:1rem;font-family:Archivo Black,sans-serif;font-size:0.875rem;text-transform:uppercase;border:none;cursor:pointer;active:transform:scale(0.95)">💳 Payer ' + data.total.toLocaleString() + ' F maintenant</button>'
+                + '<button onclick="window.payFromLink(\'' + linkId + '\')" style="width:100%;background:#FF4D1C;color:white;padding:1.25rem;border-radius:1rem;font-family:Archivo Black,sans-serif;font-size:0.875rem;text-transform:uppercase;border:none;cursor:pointer">💳 Payer ' + data.total.toLocaleString() + ' F maintenant</button>'
                 + '<p class="text-center text-[8px] text-gray-600 mt-3">🔒 Paiement sécurisé via FedaPay · Lien valide 24h</p>';
             }).catch(() => { container.innerHTML = '<div class="text-center py-10"><p class="text-red-400 font-bold uppercase">Erreur de chargement</p></div>'; });
         };
