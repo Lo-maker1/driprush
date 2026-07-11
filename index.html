@@ -34,6 +34,7 @@
         .active-cat { background-color: #0B0B0C !important; color: #fff !important; transform: scale(1.05); }
         .product-card { transition: all 0.3s ease; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .card-surface-dark { background: linear-gradient(145deg, #141414, #1c1c1c); border: 1px solid rgba(255,255,255,0.06); }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .animate-marquee { display: inline-block; animation: marquee 18s linear infinite; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -83,6 +84,18 @@
         body.dark-mode #settings-panel .bg-white { background-color: #1a1a1a !important; }
         body.dark-mode .price-tag::before { background: #0B0B0C !important; }
     </style>
+
+    <!-- 💳 PAGE LIEN DE PAIEMENT -->
+    <div id="payment-link-page" class="hidden fixed inset-0 z-[100] bg-ink overflow-y-auto">
+        <div class="max-w-md mx-auto p-5 pb-20 pt-8">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-display text-drip uppercase tracking-tighter">Driprush</h1>
+                <p class="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em] mt-1">Lien de paiement</p>
+            </div>
+            <div id="pay-link-content" class="space-y-4"></div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, onValue, push, set, get, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -635,6 +648,19 @@
             window.updateCartUI();
             window.updateFlashSaleBanner();
             window.updatePromosBanners();
+            // ✅ Ouvrir un article spécifique si ?article= dans l'URL
+            if (window._pendingArticleOpen && allProducts.length > 0) {
+                const targetId = window._pendingArticleOpen;
+                window._pendingArticleOpen = null;
+                setTimeout(() => {
+                    const prod = allProducts.find(p => p.id === targetId);
+                    if (prod) {
+                        document.getElementById('welcome-screen').classList.add('hidden');
+                        document.getElementById('main-content').classList.remove('hidden');
+                        window.openModal(targetId);
+                    }
+                }, 500);
+            }
         });
 
         onValue(ref(db, 'driprush_promos/boutiques'), (snap) => {
@@ -1301,6 +1327,282 @@
         window.installApp = () => { if (!deferredInstallPrompt) return; deferredInstallPrompt.prompt(); deferredInstallPrompt.userChoice.then(() => { document.getElementById('install-banner').classList.add('hidden'); deferredInstallPrompt = null; }); };
         window.dismissInstallBanner = () => { document.getElementById('install-banner').classList.add('hidden'); };
         window.addEventListener('appinstalled', () => { document.getElementById('install-banner').classList.add('hidden'); });
+
+        // ============================================================
+        // 🎵 MUSIQUE D'AMBIANCE (playlist depuis Firebase, sans player visible)
+        // ============================================================
+        let musicPlaylist = [];
+        let currentTrackIdx = 0;
+        let musicEnabled = localStorage.getItem('driprush_music') !== 'off';
+        const audioPlayer = new Audio();
+        audioPlayer.volume = 0.4;
+        let musicStarted = false;
+
+        // Charger la playlist depuis Firebase
+        onValue(ref(db, 'driprush_music_playlist'), (snap) => {
+            const data = snap.val();
+            if (data) {
+                musicPlaylist = Object.keys(data).map(id => ({ id, ...data[id] }));
+                // Mélanger aléatoirement
+                musicPlaylist.sort(() => Math.random() - 0.5);
+            }
+        });
+
+        function playNextTrack() {
+            if (musicPlaylist.length === 0) return;
+            currentTrackIdx = (currentTrackIdx + 1) % musicPlaylist.length;
+            audioPlayer.src = musicPlaylist[currentTrackIdx].url;
+            audioPlayer.play().catch(() => {});
+        }
+
+        audioPlayer.addEventListener('ended', () => { playNextTrack(); });
+        audioPlayer.addEventListener('error', () => { playNextTrack(); });
+
+        function startMusicOnInteraction() {
+            if (musicStarted || !musicEnabled || musicPlaylist.length === 0) return;
+            musicStarted = true;
+            const randIdx = Math.floor(Math.random() * musicPlaylist.length);
+            currentTrackIdx = randIdx;
+            audioPlayer.src = musicPlaylist[randIdx].url;
+            audioPlayer.play().catch(() => {});
+        }
+
+        // Démarrer dès la première interaction
+        document.addEventListener('click', startMusicOnInteraction);
+        document.addEventListener('touchstart', startMusicOnInteraction);
+
+        window.toggleMusicSetting = () => {
+            musicEnabled = !musicEnabled;
+            localStorage.setItem('driprush_music', musicEnabled ? 'on' : 'off');
+            const btn = document.getElementById('music-toggle-btn');
+            if (musicEnabled) {
+                btn.innerText = '🔇 Désactiver';
+                if (!musicStarted && musicPlaylist.length > 0) {
+                    musicStarted = true;
+                    audioPlayer.src = musicPlaylist[currentTrackIdx]?.url || '';
+                    audioPlayer.play().catch(() => {});
+                } else if (musicStarted) {
+                    audioPlayer.play().catch(() => {});
+                }
+            } else {
+                audioPlayer.pause();
+                btn.innerText = '🎵 Activer la musique';
+            }
+        };
+
+        window.addEventListener('load', () => {
+            const btn = document.getElementById('music-toggle-btn');
+            if (btn) btn.innerText = musicEnabled ? '🔇 Désactiver' : '🎵 Activer la musique';
+        });
+
+        // ============================================================
+        // 🔗 PARTAGE ARTICLE
+        // ============================================================
+        window.shareArticle = () => {
+            if (!selectedItem) return;
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareUrl = baseUrl + '?article=' + selectedItem.id;
+            if (navigator.share) {
+                navigator.share({
+                    title: '🔥 ' + selectedItem.name + ' sur Driprush',
+                    text: 'Regarde cet article sur Driprush ! 👀🔥',
+                    url: shareUrl
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    window.showToast('Lien copié ! Partage-le à tes amis 🔗');
+                }).catch(() => {
+                    window.showToast('Lien : ' + shareUrl);
+                });
+            }
+        };
+
+        // ============================================================
+        // 💳 LIEN DE PAIEMENT PARTAGEABLE
+        // ============================================================
+        window.generatePaymentLink = () => {
+            const pendingItems = cart.filter(i => !i.validated);
+            if (pendingItems.length === 0) return window.showToast('Ton panier est vide !', true);
+            const name = document.getElementById('checkout-name') ? document.getElementById('checkout-name').value.trim() : '';
+            const phone = document.getElementById('checkout-phone') ? document.getElementById('checkout-phone').value.trim() : '';
+            const addr = document.getElementById('checkout-address') ? document.getElementById('checkout-address').value.trim() : '';
+            if (!name || !phone || !addr) return window.showToast('Remplis ton nom, numéro et adresse d'abord !', true);
+            if (!clientCoords) {
+                window.showToast('📍 Active ta localisation d'abord pour que le livreur sache où venir !', true);
+                return;
+            }
+            const gps = 'https://www.google.com/maps?q=' + clientCoords.lat + ',' + clientCoords.lng;
+            const subtotal = pendingItems.reduce((sum, i) => sum + getPrixFinal(i), 0);
+            let totalWithDelivery = subtotal + (deliveryFee || 0);
+            if (appliedCodePromo) totalWithDelivery = Math.round(totalWithDelivery * (1 - appliedCodePromo / 100));
+            const firstItem = pendingItems[0];
+            const linkId = Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
+            const linkData = {
+                items: pendingItems.map(i => ({
+                    name: i.name,
+                    size: i.size || 'Unique',
+                    color: i.color || '',
+                    price: getPrixFinal(i),
+                    image: i.image || ''
+                })),
+                clientName: name,
+                phone: phone,
+                address: addr,
+                clientGPS: gps,
+                total: totalWithDelivery,
+                subtotal: subtotal,
+                deliveryFee: deliveryFee || 0,
+                deliveryMode: deliveryTypeSelected || 'standard',
+                shopPhone: firstItem.shopPhone || '2290147535343',
+                shopName: firstItem.shop || 'Driprush',
+                shopGPS: firstItem.shopGPS || '',
+                shopMomo: firstItem.shopMomo || firstItem.shopPhone || '',
+                codePromo: appliedCodePromo ? (promos.codePromo ? promos.codePromo.code : null) : null,
+                status: 'pending_payment',
+                createdAt: Date.now(),
+                expiresAt: Date.now() + 24 * 60 * 60 * 1000
+            };
+            set(ref(db, 'driprush_payment_links/' + linkId), linkData).then(() => {
+                const baseUrl = window.location.origin + window.location.pathname;
+                const payUrl = baseUrl + '?pay=' + linkId;
+                if (navigator.share) {
+                    navigator.share({
+                        title: '💳 Paye ma commande Driprush !',
+                        text: name + ' t'envoie un lien pour payer sa commande Driprush 🛍️',
+                        url: payUrl
+                    }).catch(() => { navigator.clipboard.writeText(payUrl).then(() => window.showToast('Lien de paiement copié ! 🔗')); });
+                } else {
+                    navigator.clipboard.writeText(payUrl).then(() => window.showToast('Lien de paiement copié ! Envoie-le à tes proches 🔗'));
+                }
+            }).catch(() => window.showToast('Erreur lors de la génération du lien', true));
+        };
+
+        // ============================================================
+        // 💳 PAGE LIEN DE PAIEMENT - Affichage
+        // ============================================================
+        window.showPaymentLinkPage = (linkId) => {
+            document.getElementById('payment-link-page').classList.remove('hidden');
+            const container = document.getElementById('pay-link-content');
+            container.innerHTML = '<div class="text-center py-10"><div class="animate-spin text-4xl mb-4">⏳</div><p class="text-gray-400 text-xs font-bold uppercase">Chargement...</p></div>';
+            get(ref(db, 'driprush_payment_links/' + linkId)).then((snap) => {
+                if (!snap.exists()) {
+                    container.innerHTML = '<div class="text-center py-10"><p class="text-4xl mb-4">❌</p><p class="text-white font-black uppercase">Lien invalide ou expiré</p><p class="text-gray-400 text-xs mt-2">Ce lien de paiement n'existe plus</p></div>';
+                    return;
+                }
+                const data = snap.val();
+                if (data.expiresAt < Date.now()) {
+                    container.innerHTML = '<div class="text-center py-10"><p class="text-4xl mb-4">⏰</p><p class="text-white font-black uppercase">Lien expiré</p><p class="text-gray-400 text-xs mt-2">Ce lien était valide 24h seulement</p></div>';
+                    return;
+                }
+                if (data.status === 'paid') {
+                    container.innerHTML = '<div class="text-center py-10"><p class="text-4xl mb-4">✅</p><p class="text-lime font-black uppercase text-lg">Déjà payé !</p><p class="text-gray-400 text-xs mt-2">Cette commande a déjà été réglée</p></div>';
+                    return;
+                }
+                const photosHtml = data.items.filter(i => i.image).slice(0, 4).map(i =>
+                    '<img src="' + i.image + '" class="w-full h-40 object-cover rounded-2xl">'
+                ).join('');
+                const itemsHtml = data.items.map(i =>
+                    '<div class="flex justify-between items-center py-2 border-b border-white/10">' +
+                    '<div><p class="text-xs font-bold text-white uppercase">' + i.name + '</p>' +
+                    '<p class="text-[9px] text-gray-500">' + i.size + (i.color ? ' • ' + i.color : '') + '</p></div>' +
+                    '<p class="text-xs font-black text-lime">' + i.price.toLocaleString() + ' F</p></div>'
+                ).join('');
+                container.innerHTML =
+                    '<div class="card-surface-dark rounded-3xl p-4 mb-4">' +
+                    '<p class="text-[9px] text-drip font-black uppercase tracking-widest mb-3">📦 Articles commandés</p>' +
+                    '<div class="grid grid-cols-2 gap-2 mb-4">' + photosHtml + '</div>' +
+                    '<div class="space-y-1">' + itemsHtml + '</div></div>' +
+                    '<div class="card-surface-dark rounded-3xl p-4 mb-4 space-y-2">' +
+                    '<p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-2">📋 Détails commande</p>' +
+                    '<div class="flex justify-between"><span class="text-[10px] text-gray-400">Client</span><span class="text-[10px] font-bold text-white">' + data.clientName + '</span></div>' +
+                    '<div class="flex justify-between"><span class="text-[10px] text-gray-400">Livraison chez</span><span class="text-[10px] font-bold text-white text-right max-w-[60%]">' + data.address + '</span></div>' +
+                    '<div class="flex justify-between"><span class="text-[10px] text-gray-400">Mode livraison</span><span class="text-[10px] font-bold text-white">' + (data.deliveryMode === 'express' ? '🚀 Rapide' : '🚲 Normale') + '</span></div>' +
+                    '<div class="flex justify-between"><span class="text-[10px] text-gray-400">Frais livraison</span><span class="text-[10px] font-bold text-white">' + (data.deliveryFee > 0 ? data.deliveryFee.toLocaleString() + ' F' : 'Gratuite') + '</span></div>' +
+                    (data.codePromo ? '<div class="flex justify-between"><span class="text-[10px] text-gray-400">Code promo</span><span class="text-[10px] font-bold text-drip">' + data.codePromo + '</span></div>' : '') +
+                    '<div class="flex justify-between items-center pt-2 border-t border-white/10"><span class="text-xs font-black text-white uppercase">Total à payer</span><span class="text-xl font-display text-lime">' + data.total.toLocaleString() + ' F</span></div>' +
+                    '</div>' +
+                    '<div class="bg-drip/10 border border-drip/30 rounded-2xl p-4 mb-4">' +
+                    '<p class="text-[10px] text-drip font-black uppercase tracking-wide mb-1">ℹ️ Comment payer</p>' +
+                    '<p class="text-[9px] text-gray-300 leading-relaxed">Clique sur le bouton ci-dessous → Choisis ton moyen de paiement (Mobile Money, carte...) → Valide le paiement → La commande est automatiquement confirmée ✅</p>' +
+                    '</div>' +
+                    '<button onclick="window.payFromLink('' + linkId + '')" class="w-full bg-drip text-white py-5 rounded-2xl font-display text-sm uppercase shadow-xl active:scale-95 transition">💳 Payer ' + data.total.toLocaleString() + ' F maintenant</button>' +
+                    '<p class="text-center text-[8px] text-gray-600 mt-3">🔒 Paiement sécurisé via FedaPay · Lien valide 24h</p>';
+            }).catch(() => {
+                container.innerHTML = '<div class="text-center py-10"><p class="text-red-400 font-bold uppercase">Erreur de chargement</p></div>';
+            });
+        };
+
+        window.payFromLink = (linkId) => {
+            get(ref(db, 'driprush_payment_links/' + linkId)).then((snap) => {
+                if (!snap.exists()) return;
+                const data = snap.val();
+                const btn = document.querySelector('#pay-link-content button:last-of-type');
+                if (btn) { btn.innerText = '⏳ Connexion FedaPay...'; btn.disabled = true; }
+                const handler = new FedaPay.Init({
+                    sandbox: false,
+                    environment: 'live',
+                    public_key: 'pk_live_1EVs9lvE_nNNKUI2TEOI-qvB',
+                    transaction: { amount: data.total, description: 'Commande Driprush - ' + data.clientName },
+                    customer: { email: 'client@driprush.bj', lastname: data.clientName, phone_number: { number: data.phone, country: 'BJ' } },
+                    onComplete: function(response) {
+                        if (btn) { btn.innerText = '💳 Payer ' + data.total.toLocaleString() + ' F maintenant'; btn.disabled = false; }
+                        const status = response && response.transaction && response.transaction.status;
+                        if (status === 'approved' || status === 'approved_partially') {
+                            // Créer la commande + marquer le lien comme payé
+                            const orderRef = push(ref(db, 'driprush_orders'));
+                            set(orderRef, {
+                                clientName: data.clientName, phone: data.phone, address: data.address,
+                                clientGPS: data.clientGPS, shopName: data.shopName, shopGPS: data.shopGPS,
+                                shopPhone: data.shopPhone, shopMomo: data.shopMomo,
+                                items: data.items.map(i => i.name + ' [' + i.size + ']').join(', '),
+                                itemImages: data.items.map(i => i.image).filter(Boolean),
+                                deliveryMode: data.deliveryMode, deliveryFee: data.deliveryFee,
+                                total: data.total, commission: Math.round(data.total * 0.1),
+                                montantBoutique: Math.round(data.total * 0.9),
+                                codePromo: data.codePromo || null,
+                                status: 'Payée', timestamp: Date.now(), paidViaLink: true
+                            }).then(() => {
+                                update(ref(db, 'driprush_payment_links/' + linkId), { status: 'paid' });
+                                document.getElementById('pay-link-content').innerHTML =
+                                    '<div class="text-center py-16"><p class="text-5xl mb-4">✅</p>' +
+                                    '<p class="text-lime font-display text-xl uppercase mb-2">Paiement validé !</p>' +
+                                    '<p class="text-gray-300 text-xs leading-relaxed">La commande de ' + data.clientName + ' est confirmée.<br>Le livreur va être envoyé à l'adresse indiquée.</p></div>';
+                                // Notifier la boutique
+                                fetch('https://driprush-webhook.onrender.com/notify-shop', {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ shopPhone: data.shopPhone, orderId: orderRef.key, amount: data.total })
+                                }).catch(() => {});
+                            });
+                        } else {
+                            if (btn) { btn.disabled = false; btn.innerText = '💳 Réessayer le paiement'; }
+                            alert('❌ Paiement non validé. Réessaie.');
+                        }
+                    }
+                });
+                handler.render();
+            });
+        };
+
+        // ============================================================
+        // 🔍 GESTION DES PARAMÈTRES URL (?article= / ?pay=)
+        // ============================================================
+        (function handleUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const articleId = params.get('article');
+            const payId = params.get('pay');
+
+            if (payId) {
+                // Afficher la page de paiement directement
+                window.showPaymentLinkPage(payId);
+                return;
+            }
+
+            if (articleId) {
+                // Ouvrir l'article dès que les produits sont chargés
+                window._pendingArticleOpen = articleId;
+            }
+        })();
+
     </script>
 </head>
 <body class="pb-24">
@@ -1388,6 +1690,7 @@
         <div id="product-modal" onclick="window.closeModalOutside(event)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end hidden cursor-pointer">
             <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up modal-height-fix pb-10 cursor-default relative">
                 <button id="close-modal-btn" onclick="window.closeModalOutside(null)" class="absolute top-4 right-6 text-gray-400 hover:text-black transition text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.shareArticle()" class="absolute top-4 right-16 text-gray-400 hover:text-black transition text-lg p-2" title="Partager cet article"><i class="fa-solid fa-share-nodes"></i></button>
                 <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2"></div>
                 <div class="flex gap-4">
                     <img id="modal-img" src="" onclick="window.toggleZoom(true)" class="w-32 h-32 object-cover rounded-2xl shadow-lg cursor-zoom-in active:scale-95 transition duration-200">
@@ -1453,6 +1756,10 @@
                     <p id="code-promo-result" class="hidden text-[10px] font-bold mt-1 px-1"></p>
                 </div>
 
+                <button onclick="window.generatePaymentLink()" class="w-full bg-white border-2 border-black text-black py-4 rounded-2xl font-black uppercase italic text-sm active:scale-95 transition">
+                    🔗 Générer un lien de paiement
+                </button>
+                <p class="text-[9px] text-center text-gray-400 font-bold">ou</p>
                 <button onclick="window.confirmOrder(this)" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase italic shadow-2xl text-sm">Confirmer la commande ✅</button>
             </div>
         </div>
@@ -1607,7 +1914,17 @@
                     </div>
                 </div>
                 <div class="bg-gray-50 rounded-2xl p-4">
-                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">🔔 Notifications</p>
+                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">🎵 Musique d'ambiance</p>
+                    <div class="flex items-center justify-between mb-1">
+                        <div>
+                            <p class="text-xs font-bold text-gray-700">Musique en fond</p>
+                            <p class="text-[9px] text-gray-400">Joue pendant ton shopping</p>
+                        </div>
+                        <button onclick="window.toggleMusicSetting()" id="music-toggle-btn" class="bg-black text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase active:scale-95 transition">🔇 Désactiver</button>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-2xl p-4">
+                <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">🔔 Notifications</p>
                     <p class="text-[10px] text-gray-500 mb-3">Reçois une alerte quand une boutique répond à ton message.</p>
                     <button onclick="window.requestClientNotifications()" id="notif-btn" class="w-full bg-black text-white py-3 rounded-xl font-black uppercase text-xs active:scale-95 transition">Activer les notifications 🔔</button>
                 </div>

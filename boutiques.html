@@ -273,7 +273,21 @@
             <button onclick="window.toggleArticlesDuJour()" class="w-full bg-drip text-white font-black py-3 rounded-xl text-xs uppercase active:scale-95 transition">Activer / Désactiver</button>
         </div>
 
-<h3 class="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-3">Boutiques déjà enregistrées</h3>
+<!-- 🎵 SECTION MUSIQUE ADMIN -->
+        <h2 class="text-xl font-display uppercase mb-1 mt-4 tracking-tight">🎵 Playlist du site</h2>
+        <p class="text-[10px] text-gray-500 font-bold uppercase mb-4 tracking-widest">Gérer la musique d'ambiance du site</p>
+        <div class="promo-card mb-4">
+            <p class="text-xs font-black uppercase mb-3">➕ Ajouter une musique</p>
+            <div class="space-y-2 mb-3">
+                <input type="text" id="music-title-input" placeholder="TITRE DE LA MUSIQUE" class="w-full input-dark p-3 rounded-xl text-sm font-bold uppercase">
+                <input type="text" id="music-artist-input" placeholder="ARTISTE / NOM" class="w-full input-dark p-3 rounded-xl text-sm font-bold">
+                <input type="text" id="music-url-input" placeholder="LIEN DIRECT MP3 (ex: https://...mp3)" class="w-full input-dark p-3 rounded-xl text-xs font-bold">
+            </div>
+            <button onclick="window.addMusicTrack()" class="w-full bg-drip text-white font-black py-3 rounded-xl text-xs uppercase active:scale-95 transition">➕ Ajouter à la playlist</button>
+        </div>
+        <div id="music-playlist-list" class="space-y-2 mb-8"></div>
+
+        <h3 class="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-3">Boutiques déjà enregistrées</h3>
         <p class="text-[9px] text-gray-600 font-medium mb-3 -mt-2">💡 Clique sur une boutique pour voir sa dernière connexion</p>
         <div id="boutiques-list" class="space-y-2"></div>
     </div>
@@ -678,6 +692,7 @@
                 window.loadAdminMessageTargets();
                 window.loadAdminPromosStatus();
                 window.loadArtJourProductList();
+                window.loadMusicPlaylist();
             }
         };
 
@@ -1789,6 +1804,62 @@
                 update(ref(db, 'driprush_promos/global/articlesDuJour'), { active: !current.active, ids: [...selectedArtJourIds] })
                 .then(() => alert(!current.active ? `⭐ ${selectedArtJourIds.size} article(s) du jour activé(s) !` : '❌ Articles du jour désactivés'));
             });
+        };
+
+        // ============================================================
+        // 🎵 GESTION MUSIQUE ADMIN
+        // ============================================================
+        window.loadMusicPlaylist = () => {
+            onValue(ref(db, 'driprush_music_playlist'), (snap) => {
+                const data = snap.val();
+                const container = document.getElementById('music-playlist-list');
+                if (!container) return;
+                container.innerHTML = '';
+                if (!data) {
+                    container.innerHTML = '<p class="text-[9px] text-gray-500 text-center py-4">Aucune musique dans la playlist</p>';
+                    return;
+                }
+                const tracks = Object.keys(data).map(id => ({ id, ...data[id] }));
+                tracks.forEach((track, idx) => {
+                    container.innerHTML += `
+                        <div class="card-surface rounded-2xl p-3 flex items-center gap-3">
+                            <div class="w-10 h-10 bg-drip/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <span class="text-drip font-black text-xs">${idx + 1}</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-black uppercase truncate">${track.title}</p>
+                                <p class="text-[9px] text-gray-500 truncate">${track.artist || 'Artiste inconnu'}</p>
+                                <a href="${track.url}" target="_blank" class="text-[8px] text-drip underline truncate block">🔊 Écouter</a>
+                            </div>
+                            <button onclick="window.deleteMusicTrack('${track.id}')" class="text-red-400 text-sm px-2 flex-shrink-0 active:scale-95 transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>`;
+                });
+            });
+        };
+
+        window.addMusicTrack = () => {
+            const title = document.getElementById('music-title-input').value.trim();
+            const artist = document.getElementById('music-artist-input').value.trim();
+            const url = document.getElementById('music-url-input').value.trim();
+            if (!title) return alert('Entre le titre de la musique !');
+            if (!url || !url.startsWith('http')) return alert('Entre un lien valide commençant par http !');
+            push(ref(db, 'driprush_music_playlist'), {
+                title, artist: artist || 'Artiste inconnu', url, addedAt: Date.now()
+            }).then(() => {
+                document.getElementById('music-title-input').value = '';
+                document.getElementById('music-artist-input').value = '';
+                document.getElementById('music-url-input').value = '';
+                alert('✅ Musique ajoutée à la playlist !');
+            }).catch(err => alert('Erreur : ' + err.message));
+        };
+
+        window.deleteMusicTrack = (trackId) => {
+            if (!confirm('Supprimer cette musique de la playlist ?')) return;
+            remove(ref(db, 'driprush_music_playlist/' + trackId))
+            .then(() => alert('✅ Musique supprimée de la playlist'))
+            .catch(err => alert('Erreur : ' + err.message));
         };
 
         // Restauration session
