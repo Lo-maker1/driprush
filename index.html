@@ -1334,9 +1334,9 @@
         let musicPlaylist = [];
         let currentTrackIdx = 0;
         let musicEnabled = localStorage.getItem('driprush_music') !== 'off';
-        const audioPlayer = new Audio();
-        audioPlayer.volume = 0.4;
+        let audioPlayer = null;
         let musicStarted = false;
+        try { audioPlayer = new Audio(); audioPlayer.volume = 0.4; } catch(e) { musicEnabled = false; }
 
         // Charger la playlist depuis Firebase
         onValue(ref(db, 'driprush_music_playlist'), (snap) => {
@@ -1355,16 +1355,14 @@
             audioPlayer.play().catch(() => {});
         }
 
-        audioPlayer.addEventListener('ended', () => { playNextTrack(); });
-        audioPlayer.addEventListener('error', () => { playNextTrack(); });
+        if (audioPlayer) { audioPlayer.addEventListener('ended', () => { playNextTrack(); }); audioPlayer.addEventListener('error', () => { playNextTrack(); }); }
 
         function startMusicOnInteraction() {
-            if (musicStarted || !musicEnabled || musicPlaylist.length === 0) return;
+            if (musicStarted || !musicEnabled || musicPlaylist.length === 0 || !audioPlayer) return;
             musicStarted = true;
             const randIdx = Math.floor(Math.random() * musicPlaylist.length);
             currentTrackIdx = randIdx;
-            audioPlayer.src = musicPlaylist[randIdx].url;
-            audioPlayer.play().catch(() => {});
+            try { audioPlayer.src = musicPlaylist[randIdx].url; audioPlayer.play().catch(() => {}); } catch(e) {}
         }
 
         // Démarrer dès la première interaction
