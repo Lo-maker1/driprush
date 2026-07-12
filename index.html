@@ -924,104 +924,284 @@
             icon.classList.remove('cart-bounce'); void icon.offsetWidth; icon.classList.add('cart-bounce');
         };
 
+        let shopFees = {};
+
+        function cartQty(i) { return (i.qty && i.qty > 0) ? i.qty : 1; }
+        function getPendingItems() { return cart.filter(i => !i.validated); }
+
+        function distinctShops(items) {
+            const m = {};
+            items.forEach(i => {
+                const ph = String(i.shopPhone || '2290147535343');
+                if (!m[ph]) m[ph] = { phone: ph, name: i.shop || 'Driprush', gps: i.shopGPS || '', momo: i.shopMomo || ph, items: [] };
+                m[ph].items.push(i);
+            });
+            return Object.values(m);
+        }
+
+        function isFreeDelivery(subtotal) {
+            if (promos.livraisonGratuite && promos.livraisonGratuite.active) return true;
+            if (promos.livraisonGratuiteDes && promos.livraisonGratuiteDes.active && subtotal >= promos.livraisonGratuiteDes.montant) return true;
+            return false;
+        }
+
+        // Minoration : la boutique la plus chère paie plein tarif, les autres -50%
+        function minoredFees(list) {
+            if (list.length <= 1) return list.slice();
+            let maxI = 0;
+            list.forEach((v, i) => { if (v > list[maxI]) maxI = i; });
+            return list.map((v, i) => i === maxI ? v : roundTo25(v * 0.5));
+        }
+
+        window.getShopShares = (mode) => {
+            const phones = Object.keys(shopFees);
+            const raw = phones.map(p => mode === 'express' ? shopFees[p].exp : shopFees[p].std);
+            const red = minoredFees(raw);
+            const out = {};
+            phones.forEach((p, i) => { out[p] = red[i] || 0; });
+            return out;
+        };
+
+        function applyFeeTotals() {
+            const s = window.getShopShares('standard');
+            const e = window.getShopShares('express');
+            calculatedStdFee = Object.values(s).reduce((a, b) => a + b, 0);
+            calculatedExpFee = Object.values(e).reduce((a, b) => a + b, 0);
+            window.updateCartUI();
+        }
+
+        window.computeDeliveryFees = () => {
+            const items = getPendingItems();
+            if (items.length === 0) { shopFees = {}; calculatedStdFee = 0; calculatedExpFee = 0; window.updateCartUI(); return; }
+            const subtotal = items.reduce((s, i) => s + getPrixFinal(i) * cartQty(i), 0);
+            if (isFreeDelivery(subtotal)) { shopFees = {}; calculatedStdFee = 0; calculatedExpFee = 0; window.updateCartUI(); return; }
+
+            const shops = distinctShops(items);
+            const lblS = document.getElementById('lbl-std'); if (lblS) lblS.innerText = '🚲 Calcul en cours...';
+            const lblE = document.getElementById('lbl-exp'); if (lblE) lblE.innerText = '🚀 Calcul en cours...';
+
+            const fallback = () => {
+                shopFees = {};
+                shops.forEach(s => { shopFees[s.phone] = { std: 500, exp: 900, name: s.name }; });
+                applyFeeTotals();
+            };
+
+            const withCoords = (coords) => {
+                clientCoords = coords;
+                Promise.all(shops.map(s => {
+                    const cc = parseGPSCoords(s.gps);
+                    if (cc) return Promise.resolve({ s: s, c: cc });
+                    return get(ref(db, 'driprush_boutiques/' + s.phone))
+                        .then(sn => { const b = sn.val(); return { s: s, c: (b && b.gps) ? parseGPSCoords(b.gps) : null }; })
+                        .catch(() => ({ s: s, c: null }));
+                })).then(res => {
+                    shopFees = {};
+                    res.forEach(r => {
+                        if (!r.c) { shopFees[r.s.phone] = { std: 500, exp: 900, name: r.s.name }; return; }
+                        const dist = haversineDistance(r.c.lat, r.c.lng, coords.lat, coords.lng) * 1.25;
+                        shopFees[r.s.phone] = { std: roundTo25(dist * 0.179), exp: roundTo25(dist * 0.20), name: r.s.name };
+                    });
+                    applyFeeTotals();
+                }).catch(fallback);
+            };
+
+            if (clientCoords) { withCoords(clientCoords); }
+            else if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => withCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                    () => { fallback(); window.showToast('GPS non disponible — tarifs forfaitaires appliqués', false); },
+                    { timeout: 10000 }
+                );
+            } else { fallback(); }
+        };
+
+        // Compat : ancienne signature
+        window.calculateAndSetDeliveryFees = () => window.computeDeliveryFees();
+
+        // Découpe la commande par boutique
+        window.buildShopOrders = (name, phone, addr, gps) => {
+            const items = getPendingItems();
+            const shops = distinctShops(items);
+            const shares = window.getShopShares(deliveryTypeSelected === 'express' ? 'express' : 'standard');
+            const pct = (appliedCodePromo && appliedCodePromo > 0) ? appliedCodePromo : 0;
+            const orders = shops.map(s => {
+                const sub = s.items.reduce((a, i) => a + getPrixFinal(i) * cartQty(i), 0);
+                const del = shares[s.phone] || 0;
+                let tot = sub + del;
+                if (pct) tot = Math.round(tot * (1 - pct / 100));
+                const com = Math.round(tot * 0.10);
+                return {
+                    clientName: name, phone: phone, address: addr, clientGPS: gps,
+                    shopName: s.name, shopPhone: s.phone, shopGPS: s.gps || '', shopMomo: s.momo || s.phone,
+                    items: s.items.map(i => i.name + ' [' + i.size + (i.color ? ', ' + i.color : '') + '] x' + cartQty(i)).join(', '),
+                    itemImages: s.items.map(i => i.image || '').filter(Boolean),
+                    itemsDetail: s.items.map(i => ({ name: i.name, size: i.size || 'Unique', color: i.color || '', qty: cartQty(i), price: getPrixFinal(i), image: i.image || '' })),
+                    deliveryMode: deliveryTypeSelected || 'standard', deliveryFee: del,
+                    subtotal: sub, total: tot, commission: com, montantBoutique: tot - com,
+                    codePromo: (pct && promos.codePromo) ? promos.codePromo.code : null,
+                    timestamp: Date.now()
+                };
+            });
+            return { orders: orders, grandTotal: orders.reduce((a, o) => a + o.total, 0) };
+        };
+
+        window.createPendingOrders = (orders) => Promise.all(orders.map(o => {
+            const r = push(ref(db, 'driprush_orders'));
+            const data = Object.assign({}, o, { status: 'En attente de paiement' });
+            return set(r, data).then(() => r.key);
+        }));
+
+        window.notifyShops = (orders) => {
+            orders.forEach(o => {
+                fetch(WEBHOOK_SERVER_URL + '/notify-shop', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ shopPhone: o.shopPhone, clientName: o.clientName, productName: 'une nouvelle commande payée' })
+                }).catch(() => {});
+            });
+        };
+
+        window.changeQty = (index, delta) => {
+            const it = cart[index];
+            if (!it || it.validated) return;
+            const q = cartQty(it) + delta;
+            if (q < 1) return;
+            if (q > 20) return window.showToast('Quantité maximum : 20', true);
+            it.qty = q;
+            window.updateCartUI();
+            if (promos.livraisonGratuiteDes && promos.livraisonGratuiteDes.active && clientCoords) window.computeDeliveryFees();
+        };
+
         window.addToCart = () => {
-            if(!selectedItem || !selectedItem.size) return window.showToast("Sélectionne une taille d'abord !", true);
-            const pendingCartItems = cart.filter(i => !i.validated);
-            if (pendingCartItems.length > 0) {
-                const cleanPhone = (num) => String(num || "").replace(/\D/g, "");
-                const currentCartShopPhone = cleanPhone(pendingCartItems[0].shopPhone || "2290147535343");
-                const newShopPhone = cleanPhone(selectedItem.shopPhone || "2290147535343");
-                const currentCartShopName = pendingCartItems[0].shop || "Driprush";
-                if (currentCartShopPhone !== newShopPhone && currentCartShopPhone.length > 5 && newShopPhone.length > 5) {
-                    window.showToast(`Ton panier contient déjà "${currentCartShopName}". Termine ou vide-le d'abord !`, true); return;
-                }
+            if (!selectedItem || !selectedItem.size) return window.showToast("Sélectionne une taille d'abord !", true);
+            const sp = window._currentSizePrices;
+            const basePrice = (sp && sp[selectedItem.size]) ? sp[selectedItem.size] : selectedItem.price;
+            const pend = getPendingItems();
+            const same = pend.find(i => i.id === selectedItem.id && i.size === selectedItem.size && (i.color || '') === (selectedItem.color || ''));
+            if (same) {
+                same.qty = cartQty(same) + 1;
+                window.showToast('Quantité mise à jour ✅ (x' + same.qty + ')');
+            } else {
+                cart.push(Object.assign({}, selectedItem, { price: basePrice, qty: 1, validated: false }));
+                window.showToast('Ajouté ✅ — direction le panier quand tu veux');
             }
-            cart.push({...selectedItem, validated: false});
-            window.showToast("Ajouté ✅ — direction le panier quand tu veux");
             window.updateCartUI(); window.bounceCartIcon();
             document.getElementById('product-modal').classList.add('hidden');
         };
 
         window.updateCartUI = () => {
             cart = cart.filter(item => !item.validated || (item.validatedAt && Date.now() - item.validatedAt < FORTY_EIGHT_HOURS));
-            document.getElementById('nav-cart-count').innerText = cart.length;
+            const pending = getPendingItems();
+            const totalQty = pending.reduce((a, i) => a + cartQty(i), 0);
+            document.getElementById('nav-cart-count').innerText = totalQty;
             const isCheckoutHidden = document.getElementById('checkout-modal').classList.contains('hidden');
-            const hasPending = cart.some(i => !i.validated);
-            document.getElementById('cart-bar').classList.toggle('hidden', !hasPending || !isCheckoutHidden);
-            let subtotal = 0;
+            document.getElementById('cart-bar').classList.toggle('hidden', pending.length === 0 || !isCheckoutHidden);
+
             const listContainer = document.getElementById('cart-items-list');
             listContainer.innerHTML = '';
-            cart.forEach((item, index) => {
-                if(!item.validated) subtotal += parseInt(item.price);
-                const variantLabel = item.size + (item.color ? ', ' + item.color : '');
-                let validatedLabel = '';
-                if (item.validated && item.validatedAt) {
-                    const remaining = Math.max(0, Math.ceil((item.validatedAt + FORTY_EIGHT_HOURS - Date.now()) / 3600000));
-                    validatedLabel = `<span class="text-[7px] font-black text-green-500 bg-green-500/10 px-2 py-1 rounded-full uppercase">Validée ✓ (encore ${remaining}h)</span>`;
-                }
-                listContainer.innerHTML += `
-                    <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-100 mb-2">
-                        <img src="${item.image}" class="w-12 h-12 object-cover rounded-lg">
-                        <div class="flex-1">
-                            <p class="text-[10px] font-bold uppercase">${item.name} (${variantLabel})</p>
-                            <p class="text-black text-[11px] font-black">${parseInt(item.price).toLocaleString()} F</p>
-                        </div>
-                        ${item.validated ? validatedLabel : `<button onclick="window.removeFromCart(${index})" class="text-red-500 text-xs px-2"><i class="fa-solid fa-trash-can"></i></button>`}
-                    </div>`;
-            });
-            if(cart.length === 0) listContainer.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Ton panier est vide. Va dénicher ta prochaine pépite 🔥</p>';
+            let subtotal = 0;
 
-            // ✅ PROMO : Livraison gratuite dès X F — barre de progression
-            const promoBarContainer = document.getElementById('livraison-des-bar');
-            if (promoBarContainer) {
+            // Regroupement par boutique
+            const groups = {};
+            cart.forEach((item, index) => {
+                const ph = String(item.shopPhone || '2290147535343');
+                if (!groups[ph]) groups[ph] = { name: item.shop || 'Driprush', rows: [] };
+                groups[ph].rows.push({ item: item, index: index });
+            });
+            const shopCount = Object.keys(groups).filter(ph => groups[ph].rows.some(r => !r.item.validated)).length;
+
+            Object.keys(groups).forEach(ph => {
+                const g = groups[ph];
+                let head = '';
+                if (shopCount > 1) {
+                    head = '<div class="flex items-center gap-2 mt-3 mb-1 px-1"><span class="text-[9px] font-black uppercase text-drip">🏪 ' + g.name + '</span><div class="flex-1 h-px bg-gray-200"></div></div>';
+                }
+                let rows = '';
+                g.rows.forEach(r => {
+                    const item = r.item, index = r.index;
+                    const q = cartQty(item);
+                    const unit = getPrixFinal(item);
+                    if (!item.validated) subtotal += unit * q;
+                    const variant = item.size + (item.color ? ', ' + item.color : '');
+                    if (item.validated && item.validatedAt) {
+                        const remaining = Math.max(0, Math.ceil((item.validatedAt + FORTY_EIGHT_HOURS - Date.now()) / 3600000));
+                        rows += '<div class="flex items-center gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-100 mb-2 opacity-70">' +
+                            '<img src="' + item.image + '" class="w-12 h-12 object-cover rounded-lg">' +
+                            '<div class="flex-1"><p class="text-[10px] font-bold uppercase">' + item.name + ' (' + variant + ') x' + q + '</p>' +
+                            '<p class="text-black text-[11px] font-black">' + (unit * q).toLocaleString() + ' F</p></div>' +
+                            '<span class="text-[7px] font-black text-green-500 bg-green-500/10 px-2 py-1 rounded-full uppercase">Validée ✓ (' + remaining + 'h)</span></div>';
+                    } else {
+                        rows += '<div class="flex items-center gap-3 bg-gray-50 p-3 rounded-2xl border border-gray-100 mb-2">' +
+                            '<img src="' + item.image + '" class="w-12 h-12 object-cover rounded-lg">' +
+                            '<div class="flex-1 min-w-0">' +
+                            '<p class="text-[10px] font-bold uppercase truncate">' + item.name + '</p>' +
+                            '<p class="text-[9px] text-gray-400 uppercase">' + variant + '</p>' +
+                            '<p class="text-black text-[11px] font-black">' + (unit * q).toLocaleString() + ' F' + (q > 1 ? ' <span class="text-[8px] text-gray-400 font-bold">(' + unit.toLocaleString() + ' F x' + q + ')</span>' : '') + '</p>' +
+                            '</div>' +
+                            '<div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1">' +
+                            '<button onclick="window.changeQty(' + index + ',-1)" class="w-7 h-7 text-black font-black text-sm active:scale-90 transition">−</button>' +
+                            '<span class="text-[11px] font-black w-5 text-center">' + q + '</span>' +
+                            '<button onclick="window.changeQty(' + index + ',1)" class="w-7 h-7 text-black font-black text-sm active:scale-90 transition">+</button>' +
+                            '</div>' +
+                            '<button onclick="window.removeFromCart(' + index + ')" class="text-red-500 text-xs px-1"><i class="fa-solid fa-trash-can"></i></button>' +
+                            '</div>';
+                    }
+                });
+                listContainer.innerHTML += head + rows;
+            });
+
+            if (cart.length === 0) listContainer.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Ton panier est vide. Va dénicher ta prochaine pépite 🔥</p>';
+
+            // Info livraison groupée
+            const multiInfo = document.getElementById('multi-shop-info');
+            if (multiInfo) {
+                if (shopCount > 1) {
+                    multiInfo.classList.remove('hidden');
+                    multiInfo.innerHTML = '<div class="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-center"><p class="text-[10px] text-amber-700 font-bold">🏪 ' + shopCount + ' boutiques dans ton panier — frais de livraison groupés et réduits ✅</p></div>';
+                } else { multiInfo.classList.add('hidden'); multiInfo.innerHTML = ''; }
+            }
+
+            // PROMO : livraison gratuite dès X F
+            const promoBar = document.getElementById('livraison-des-bar');
+            if (promoBar) {
                 if (promos.livraisonGratuiteDes && promos.livraisonGratuiteDes.active && subtotal > 0) {
                     const montant = promos.livraisonGratuiteDes.montant;
                     const pct = Math.min(100, Math.round(subtotal / montant * 100));
                     const reste = Math.max(0, montant - subtotal);
-                    promoBarContainer.classList.remove('hidden');
-                    promoBarContainer.innerHTML = `
-                        <div class="bg-green-50 border border-green-200 rounded-2xl p-3 mb-3">
-                            <p class="text-[10px] font-bold text-green-700 mb-2">
-                                ${reste === 0 ? '🎉 Livraison gratuite débloquée !' : `🚚 Plus que ${reste.toLocaleString()} F pour la livraison gratuite !`}
-                            </p>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-green-500 h-2 rounded-full transition-all" style="width: ${pct}%"></div>
-                            </div>
-                        </div>`;
-                } else {
-                    promoBarContainer.classList.add('hidden');
-                    promoBarContainer.innerHTML = '';
-                }
+                    promoBar.classList.remove('hidden');
+                    promoBar.innerHTML = '<div class="bg-green-50 border border-green-200 rounded-2xl p-3 mb-3">' +
+                        '<p class="text-[10px] font-bold text-green-700 mb-2">' + (reste === 0 ? '🎉 Livraison gratuite débloquée !' : '🚚 Plus que ' + reste.toLocaleString() + ' F pour la livraison gratuite !') + '</p>' +
+                        '<div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-green-500 h-2 rounded-full transition-all" style="width: ' + pct + '%"></div></div></div>';
+                } else { promoBar.classList.add('hidden'); promoBar.innerHTML = ''; }
             }
 
-            // ✅ PROMO : 1 acheté = 1 offert — bandeau dans le panier
-            const uaoCartBanner = document.getElementById('uao-cart-banner');
-            if (uaoCartBanner) {
-                uaoCartBanner.classList.toggle('hidden', !(promos.unAchetUnOffert && promos.unAchetUnOffert.active && cart.filter(i => !i.validated).length > 0));
-            }
+            const uao = document.getElementById('uao-cart-banner');
+            if (uao) uao.classList.toggle('hidden', !(promos.unAchetUnOffert && promos.unAchetUnOffert.active && pending.length > 0));
 
-            document.getElementById('cart-total').innerText = subtotal.toLocaleString() + " F";
-            document.getElementById('lbl-std').innerText = `🚲 Normale (+${calculatedStdFee.toLocaleString()} F)`;
-            document.getElementById('lbl-exp').innerText = `🚀 Rapide (+${calculatedExpFee.toLocaleString()} F)`;
-            if(deliveryTypeSelected === "standard") deliveryFee = calculatedStdFee;
-            else if(deliveryTypeSelected === "express") deliveryFee = calculatedExpFee;
+            document.getElementById('cart-total').innerText = subtotal.toLocaleString() + ' F';
+            document.getElementById('lbl-std').innerText = '🚲 Normale (+' + calculatedStdFee.toLocaleString() + ' F)';
+            document.getElementById('lbl-exp').innerText = '🚀 Rapide (+' + calculatedExpFee.toLocaleString() + ' F)';
+            if (deliveryTypeSelected === 'standard') deliveryFee = calculatedStdFee;
+            else if (deliveryTypeSelected === 'express') deliveryFee = calculatedExpFee;
+
             const totalDisplay = document.getElementById('final-total-display');
-            if(deliveryTypeSelected !== "") {
+            if (deliveryTypeSelected !== '') {
+                let t = subtotal + deliveryFee;
+                if (appliedCodePromo && appliedCodePromo > 0) t = Math.round(t * (1 - appliedCodePromo / 100));
                 totalDisplay.classList.add('price-tag'); totalDisplay.classList.remove('text-gray-400');
-                totalDisplay.innerText = (subtotal + deliveryFee).toLocaleString() + " F";
+                totalDisplay.innerText = t.toLocaleString() + ' F';
             } else {
                 totalDisplay.classList.remove('price-tag'); totalDisplay.classList.add('text-gray-400');
-                totalDisplay.innerText = "Choisir livraison";
+                totalDisplay.innerText = 'Choisir livraison';
             }
         };
 
         // ✅ FIX 3 — removeFromCart : reset visuel boutons livraison
         window.removeFromCart = (index) => {
             cart.splice(index, 1);
-            deliveryFee = 0; deliveryTypeSelected = "";
-            calculatedStdFee = 500; calculatedExpFee = 900;
+            deliveryFee = 0; deliveryTypeSelected = '';
             document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('bg-black', 'text-white'));
-            window.updateCartUI();
+            if (getPendingItems().length > 0) window.computeDeliveryFees();
+            else { shopFees = {}; calculatedStdFee = 0; calculatedExpFee = 0; window.updateCartUI(); }
         };
 
         window.setShipping = (type, element) => {
@@ -1065,110 +1245,88 @@
             }
         };
 
-        window.createPendingOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
-            return new Promise((resolve, reject) => {
-                const firstItem = pendingItems[0];
-                const commission = Math.round(finalTotal * 0.10);
-                const montantBoutique = finalTotal - commission;
-                const orderRef = push(ref(db, 'driprush_orders'));
-                set(orderRef, { clientName: name, phone, address: addr, clientGPS: gps, shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343', shopMomo: firstItem.shopMomo || firstItem.shopPhone || '', items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '), itemImages: pendingItems.map(i => i.image || '').filter(Boolean), deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee, total: finalTotal, commission: commission, montantBoutique: montantBoutique, codePromo: appliedCodePromo ? promos.codePromo.code : null, status: 'En attente de paiement', timestamp: Date.now() }).then(() => resolve(orderRef.key)).catch(reject);
-            });
-        };
+        window.createPendingOrder = () => Promise.reject(new Error('obsolete'));
 
         window.triggerFedaPay = (name, phone, addr, gps, btn, originalText) => {
-            const pendingItems = cart.filter(i => !i.validated);
-            let subtotal = 0;
-            pendingItems.forEach(i => subtotal += getPrixFinal(i));
-            // ✅ PROMO : Code promo appliqué
-            let finalTotal = subtotal + deliveryFee;
-            if (appliedCodePromo && appliedCodePromo > 0) {
-                finalTotal = Math.round(finalTotal * (1 - appliedCodePromo / 100));
+            const built = window.buildShopOrders(name, phone, addr, gps);
+            const finalTotal = built.grandTotal;
+            if (finalTotal <= 0) { btn.innerText = originalText; btn.disabled = false; return window.showToast('Panier vide', true); }
+
+            if (SIMULATION_MODE) {
+                btn.innerText = 'PAIEMENT SIMULÉ... ⏳';
+                window.showToast('🧪 Mode simulation — paiement fictif');
+                setTimeout(() => { window.saveAutomatedOrder(built, btn, originalText); }, 1500);
+                return;
             }
-            if (SIMULATION_MODE) { btn.innerText = "PAIEMENT SIMULÉ... ⏳"; window.showToast("🧪 Mode simulation activé — paiement fictif"); setTimeout(() => { window.saveAutomatedOrder(name, phone, addr, gps, finalTotal, pendingItems); }, 2000); return; }
-            window.createPendingOrder(name, phone, addr, gps, finalTotal, pendingItems).then((orderId) => {
-                const nameParts = name.split(' ');
-                const firstname = nameParts[0] || 'Client';
-                const lastname = nameParts.slice(1).join(' ') || 'Driprush';
+
+            window.createPendingOrders(built.orders).then((orderIds) => {
+                const parts = name.split(' ');
+                const firstname = parts[0] || 'Client';
+                const lastname = parts.slice(1).join(' ') || 'Driprush';
                 const widget = FedaPay.init({
                     public_key: FEDAPAY_PUBLIC_KEY, environment: 'live',
-                    transaction: { amount: finalTotal, description: `Commande Driprush #${orderId}`, custom_metadata: { orderId: orderId } },
+                    transaction: {
+                        amount: finalTotal,
+                        description: 'Commande Driprush (' + built.orders.length + ' boutique(s))',
+                        custom_metadata: { orderId: orderIds[0], orderIds: orderIds.join(',') }
+                    },
                     currency: { iso: 'XOF' },
-                    customer: { firstname, lastname, email: `client${phone.replace(/\D/g,'')}@driprush.bj`, phone_number: { number: phone, country: 'BJ' } },
-                    onComplete: function(response) {
-                        console.log("Réponse FedaPay :", response);
+                    customer: { firstname: firstname, lastname: lastname, email: 'client' + phone.replace(/\D/g, '') + '@driprush.bj', phone_number: { number: phone, country: 'BJ' } },
+                    onComplete: function (response) {
                         btn.innerText = originalText; btn.disabled = false;
-
-                        // ✅ Vérifier que le paiement est réellement approuvé
                         const status = response && response.transaction && response.transaction.status;
+
                         if (status !== 'approved' && status !== 'approved_partially') {
-                            // Paiement annulé, échoué ou en attente — on ne valide rien
-                            if (status === 'declined') {
-                                window.showToast("❌ Paiement refusé — réessaie ou change de moyen de paiement", true);
-                            } else if (status === 'canceled' || status === 'cancelled') {
-                                window.showToast("⚠️ Paiement annulé — ta commande n'a pas été validée", true);
-                            } else {
-                                window.showToast("⏳ Paiement non confirmé — contacte-nous si tu as été débité", true);
-                            }
-                            // Supprimer la commande en attente non payée
-                            if (orderId) {
-                                update(ref(db, 'driprush_orders/' + orderId), { status: 'Annulée' }).catch(() => {});
-                            }
+                            orderIds.forEach(id => update(ref(db, 'driprush_orders/' + id), { status: 'Annulée' }).catch(() => {}));
+                            if (status === 'declined') window.showToast('❌ Paiement refusé — réessaie', true);
+                            else if (status === 'canceled' || status === 'cancelled') window.showToast("⚠️ Paiement annulé — commande non validée", true);
+                            else window.showToast('⏳ Paiement non confirmé — contacte-nous si tu as été débité', true);
                             return;
                         }
 
-                        // ✅ Paiement confirmé — valider le panier et afficher la confirmation
-                        const orderedItems = cart.filter(i => !i.validated);
-                        cart = cart.map(item => !item.validated ? { ...item, validated: true, validatedAt: Date.now() } : item);
-                        deliveryFee = 0; deliveryTypeSelected = ""; calculatedStdFee = 500; calculatedExpFee = 900; clientCoords = null;
+                        // ✅ Payé : chaque boutique reçoit SA commande
+                        orderIds.forEach(id => update(ref(db, 'driprush_orders/' + id), { status: 'Payée', paidAt: Date.now() }).catch(() => {}));
+                        window.notifyShops(built.orders);
+
+                        const orderedItems = getPendingItems();
+                        cart = cart.map(item => !item.validated ? Object.assign({}, item, { validated: true, validatedAt: Date.now() }) : item);
+                        deliveryFee = 0; deliveryTypeSelected = ''; shopFees = {}; calculatedStdFee = 0; calculatedExpFee = 0; clientCoords = null;
                         saveValidatedCart(); window.updateCartUI();
                         document.getElementById('checkout-modal').classList.add('hidden');
                         showDeliveryMessage(orderedItems);
                     }
                 });
                 widget.open();
-            }).catch((err) => { window.showToast("Erreur : " + err.message, true); btn.innerText = originalText; btn.disabled = false; });
+            }).catch((err) => { window.showToast('Erreur : ' + err.message, true); btn.innerText = originalText; btn.disabled = false; });
         };
 
-        window.saveAutomatedOrder = (name, phone, addr, gps, finalTotal, pendingItems) => {
-            const firstItem = pendingItems[0];
-            const commission = Math.round(finalTotal * 0.10);
-            const montantBoutique = finalTotal - commission;
-            const orderRef = push(ref(db, 'driprush_orders'));
-            set(orderRef, { clientName: name, phone, address: addr, clientGPS: gps, shopName: firstItem.shop || 'Driprush', shopGPS: firstItem.shopGPS || '', shopPhone: firstItem.shopPhone || '2290147535343', shopMomo: firstItem.shopMomo || firstItem.shopPhone || '', items: pendingItems.map(i => `${i.name} [${i.size}${i.color ? ', ' + i.color : ''}]`).join(', '), deliveryMode: deliveryTypeSelected, deliveryFee: deliveryFee, total: finalTotal, commission: commission, montantBoutique: montantBoutique, status: SIMULATION_MODE ? 'Payée (TEST)' : 'Payée', timestamp: Date.now() }).then(() => {
-                const orderedItems = [...pendingItems];
-                cart = cart.map(item => !item.validated ? { ...item, validated: true, validatedAt: Date.now() } : item);
-                deliveryFee = 0; deliveryTypeSelected = ""; calculatedStdFee = 500; calculatedExpFee = 900; clientCoords = null;
+        window.saveAutomatedOrder = (built, btn, originalText) => {
+            Promise.all(built.orders.map(o => {
+                const r = push(ref(db, 'driprush_orders'));
+                return set(r, Object.assign({}, o, { status: SIMULATION_MODE ? 'Payée (TEST)' : 'Payée' }));
+            })).then(() => {
+                if (btn) { btn.innerText = originalText; btn.disabled = false; }
+                window.notifyShops(built.orders);
+                const orderedItems = getPendingItems();
+                cart = cart.map(item => !item.validated ? Object.assign({}, item, { validated: true, validatedAt: Date.now() }) : item);
+                deliveryFee = 0; deliveryTypeSelected = ''; shopFees = {}; calculatedStdFee = 0; calculatedExpFee = 0; clientCoords = null;
                 saveValidatedCart(); window.updateCartUI();
                 document.getElementById('checkout-modal').classList.add('hidden');
                 showDeliveryMessage(orderedItems);
-            }).catch((err) => { window.showToast("Erreur : " + err.message, true); });
+            }).catch((err) => { window.showToast('Erreur : ' + err.message, true); if (btn) { btn.innerText = originalText; btn.disabled = false; } });
         };
 
         // ✅ FIX 2 — toggleCheckout : fallback Firebase si shopGPS vide
         window.toggleCheckout = (show) => {
             document.getElementById('checkout-modal').classList.toggle('hidden', !show);
-            if(!show) { window.scrollTo(0,0); window.updateCartUI(); return; }
+            if (!show) { window.scrollTo(0, 0); window.updateCartUI(); return; }
             window.updateCartUI();
             const s = loadSettings();
             const nameInput = document.getElementById('c-name');
             const addrInput = document.getElementById('c-addr');
             if (s.clientName && nameInput && !nameInput.value) nameInput.value = s.clientName;
             if (s.clientAddress && addrInput && !addrInput.value) addrInput.value = s.clientAddress;
-            const pendingItems = cart.filter(i => !i.validated);
-            if (pendingItems.length > 0) {
-                const shopGPS = pendingItems[0].shopGPS;
-                const shopPhone = pendingItems[0].shopPhone;
-                if (shopGPS) {
-                    window.calculateAndSetDeliveryFees(shopGPS);
-                } else if (shopPhone) {
-                    get(ref(db, 'driprush_boutiques/' + shopPhone)).then((snap) => {
-                        const boutique = snap.val();
-                        if (boutique && boutique.gps) {
-                            window.calculateAndSetDeliveryFees(boutique.gps);
-                        }
-                    }).catch(() => {});
-                }
-            }
+            if (getPendingItems().length > 0) window.computeDeliveryFees();
         };
 
         let currentChatUnsub = null;
@@ -1307,6 +1465,7 @@
         window.__drip = {
             db, ref, onValue, get, set, push, update,
             getCtx: () => ({ cart, deliveryFee, deliveryTypeSelected, clientCoords, appliedCodePromo, promos, selectedItem, getPrixFinal, allProducts, getReductionPercent }),
+            buildShopOrders: (n, p, a, g) => window.buildShopOrders(n, p, a, g),
             openArticle: (id) => {
                 const p = allProducts.find(x => x.id === id);
                 if (!p) return false;
@@ -1399,22 +1558,24 @@
             const addr = (document.getElementById('c-addr') || {}).value || '';
             if (!name.trim() || !phone.trim() || !addr.trim()) return toast('Remplis ton nom, ton numéro et ton adresse !', true);
             if (ctx.deliveryTypeSelected === '') return toast('Choisis un mode de livraison !', true);
-            if (!ctx.clientCoords) return toast('📍 Choisis la livraison pour capturer ta position !', true);
+            if (!ctx.clientCoords) return toast('📍 Active ta localisation pour la livraison !', true);
 
             const gps = 'https://www.google.com/maps?q=' + ctx.clientCoords.lat + ',' + ctx.clientCoords.lng;
-            const subtotal = items.reduce((s, i) => s + ctx.getPrixFinal(i), 0);
-            let total = subtotal + (ctx.deliveryFee || 0);
-            if (ctx.appliedCodePromo) total = Math.round(total * (1 - ctx.appliedCodePromo / 100));
+            const built = d.buildShopOrders(name.trim(), phone.trim(), addr.trim(), gps);
+            if (!built || built.grandTotal <= 0) return toast('Erreur de calcul du panier', true);
 
-            const f = items[0];
+            const allItems = [];
+            built.orders.forEach(o => (o.itemsDetail || []).forEach(it => allItems.push(it)));
+
             const linkId = Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
             d.set(d.ref(d.db, 'driprush_payment_links/' + linkId), {
-                items: items.map(i => ({ name: i.name, size: i.size || 'Unique', color: i.color || '', price: ctx.getPrixFinal(i), image: i.image || '' })),
+                orders: built.orders,
+                items: allItems,
                 clientName: name.trim(), phone: phone.trim(), address: addr.trim(), clientGPS: gps,
-                total, subtotal, deliveryFee: ctx.deliveryFee || 0, deliveryMode: ctx.deliveryTypeSelected || 'standard',
-                shopPhone: f.shopPhone || '2290147535343', shopName: f.shop || 'Driprush',
-                shopGPS: f.shopGPS || '', shopMomo: f.shopMomo || f.shopPhone || '',
-                codePromo: (ctx.appliedCodePromo && ctx.promos && ctx.promos.codePromo) ? ctx.promos.codePromo.code : null,
+                total: built.grandTotal,
+                deliveryFee: built.orders.reduce((a, o) => a + (o.deliveryFee || 0), 0),
+                deliveryMode: ctx.deliveryTypeSelected || 'standard',
+                shopCount: built.orders.length,
                 status: 'pending_payment', createdAt: Date.now(), expiresAt: Date.now() + 86400000
             }).then(() => {
                 const payUrl = location.origin + location.pathname + '?pay=' + linkId;
@@ -1465,6 +1626,8 @@
             const d = D(); if (!d) return;
             const btn = document.getElementById('pay-link-btn');
             if (btn) { btn.innerText = '⏳ Connexion...'; btn.disabled = true; }
+            const orders = (o.orders && o.orders.length) ? o.orders : null;
+
             const widget = FedaPay.init({
                 public_key: 'pk_live_1EVs9lvE_nNNKUI2TEOI-qvB',
                 environment: 'live',
@@ -1475,24 +1638,33 @@
                     if (btn) { btn.innerText = '💳 Payer ' + o.total.toLocaleString() + ' F'; btn.disabled = false; }
                     const st = resp && resp.transaction && resp.transaction.status;
                     if (st !== 'approved' && st !== 'approved_partially') { alert('❌ Paiement non validé. Réessaie.'); return; }
-                    const orderRef = d.push(d.ref(d.db, 'driprush_orders'));
-                    d.set(orderRef, {
+
+                    const toCreate = orders || [{
                         clientName: o.clientName, phone: o.phone, address: o.address, clientGPS: o.clientGPS,
                         shopName: o.shopName, shopGPS: o.shopGPS, shopPhone: o.shopPhone, shopMomo: o.shopMomo,
-                        items: o.items.map(i => i.name + ' [' + i.size + (i.color ? ', ' + i.color : '') + ']').join(', '),
-                        itemImages: o.items.map(i => i.image).filter(Boolean),
+                        items: (o.items || []).map(i => i.name + ' [' + i.size + '] x' + (i.qty || 1)).join(', '),
+                        itemImages: (o.items || []).map(i => i.image).filter(Boolean),
+                        itemsDetail: o.items || [],
                         deliveryMode: o.deliveryMode, deliveryFee: o.deliveryFee, total: o.total,
                         commission: Math.round(o.total * 0.10), montantBoutique: o.total - Math.round(o.total * 0.10),
-                        codePromo: o.codePromo || null, status: 'Payée', timestamp: Date.now(), paidViaLink: true
-                    }).then(() => {
+                        timestamp: Date.now()
+                    }];
+
+                    Promise.all(toCreate.map(x => {
+                        const r = d.push(d.ref(d.db, 'driprush_orders'));
+                        return d.set(r, Object.assign({}, x, { status: 'Payée', timestamp: Date.now(), paidViaLink: true }));
+                    })).then(() => {
                         d.update(d.ref(d.db, 'driprush_payment_links/' + linkId), { status: 'paid' });
                         document.getElementById('pay-link-content').innerHTML =
                             '<div class="text-center py-16"><p class="text-5xl mb-4">✅</p><p class="text-lime font-display text-xl uppercase mb-2">Paiement validé !</p>' +
-                            '<p class="text-gray-300 text-xs leading-relaxed">La commande de ' + o.clientName + ' est confirmée.<br>La livraison se fera à son adresse.</p></div>';
-                        fetch('https://driprush-webhook.onrender.com/notify-shop', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ shopPhone: o.shopPhone, clientName: o.clientName, productName: 'une commande payée par lien' })
-                        }).catch(() => {});
+                            '<p class="text-gray-300 text-xs leading-relaxed">La commande de ' + o.clientName + ' est confirmée.<br>' +
+                            (toCreate.length > 1 ? toCreate.length + ' boutiques ont été prévenues.' : 'La boutique a été prévenue.') + '</p></div>';
+                        toCreate.forEach(x => {
+                            fetch('https://driprush-webhook.onrender.com/notify-shop', {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ shopPhone: x.shopPhone, clientName: o.clientName, productName: 'une commande payée par lien' })
+                            }).catch(() => {});
+                        });
                     });
                 }
             });
@@ -1699,6 +1871,7 @@
             <div id="cart-items-list" class="flex-1 px-2 mb-4"></div>
             <div class="space-y-6 pb-10">
                 <div class="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-center"><p class="text-[9px] text-blue-600 font-bold uppercase tracking-wide"><i class="fa-solid fa-location-dot mr-1"></i> Frais calculés automatiquement selon la distance boutique → toi</p></div>
+                <div id="multi-shop-info" class="hidden"></div>
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Mode de Livraison</p>
                 <div class="grid grid-cols-2 gap-3">
                     <button onclick="window.setShipping('standard', this)" class="ship-btn border border-gray-200 p-4 rounded-2xl text-[10px] font-black uppercase shadow-sm transition" id="lbl-std">🚲 Normale</button>

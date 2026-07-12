@@ -1241,13 +1241,28 @@
             }
             filtered.forEach((o, idx) => {
                 const isTest = o.status === 'Payée (TEST)';
-                // Photos des articles
-                const photos = o.itemImages && o.itemImages.length > 0 ? o.itemImages : [];
-                const photosHtml = photos.length > 0
-                    ? `<div class="flex gap-2 mb-3 overflow-x-auto hide-scrollbar">
-                        ${photos.map(img => `<img src="${img}" class="w-16 h-16 object-cover rounded-xl flex-shrink-0 border border-white/10">`).join('')}
-                       </div>`
-                    : '';
+                // 📦 Détail des articles : photo + taille/couleur + quantité
+                let photosHtml = '';
+                if (o.itemsDetail && o.itemsDetail.length > 0) {
+                    photosHtml = '<div class="space-y-2 mb-3">' + o.itemsDetail.map(it => {
+                        const q = it.qty || 1;
+                        const variante = (it.size || 'Unique') + (it.color ? ' · ' + it.color : '');
+                        const img = it.image ? '<img src="' + it.image + '" class="w-14 h-14 object-cover rounded-xl flex-shrink-0 border border-white/10">' : '<div class="w-14 h-14 rounded-xl bg-white/5 flex-shrink-0"></div>';
+                        return '<div class="flex items-center gap-3 bg-black/30 rounded-2xl p-2">' + img +
+                            '<div class="flex-1 min-w-0">' +
+                            '<p class="text-[11px] font-black uppercase truncate">' + it.name + '</p>' +
+                            '<p class="text-[9px] text-gray-500 uppercase">' + variante + '</p>' +
+                            '<p class="text-[10px] text-drip font-black">' + ((it.price || 0) * q).toLocaleString() + ' F</p>' +
+                            '</div>' +
+                            '<span class="text-[11px] font-black bg-drip text-white px-2.5 py-1 rounded-lg flex-shrink-0">x' + q + '</span>' +
+                            '</div>';
+                    }).join('') + '</div>';
+                } else {
+                    const photos = (o.itemImages && o.itemImages.length > 0) ? o.itemImages : [];
+                    photosHtml = photos.length > 0
+                        ? '<div class="flex gap-2 mb-3 overflow-x-auto hide-scrollbar">' + photos.map(img => '<img src="' + img + '" class="w-16 h-16 object-cover rounded-xl flex-shrink-0 border border-white/10">').join('') + '</div>'
+                        : '';
+                }
                 // Frais de livraison
                 const deliveryLabel = o.deliveryMode === 'express' ? '🚀 Livraison rapide' : '🚲 Livraison normale';
                 const deliveryFeeDisplay = o.deliveryFee > 0
