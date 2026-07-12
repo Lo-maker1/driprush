@@ -882,6 +882,7 @@
                     if (hasUnread) chatDot.classList.remove('hidden');
                 }).catch(() => {});
             }
+            window.resetModalQty();
             try { if (window.renderSimilar) window.renderSimilar(p); } catch(e) {}
             document.getElementById('product-modal').classList.remove('hidden');
         };
@@ -1071,19 +1072,42 @@
             if (promos.livraisonGratuiteDes && promos.livraisonGratuiteDes.active && clientCoords) window.computeDeliveryFees();
         };
 
+        let modalQty = 1;
+
+        window.changeModalQty = (delta) => {
+            const q = modalQty + delta;
+            if (q < 1) return;
+            if (q > 20) return window.showToast('Quantité maximum : 20', true);
+            modalQty = q;
+            const el = document.getElementById('modal-qty');
+            if (el) el.innerText = modalQty;
+            const btn = document.getElementById('add-cart-btn');
+            if (btn) btn.innerText = modalQty > 1 ? 'Ajouter ' + modalQty + ' au panier 🛍️' : 'Ajouter au panier 🛍️';
+        };
+
+        window.resetModalQty = () => {
+            modalQty = 1;
+            const el = document.getElementById('modal-qty');
+            if (el) el.innerText = '1';
+            const btn = document.getElementById('add-cart-btn');
+            if (btn) btn.innerText = 'Ajouter au panier 🛍️';
+        };
+
         window.addToCart = () => {
             if (!selectedItem || !selectedItem.size) return window.showToast("Sélectionne une taille d'abord !", true);
             const sp = window._currentSizePrices;
             const basePrice = (sp && sp[selectedItem.size]) ? sp[selectedItem.size] : selectedItem.price;
+            const ajout = modalQty > 0 ? modalQty : 1;
             const pend = getPendingItems();
             const same = pend.find(i => i.id === selectedItem.id && i.size === selectedItem.size && (i.color || '') === (selectedItem.color || ''));
             if (same) {
-                same.qty = cartQty(same) + 1;
+                same.qty = Math.min(20, cartQty(same) + ajout);
                 window.showToast('Quantité mise à jour ✅ (x' + same.qty + ')');
             } else {
-                cart.push(Object.assign({}, selectedItem, { price: basePrice, qty: 1, validated: false }));
-                window.showToast('Ajouté ✅ — direction le panier quand tu veux');
+                cart.push(Object.assign({}, selectedItem, { price: basePrice, qty: ajout, validated: false }));
+                window.showToast(ajout > 1 ? ajout + ' articles ajoutés ✅' : 'Ajouté ✅ — direction le panier quand tu veux');
             }
+            window.resetModalQty();
             window.updateCartUI(); window.bounceCartIcon();
             document.getElementById('product-modal').classList.add('hidden');
         };
@@ -2053,7 +2077,15 @@
                     </div>
                     <div id="similar-grid" class="flex gap-3 overflow-x-auto hide-scrollbar pb-1"></div>
                 </div>
-                <button onclick="window.addToCart()" class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase italic shadow-xl text-sm active:scale-95 transition">Ajouter au panier 🛍️</button>
+                <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-2xl p-3">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quantité</p>
+                    <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-1">
+                        <button onclick="window.changeModalQty(-1)" class="w-9 h-9 text-black font-black text-lg active:scale-90 transition">−</button>
+                        <span id="modal-qty" class="text-sm font-black w-7 text-center">1</span>
+                        <button onclick="window.changeModalQty(1)" class="w-9 h-9 text-black font-black text-lg active:scale-90 transition">+</button>
+                    </div>
+                </div>
+                <button id="add-cart-btn" onclick="window.addToCart()" class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase italic shadow-xl text-sm active:scale-95 transition">Ajouter au panier 🛍️</button>
             </div>
         </div>
         <div id="zoom-modal" onclick="window.toggleZoom(false)" class="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 hidden animate-fade-in cursor-zoom-out">
