@@ -882,6 +882,7 @@
                     if (hasUnread) chatDot.classList.remove('hidden');
                 }).catch(() => {});
             }
+            try { if (window.renderSimilar) window.renderSimilar(p); } catch(e) {}
             document.getElementById('product-modal').classList.remove('hidden');
         };
 
@@ -1305,7 +1306,7 @@
         // 🔌 PONT vers le module des nouvelles fonctionnalités (aucune logique ici)
         window.__drip = {
             db, ref, onValue, get, set, push, update,
-            getCtx: () => ({ cart, deliveryFee, deliveryTypeSelected, clientCoords, appliedCodePromo, promos, selectedItem, getPrixFinal }),
+            getCtx: () => ({ cart, deliveryFee, deliveryTypeSelected, clientCoords, appliedCodePromo, promos, selectedItem, getPrixFinal, allProducts, getReductionPercent }),
             openArticle: (id) => {
                 const p = allProducts.find(x => x.id === id);
                 if (!p) return false;
@@ -1498,6 +1499,61 @@
             widget.open();
         };
 
+        // ---------- ✨ PRODUITS SIMILAIRES ----------
+        window.renderSimilar = (p) => {
+            const d = D(); if (!d || !p) return;
+            const section = document.getElementById('similar-section');
+            const grid = document.getElementById('similar-grid');
+            if (!section || !grid) return;
+
+            const ctx = d.getCtx();
+            const all = ctx.allProducts || [];
+            const prix = (x) => ctx.getPrixFinal(x);
+            const basePrice = parseInt(p.price) || 0;
+
+            // Score de similarité : type > genre > boutique > prix proche
+            const scored = all
+                .filter(x => x.id !== p.id)
+                .map(x => {
+                    let s = 0;
+                    if (x.type && p.type && x.type === p.type) s += 5;
+                    if (x.genre && p.genre && x.genre === p.genre) s += 3;
+                    if (x.shopPhone && p.shopPhone && x.shopPhone === p.shopPhone) s += 2;
+                    const xp = parseInt(x.price) || 0;
+                    if (basePrice > 0 && xp > 0) {
+                        const ecart = Math.abs(xp - basePrice) / basePrice;
+                        if (ecart <= 0.3) s += 2;
+                        else if (ecart <= 0.6) s += 1;
+                    }
+                    return { x, s };
+                })
+                .filter(o => o.s > 0)
+                .sort((a, b) => b.s - a.s || (Math.random() - 0.5))
+                .slice(0, 10)
+                .map(o => o.x);
+
+            if (scored.length === 0) { section.classList.add('hidden'); grid.innerHTML = ''; return; }
+
+            grid.innerHTML = scored.map(x => {
+                const img = (x.images && x.images[0]) || x.image || '';
+                const pf = prix(x);
+                const red = ctx.getReductionPercent ? ctx.getReductionPercent(x) : 0;
+                const safeId = String(x.id).replace(/'/g, "\\'");
+                return '<div onclick="window.openModal(\'' + safeId + '\')" class="flex-shrink-0 w-32 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm cursor-pointer active:scale-95 transition">' +
+                    (red > 0 ? '<span class="absolute m-1 bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">-' + red + '%</span>' : '') +
+                    '<img src="' + img + '" class="w-full h-28 object-cover" loading="lazy">' +
+                    '<div class="p-2">' +
+                    '<p class="text-[9px] font-bold text-gray-800 uppercase leading-tight line-clamp-2 h-6">' + x.name + '</p>' +
+                    (red > 0 ? '<p class="text-[8px] text-gray-400 line-through">' + parseInt(x.price).toLocaleString() + ' F</p>' : '') +
+                    '<p class="text-[10px] font-black text-drip mt-0.5">' + pf.toLocaleString() + ' F</p>' +
+                    '</div></div>';
+            }).join('');
+
+            section.classList.remove('hidden');
+            const modal = document.querySelector('#product-modal > div');
+            if (modal) modal.scrollTop = 0;
+        };
+
         // ---------- 🔍 PARAMÈTRES D'URL ----------
         const qs = new URLSearchParams(location.search);
         const payId = qs.get('pay');
@@ -1620,6 +1676,13 @@
                 <div><p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Taille</p><div id="size-container" class="flex flex-wrap gap-2"></div></div>
                 <div id="color-section" class="hidden"><p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Couleur</p><div id="color-container" class="flex flex-wrap gap-2"></div></div>
                 <button onclick="window.openChatModal()" class="w-full bg-gray-100 text-black py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition relative">💬 Discuter avec la boutique<span id="chat-unread-dot" class="hidden absolute top-2 right-4 w-2.5 h-2.5 bg-red-500 rounded-full"></span></button>
+                <div id="similar-section" class="hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">✨ Tu aimeras aussi</p>
+                        <span class="text-[9px] text-drip font-black uppercase">Similaires</span>
+                    </div>
+                    <div id="similar-grid" class="flex gap-3 overflow-x-auto hide-scrollbar pb-1"></div>
+                </div>
                 <button onclick="window.addToCart()" class="w-full bg-black text-white py-5 rounded-2xl font-black uppercase italic shadow-xl text-sm active:scale-95 transition">Ajouter au panier 🛍️</button>
             </div>
         </div>
