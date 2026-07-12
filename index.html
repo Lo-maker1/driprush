@@ -1835,41 +1835,83 @@
         function watchChats() {
             const d = D(); if (!d) return;
             const m = myChats();
+
             Object.keys(m).forEach(productId => {
                 const info = m[productId];
                 if (!info || !info.chatId || !info.shopPhone) return;
+
+                // 🛡️ 1re fois qu'on voit cette discussion : on la considère comme lue.
+                //    Sans ça, TOUT l'historique des anciennes discussions déclencherait l'alarme.
+                if (!info.lastReadByClient) {
+                    const mm = myChats();
+                    mm[productId] = Object.assign({}, mm[productId], { lastReadByClient: Date.now() });
+                    saveMyChats(mm);
+                }
+
                 const key = info.shopPhone + '/' + info.chatId;
                 if (watched[key]) return;
                 watched[key] = true;
 
                 d.onValue(d.ref(d.db, 'driprush_chats/' + info.shopPhone + '/' + info.chatId), (snap) => {
                     const chat = snap.val();
-                    if (!chat || !chat.messages) return;
+
+                    // 🛡️ Discussion supprimée / boutique supprimée -> on nettoie, aucune alerte
+                    if (!chat) {
+                        const mm = myChats(); delete mm[productId]; saveMyChats(mm);
+                        unreadChats = unreadChats.filter(u => u.productId !== productId);
+                        refreshChatFab(); return;
+                    }
+
+                    // 🛡️ Cette discussion appartient-elle bien à CE produit et à CE client ?
+                    const monNom = localStorage.getItem('driprush_client_name') || '';
+                    if (chat.productId && chat.productId !== productId) return;
+                    if (chat.clientName && monNom && chat.clientName !== monNom) return;
+
+                    if (!chat.messages) { unreadChats = unreadChats.filter(u => u.productId !== productId); refreshChatFab(); return; }
+
                     const cur = myChats()[productId] || {};
                     const lastRead = cur.lastReadByClient || 0;
                     const msgs = Object.values(chat.messages).filter(x => x.sender === 'shop' && x.timestamp > lastRead);
+
                     if (msgs.length === 0) {
                         unreadChats = unreadChats.filter(u => u.productId !== productId);
                         refreshChatFab(); return;
                     }
-                    // Chat déjà ouvert sur ce produit ? -> lu automatiquement
-                    const chatOpen = !document.getElementById('chat-modal').classList.contains('hidden');
+
+                    // Chat déjà ouvert sur ce produit -> lu automatiquement, pas d'alarme
+                    const chatModal = document.getElementById('chat-modal');
+                    const chatOpen = chatModal && !chatModal.classList.contains('hidden');
                     const ctx = D().getCtx();
                     if (chatOpen && ctx.selectedItem && ctx.selectedItem.id === productId) {
                         const mm = myChats(); if (mm[productId]) { mm[productId].lastReadByClient = Date.now(); saveMyChats(mm); }
                         unreadChats = unreadChats.filter(u => u.productId !== productId);
                         refreshChatFab(); return;
                     }
+
+                    // Nom réel de la boutique (via le produit)
+                    let shopName = 'La boutique';
+                    const prod = (ctx.allProducts || []).find(p => p.id === productId);
+                    if (prod && prod.shopName) shopName = prod.shopName;
+
                     const last = msgs.sort((a, b) => b.timestamp - a.timestamp)[0];
-                    const already = unreadChats.find(u => u.productId === productId);
                     const entry = {
-                        productId: productId, shopPhone: info.shopPhone,
-                        shopName: chat.shopName || 'La boutique',
-                        productName: chat.productName || 'ton article',
+                        productId: productId, shopPhone: info.shopPhone, shopName: shopName,
+                        productName: chat.productName || (prod ? prod.name : 'ton article'),
                         text: last.text, ts: last.timestamp
                     };
-                    if (already) { Object.assign(already, entry); refreshChatFab(); }
-                    else { unreadChats.push(entry); refreshChatFab(); triggerChatAlarm(); }
+
+                    const already = unreadChats.find(u => u.productId === productId);
+                    if (already) {
+                        // Nouvelle réponse dans une discussion déjà signalée -> on met à jour sans re-sonner
+                        const nouveau = last.timestamp > (already.ts || 0);
+                        Object.assign(already, entry);
+                        refreshChatFab();
+                        if (nouveau) chatBeep();
+                    } else {
+                        unreadChats.push(entry);
+                        refreshChatFab();
+                        triggerChatAlarm();
+                    }
                 }, () => {});
             });
         }
