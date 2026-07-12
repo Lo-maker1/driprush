@@ -281,7 +281,12 @@
             <div class="space-y-2 mb-3">
                 <input type="text" id="music-title-input" placeholder="TITRE DE LA MUSIQUE" class="w-full input-dark p-3 rounded-xl text-sm font-bold uppercase">
                 <input type="text" id="music-artist-input" placeholder="ARTISTE / NOM" class="w-full input-dark p-3 rounded-xl text-sm font-bold">
-                <input type="text" id="music-url-input" placeholder="LIEN DIRECT MP3 (ex: https://...mp3)" class="w-full input-dark p-3 rounded-xl text-xs font-bold">
+                <div class="flex gap-2">
+                    <input type="text" id="music-url-input" placeholder="LIEN DIRECT .MP3" class="flex-1 input-dark p-3 rounded-xl text-xs font-bold">
+                    <button onclick="window.testMusicUrl()" class="bg-white/10 border border-white/15 text-white px-4 rounded-xl text-[10px] font-black uppercase active:scale-95 transition whitespace-nowrap">▶️ Tester</button>
+                </div>
+                <p id="music-url-status" class="text-[9px] text-gray-500"></p>
+                <p class="text-[9px] text-gray-600 leading-snug">⚠️ Le lien doit finir par <span class="text-drip font-black">.mp3</span> (fichier audio direct). Un lien YouTube, Spotify ou SoundCloud <span class="text-red-400 font-black">ne fonctionnera pas</span>.</p>
             </div>
             <button onclick="window.addMusicTrack()" class="w-full bg-drip text-white font-black py-3 rounded-xl text-xs uppercase active:scale-95 transition">➕ Ajouter à la playlist</button>
         </div>
@@ -351,7 +356,7 @@
         </div>
 
         <div class="grid grid-cols-5 gap-1 mb-5">
-            <button onclick="window.setTab('active')" id="tab-active" class="bg-drip text-white py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition">À traiter</button>
+            <button onclick="window.setTab('active')" id="tab-active" class="bg-drip text-white py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition relative">À traiter<span id="orders-badge" class="hidden absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span></button>
             <button onclick="window.setTab('done')" id="tab-done" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition">Livrées</button>
             <button onclick="window.setTab('products')" id="tab-products" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition">Articles</button>
             <button onclick="window.setTab('chats')" id="tab-chats" class="bg-white/5 text-gray-400 py-3 rounded-xl text-[7px] font-black uppercase tracking-wide transition relative">
@@ -1200,12 +1205,93 @@
             }, 1500);
 
             const ordersQuery = query(ref(db, 'driprush_orders'), orderByChild('shopPhone'), equalTo(currentShopPhone));
+            loadSeenOrders();
+            startReminder();
             onValue(ordersQuery, (snapshot) => {
                 const data = snapshot.val();
                 lastOrdersSnapshot = data ? Object.keys(data).map(id => ({ id, ...data[id] })).reverse() : [];
-                if (currentTab !== 'products' && currentTab !== 'chats' && currentTab !== 'messages') window.renderOrders();
+                if (currentTab !== 'products' && currentTab !== 'chats' && currentTab !== 'messages' && currentTab !== 'promos') window.renderOrders();
+                window.refreshOrdersBadge();
+                const nouvelles = lastOrdersSnapshot.filter(o => isPendingOrder(o) && !seenOrders.has(o.id));
+                if (nouvelles.length > 0) window.startOrderAlarm(nouvelles.length);
             });
         };
+
+        // ============================================================
+        // 🔔 SYSTÈME ANTI-COMMANDE-RATÉE (indépendant du serveur)
+        // ============================================================
+        let seenOrders = new Set();
+        let alarmTimer = null;
+        let reminderTimer = null;
+        let beepCtx = null;
+
+        function isPendingOrder(o) { return o.status === 'Payée' || o.status === 'Payée (TEST)'; }
+
+        function loadSeenOrders() {
+            try { seenOrders = new Set(JSON.parse(localStorage.getItem('driprush_seen_orders_' + currentShopPhone) || '[]')); }
+            catch (e) { seenOrders = new Set(); }
+        }
+        function saveSeenOrders() {
+            try { localStorage.setItem('driprush_seen_orders_' + currentShopPhone, JSON.stringify(Array.from(seenOrders))); } catch (e) {}
+        }
+
+        function beep() {
+            try {
+                if (!beepCtx) beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (beepCtx.state === 'suspended') beepCtx.resume();
+                [0, 0.28].forEach(delay => {
+                    const o = beepCtx.createOscillator(), g = beepCtx.createGain();
+                    o.connect(g); g.connect(beepCtx.destination);
+                    o.type = 'sine'; o.frequency.value = 880;
+                    const t = beepCtx.currentTime + delay;
+                    g.gain.setValueAtTime(0.0001, t);
+                    g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+                    o.start(t); o.stop(t + 0.25);
+                });
+            } catch (e) {}
+        }
+
+        window.refreshOrdersBadge = () => {
+            const n = lastOrdersSnapshot.filter(isPendingOrder).length;
+            const badge = document.getElementById('orders-badge');
+            if (badge) { badge.innerText = n; badge.classList.toggle('hidden', n === 0); }
+            return n;
+        };
+
+        window.startOrderAlarm = (count) => {
+            const el = document.getElementById('new-order-count');
+            if (el) el.innerText = count;
+            const modal = document.getElementById('new-order-modal');
+            if (modal) modal.classList.remove('hidden');
+            if (alarmTimer) clearInterval(alarmTimer);
+            beep();
+            alarmTimer = setInterval(beep, 2000);
+            try { if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); } catch (e) {}
+            try {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('🔔 NOUVELLE COMMANDE DRIPRUSH', { body: count + ' commande(s) à traiter maintenant', tag: 'driprush-order', requireInteraction: true });
+                }
+            } catch (e) {}
+        };
+
+        window.stopOrderAlarm = () => {
+            if (alarmTimer) { clearInterval(alarmTimer); alarmTimer = null; }
+            const modal = document.getElementById('new-order-modal');
+            if (modal) modal.classList.add('hidden');
+            lastOrdersSnapshot.forEach(o => { if (isPendingOrder(o)) seenOrders.add(o.id); });
+            saveSeenOrders();
+            window.setTab('active');
+        };
+
+        // Rappel toutes les 5 min tant qu'il reste des commandes à traiter
+        function startReminder() {
+            if (reminderTimer) clearInterval(reminderTimer);
+            reminderTimer = setInterval(() => {
+                const n = lastOrdersSnapshot.filter(isPendingOrder).length;
+                if (n > 0 && !alarmTimer) { beep(); showNotifToast('📦 Rappel', n + ' commande(s) en attente de traitement'); }
+            }, 5 * 60 * 1000);
+        }
 
         window.setTab = (tab) => {
             currentTab = tab;
@@ -1301,6 +1387,7 @@
         };
 
         window.markDelivered = (orderId) => {
+            seenOrders.add(orderId); saveSeenOrders();
             update(ref(db, 'driprush_orders/' + orderId), { status: 'Livrée', deliveredAt: Date.now() })
                 .catch(() => alert("Erreur, réessaie."));
         };
@@ -1854,6 +1941,20 @@
             });
         };
 
+        let testAudio = null;
+        window.testMusicUrl = () => {
+            const url = document.getElementById('music-url-input').value.trim();
+            const st = document.getElementById('music-url-status');
+            if (!url) { st.innerHTML = '<span class="text-red-400 font-bold">Colle un lien d\'abord</span>'; return; }
+            st.innerHTML = '<span class="text-gray-400">⏳ Test en cours...</span>';
+            try { if (testAudio) { testAudio.pause(); } } catch (e) {}
+            testAudio = new Audio(url);
+            testAudio.volume = 0.5;
+            testAudio.oncanplay = () => { st.innerHTML = '<span class="text-lime font-bold">✅ Lien valide — tu entends la musique ? Alors ajoute-la.</span>'; };
+            testAudio.onerror = () => { st.innerHTML = '<span class="text-red-400 font-bold">❌ Lien illisible. Utilise un vrai fichier .mp3 (Cloudinary, ton serveur...).</span>'; };
+            testAudio.play().catch(() => { st.innerHTML = '<span class="text-red-400 font-bold">❌ Impossible de lire ce lien.</span>'; });
+        };
+
         window.addMusicTrack = () => {
             const title = document.getElementById('music-title-input').value.trim();
             const artist = document.getElementById('music-artist-input').value.trim();
@@ -1982,5 +2083,14 @@
             }
         }
     </script>
+    <div id="new-order-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[90] flex items-center justify-center p-6">
+        <div class="bg-ink w-full max-w-sm rounded-3xl p-7 border-2 border-drip text-center space-y-4" style="box-shadow:0 0 60px rgba(255,77,28,0.45)">
+            <div class="text-6xl animate-bounce">🔔</div>
+            <h3 class="text-lg font-display uppercase text-drip tracking-tight">Nouvelle commande !</h3>
+            <p class="text-sm text-white"><span id="new-order-count" class="text-3xl font-display text-lime">0</span><br><span class="text-[11px] text-gray-400 uppercase font-bold">commande(s) à traiter</span></p>
+            <p class="text-[10px] text-gray-400 leading-relaxed">Prépare le colis et marque la commande comme livrée une fois expédiée.</p>
+            <button onclick="window.stopOrderAlarm()" class="w-full bg-drip text-white font-display py-4 rounded-2xl text-sm uppercase active:scale-95 transition">Voir la commande 📦</button>
+        </div>
+    </div>
 </body>
 </html>

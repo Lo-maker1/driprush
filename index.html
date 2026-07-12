@@ -1489,8 +1489,9 @@
         let trackIdx = 0;
         let musicOn = localStorage.getItem('driprush_music') !== 'off';
         let musicStarted = false;
+        let failCount = 0;
         let audio = null;
-        try { audio = new Audio(); audio.volume = 0.4; } catch (e) { audio = null; }
+        try { audio = new Audio(); audio.volume = 0.4; audio.preload = 'auto'; } catch (e) { audio = null; }
 
         function refreshMusicBtn() {
             const b = document.getElementById('music-toggle-btn');
@@ -1501,15 +1502,30 @@
         function playIdx(i) {
             if (!audio || playlist.length === 0) return;
             trackIdx = ((i % playlist.length) + playlist.length) % playlist.length;
-            try { audio.src = playlist[trackIdx].url; audio.play().catch(() => {}); } catch (e) {}
+            const t = playlist[trackIdx];
+            try {
+                audio.src = t.url;
+                const pr = audio.play();
+                if (pr && pr.then) {
+                    pr.then(() => { musicStarted = true; failCount = 0; console.log('🎵 Lecture :', t.title); })
+                      .catch((err) => { console.warn('🎵 Lecture refusée/impossible :', t.url, err && err.name); });
+                } else { musicStarted = true; }
+            } catch (e) { console.warn('🎵 Erreur audio :', e); }
         }
+
         if (audio) {
-            audio.addEventListener('ended', () => { if (musicOn) playIdx(trackIdx + 1); });
-            audio.addEventListener('error', () => { if (musicOn) playIdx(trackIdx + 1); });
+            audio.addEventListener('ended', () => { if (musicOn) { failCount = 0; playIdx(trackIdx + 1); } });
+            audio.addEventListener('error', () => {
+                failCount++;
+                console.warn('🎵 Piste illisible (URL non valide ?) :', playlist[trackIdx] && playlist[trackIdx].url);
+                if (musicOn && failCount < playlist.length) playIdx(trackIdx + 1);
+                else if (failCount >= playlist.length) console.warn('🎵 Aucune piste lisible — vérifie que les liens sont des MP3 directs.');
+            });
         }
+
         function startMusic() {
             if (musicStarted || !musicOn || !audio || playlist.length === 0) return;
-            musicStarted = true;
+            failCount = 0;
             playIdx(Math.floor(Math.random() * playlist.length));
         }
         document.addEventListener('click', startMusic);
@@ -1523,6 +1539,17 @@
             else if (!musicStarted) startMusic();
             else { try { if (audio) audio.play().catch(() => {}); } catch (e) {} }
         };
+
+        // Diagnostic : tape  __musicDebug()  dans la console du navigateur
+        window.__musicDebug = () => ({
+            pistesChargees: playlist.length,
+            pistes: playlist.map(p => p.title + ' → ' + p.url),
+            musiqueActivee: musicOn,
+            lectureDemarree: musicStarted,
+            audioDispo: !!audio,
+            srcActuelle: audio ? audio.src : null,
+            enPause: audio ? audio.paused : null
+        });
 
         const d = D();
         if (d) {
@@ -1725,6 +1752,135 @@
             const modal = document.querySelector('#product-modal > div');
             if (modal) modal.scrollTop = 0;
         };
+
+        // ---------- 💬 ALERTE : LA BOUTIQUE A RÉPONDU ----------
+        let chatBeepCtx = null, chatAlarmTimer = null, chatReminder = null;
+        let unreadChats = [];
+        const watched = {};
+
+        function myChats() { try { return JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch (e) { return {}; } }
+        function saveMyChats(m) { try { localStorage.setItem('driprush_my_chats', JSON.stringify(m)); } catch (e) {} }
+
+        function chatBeep() {
+            try {
+                if (!chatBeepCtx) chatBeepCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (chatBeepCtx.state === 'suspended') chatBeepCtx.resume();
+                [0, 0.25].forEach(dl => {
+                    const o = chatBeepCtx.createOscillator(), g = chatBeepCtx.createGain();
+                    o.connect(g); g.connect(chatBeepCtx.destination);
+                    o.type = 'sine'; o.frequency.value = 760;
+                    const t = chatBeepCtx.currentTime + dl;
+                    g.gain.setValueAtTime(0.0001, t);
+                    g.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+                    o.start(t); o.stop(t + 0.23);
+                });
+            } catch (e) {}
+        }
+
+        function refreshChatFab() {
+            const fab = document.getElementById('chat-alert-fab');
+            const cnt = document.getElementById('chat-alert-count');
+            if (cnt) cnt.innerText = unreadChats.length;
+            if (fab) fab.classList.toggle('hidden', unreadChats.length === 0);
+            if (unreadChats.length === 0 && chatAlarmTimer) { clearInterval(chatAlarmTimer); chatAlarmTimer = null; }
+        }
+
+        function triggerChatAlarm() {
+            chatBeep();
+            if (chatAlarmTimer) clearInterval(chatAlarmTimer);
+            chatAlarmTimer = setInterval(chatBeep, 2500);
+            try { if (navigator.vibrate) navigator.vibrate([250, 120, 250]); } catch (e) {}
+            try {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('💬 Driprush — une boutique t\'a répondu', { body: 'Ouvre ta discussion pour voir la réponse', tag: 'driprush-chat' });
+                }
+            } catch (e) {}
+            window.openChatAlert();
+        }
+
+        window.openChatAlert = () => {
+            const box = document.getElementById('chat-alert-list');
+            if (!box) return;
+            if (unreadChats.length === 0) { box.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-4">Aucune nouvelle réponse</p>'; }
+            else {
+                box.innerHTML = unreadChats.map(u =>
+                    '<div onclick="window.openChatFromAlert(\'' + u.productId + '\')" class="bg-gray-50 border border-gray-200 rounded-2xl p-3 cursor-pointer active:scale-95 transition">' +
+                    '<div class="flex justify-between items-center mb-1"><p class="text-[10px] font-black uppercase text-green-600">🏪 ' + u.shopName + '</p><span class="w-2 h-2 bg-red-500 rounded-full"></span></div>' +
+                    '<p class="text-[9px] text-gray-400 uppercase font-bold mb-1">' + u.productName + '</p>' +
+                    '<p class="text-[11px] text-gray-700 line-clamp-2">' + u.text + '</p>' +
+                    '<p class="text-[9px] text-drip font-black uppercase mt-1">Répondre →</p></div>'
+                ).join('');
+            }
+            document.getElementById('chat-alert-modal').classList.remove('hidden');
+        };
+
+        window.closeChatAlert = () => {
+            if (chatAlarmTimer) { clearInterval(chatAlarmTimer); chatAlarmTimer = null; }
+            document.getElementById('chat-alert-modal').classList.add('hidden');
+        };
+
+        window.openChatFromAlert = (productId) => {
+            const m = myChats();
+            if (m[productId]) { m[productId].lastReadByClient = Date.now(); saveMyChats(m); }
+            unreadChats = unreadChats.filter(u => u.productId !== productId);
+            refreshChatFab();
+            window.closeChatAlert();
+            const ws = document.getElementById('welcome-screen'); if (ws) ws.classList.add('hidden');
+            const mc = document.getElementById('main-content'); if (mc) mc.classList.remove('hidden');
+            if (window.openModal) window.openModal(productId);
+            setTimeout(() => { if (window.openChatModal) window.openChatModal(); }, 350);
+        };
+
+        function watchChats() {
+            const d = D(); if (!d) return;
+            const m = myChats();
+            Object.keys(m).forEach(productId => {
+                const info = m[productId];
+                if (!info || !info.chatId || !info.shopPhone) return;
+                const key = info.shopPhone + '/' + info.chatId;
+                if (watched[key]) return;
+                watched[key] = true;
+
+                d.onValue(d.ref(d.db, 'driprush_chats/' + info.shopPhone + '/' + info.chatId), (snap) => {
+                    const chat = snap.val();
+                    if (!chat || !chat.messages) return;
+                    const cur = myChats()[productId] || {};
+                    const lastRead = cur.lastReadByClient || 0;
+                    const msgs = Object.values(chat.messages).filter(x => x.sender === 'shop' && x.timestamp > lastRead);
+                    if (msgs.length === 0) {
+                        unreadChats = unreadChats.filter(u => u.productId !== productId);
+                        refreshChatFab(); return;
+                    }
+                    // Chat déjà ouvert sur ce produit ? -> lu automatiquement
+                    const chatOpen = !document.getElementById('chat-modal').classList.contains('hidden');
+                    const ctx = D().getCtx();
+                    if (chatOpen && ctx.selectedItem && ctx.selectedItem.id === productId) {
+                        const mm = myChats(); if (mm[productId]) { mm[productId].lastReadByClient = Date.now(); saveMyChats(mm); }
+                        unreadChats = unreadChats.filter(u => u.productId !== productId);
+                        refreshChatFab(); return;
+                    }
+                    const last = msgs.sort((a, b) => b.timestamp - a.timestamp)[0];
+                    const already = unreadChats.find(u => u.productId === productId);
+                    const entry = {
+                        productId: productId, shopPhone: info.shopPhone,
+                        shopName: chat.shopName || 'La boutique',
+                        productName: chat.productName || 'ton article',
+                        text: last.text, ts: last.timestamp
+                    };
+                    if (already) { Object.assign(already, entry); refreshChatFab(); }
+                    else { unreadChats.push(entry); refreshChatFab(); triggerChatAlarm(); }
+                }, () => {});
+            });
+        }
+
+        watchChats();
+        setInterval(watchChats, 15000);
+
+        // Rappel toutes les 5 min tant qu'une réponse n'est pas lue
+        chatReminder = setInterval(() => {
+            if (unreadChats.length > 0 && !chatAlarmTimer) { chatBeep(); toast('💬 ' + unreadChats.length + ' réponse(s) de boutique non lue(s)'); }
+        }, 5 * 60 * 1000);
 
         // ---------- 🔍 PARAMÈTRES D'URL ----------
         const qs = new URLSearchParams(location.search);
@@ -2098,6 +2254,20 @@
                 <p class="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em] mt-1">Lien de paiement</p>
             </div>
             <div id="pay-link-content" class="space-y-4"></div>
+        </div>
+    </div>
+    <button id="chat-alert-fab" onclick="window.openChatAlert()" class="hidden fixed bottom-44 right-4 z-[66] bg-green-500 text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(34,197,94,0.5)] flex flex-col items-center justify-center active:scale-95 transition-all">
+        <i class="fa-solid fa-comment-dots text-base"></i>
+        <span class="text-[7px] font-black uppercase mt-0.5">Réponse</span>
+        <span id="chat-alert-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">0</span>
+    </button>
+
+    <div id="chat-alert-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[92] flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 text-center space-y-4 border-2 border-green-500" style="box-shadow:0 0 60px rgba(34,197,94,0.4)">
+            <div class="text-5xl animate-bounce">💬</div>
+            <h3 class="text-base font-display uppercase text-green-600 tracking-tight">La boutique t'a répondu !</h3>
+            <div id="chat-alert-list" class="space-y-2 max-h-64 overflow-y-auto text-left"></div>
+            <button onclick="window.closeChatAlert()" class="w-full bg-gray-100 text-black font-black py-3 rounded-2xl text-xs uppercase active:scale-95 transition">Plus tard</button>
         </div>
     </div>
 </body>
