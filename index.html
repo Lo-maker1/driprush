@@ -633,10 +633,6 @@
             promos = data || { reduction:{active:false,percent:0}, flashSale:{active:false,endsAt:0}, livraisonGratuite:{active:false}, livraisonGratuiteDes:{active:false,montant:0}, unAchetUnOffert:{active:false}, codePromo:{active:false,code:'',percent:0}, articlesDuJour:{active:false,ids:[]} };
             window.renderProducts(allProducts);
             window.updateCartUI();
-            if (window._pendingArticleOpen) {
-                const tid = window._pendingArticleOpen; window._pendingArticleOpen = null;
-                setTimeout(() => { const p = allProducts.find(x => x.id === tid); if (p) { document.getElementById('welcome-screen').classList.add('hidden'); document.getElementById('main-content').classList.remove('hidden'); window.openModal(tid); } }, 600);
-            }
             window.updateFlashSaleBanner();
             window.updatePromosBanners();
         });
@@ -1306,176 +1302,219 @@
         window.dismissInstallBanner = () => { document.getElementById('install-banner').classList.add('hidden'); };
         window.addEventListener('appinstalled', () => { document.getElementById('install-banner').classList.add('hidden'); });
 
-        // ============================================================
-        // 🎵 MUSIQUE DEPUIS FIREBASE (sans player visible)
-        // ============================================================
-        let musicPlaylist = [];
-        let musicTrackIdx = 0;
-        let musicEnabled = localStorage.getItem('driprush_music') !== 'off';
-        let musicStarted = false;
-        let bgAudio = null;
-
-        try { bgAudio = new Audio(); bgAudio.volume = 0.4; } catch(e) {}
-
-        onValue(ref(db, 'driprush_music_playlist'), (snap) => {
-            const data = snap.val();
-            if (data) {
-                musicPlaylist = Object.keys(data).map(id => ({ id, ...data[id] }));
-                musicPlaylist.sort(() => Math.random() - 0.5);
+        // 🔌 PONT vers le module des nouvelles fonctionnalités (aucune logique ici)
+        window.__drip = {
+            db, ref, onValue, get, set, push, update,
+            getCtx: () => ({ cart, deliveryFee, deliveryTypeSelected, clientCoords, appliedCodePromo, promos, selectedItem, getPrixFinal }),
+            openArticle: (id) => {
+                const p = allProducts.find(x => x.id === id);
+                if (!p) return false;
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                window.openModal(id);
+                return true;
             }
-        });
+        };
+    </script>
 
-        if (bgAudio) {
-            bgAudio.addEventListener('ended', () => {
-                if (!musicEnabled || musicPlaylist.length === 0) return;
-                musicTrackIdx = (musicTrackIdx + 1) % musicPlaylist.length;
-                try { bgAudio.src = musicPlaylist[musicTrackIdx].url; bgAudio.play().catch(() => {}); } catch(e) {}
-            });
+    <!-- ===================== MODULE 2 : MUSIQUE · PARTAGE · LIEN DE PAIEMENT ===================== -->
+    <!-- Isolé du module principal : si ce bloc échoue, le site continue de fonctionner normalement -->
+    <script type="module">
+    try {
+        const D = () => window.__drip;
+        const toast = (m, e) => { if (window.showToast) window.showToast(m, e); };
+
+        // ---------- 🎵 MUSIQUE (playlist Firebase, sans lecteur visible) ----------
+        let playlist = [];
+        let trackIdx = 0;
+        let musicOn = localStorage.getItem('driprush_music') !== 'off';
+        let musicStarted = false;
+        let audio = null;
+        try { audio = new Audio(); audio.volume = 0.4; } catch (e) { audio = null; }
+
+        function refreshMusicBtn() {
+            const b = document.getElementById('music-toggle-btn');
+            if (b) b.innerText = musicOn ? '🔇 Désactiver' : '🎵 Activer la musique';
         }
+        refreshMusicBtn();
 
-        function startBgMusic() {
-            if (musicStarted || !musicEnabled || !bgAudio || musicPlaylist.length === 0) return;
+        function playIdx(i) {
+            if (!audio || playlist.length === 0) return;
+            trackIdx = ((i % playlist.length) + playlist.length) % playlist.length;
+            try { audio.src = playlist[trackIdx].url; audio.play().catch(() => {}); } catch (e) {}
+        }
+        if (audio) {
+            audio.addEventListener('ended', () => { if (musicOn) playIdx(trackIdx + 1); });
+            audio.addEventListener('error', () => { if (musicOn) playIdx(trackIdx + 1); });
+        }
+        function startMusic() {
+            if (musicStarted || !musicOn || !audio || playlist.length === 0) return;
             musicStarted = true;
-            musicTrackIdx = Math.floor(Math.random() * musicPlaylist.length);
-            try { bgAudio.src = musicPlaylist[musicTrackIdx].url; bgAudio.play().catch(() => {}); } catch(e) {}
-            document.removeEventListener('click', startBgMusic);
-            document.removeEventListener('touchstart', startBgMusic);
+            playIdx(Math.floor(Math.random() * playlist.length));
         }
-
-        document.addEventListener('click', startBgMusic);
-        document.addEventListener('touchstart', startBgMusic);
+        document.addEventListener('click', startMusic);
+        document.addEventListener('touchstart', startMusic);
 
         window.toggleMusicSetting = () => {
-            musicEnabled = !musicEnabled;
-            localStorage.setItem('driprush_music', musicEnabled ? 'on' : 'off');
-            const btn = document.getElementById('music-toggle-btn');
-            if (!musicEnabled) {
-                try { if (bgAudio) bgAudio.pause(); } catch(e) {}
-                if (btn) btn.innerText = '🎵 Activer la musique';
-            } else {
-                if (btn) btn.innerText = '🔇 Désactiver';
-                if (!musicStarted) { startBgMusic(); }
-                else { try { if (bgAudio) bgAudio.play().catch(() => {}); } catch(e) {} }
-            }
+            musicOn = !musicOn;
+            localStorage.setItem('driprush_music', musicOn ? 'on' : 'off');
+            refreshMusicBtn();
+            if (!musicOn) { try { if (audio) audio.pause(); } catch (e) {} }
+            else if (!musicStarted) startMusic();
+            else { try { if (audio) audio.play().catch(() => {}); } catch (e) {} }
         };
 
-        window.addEventListener('load', () => {
-            const btn = document.getElementById('music-toggle-btn');
-            if (btn) btn.innerText = musicEnabled ? '🔇 Désactiver' : '🎵 Activer la musique';
-        });
+        const d = D();
+        if (d) {
+            d.onValue(d.ref(d.db, 'driprush_music_playlist'), (snap) => {
+                const data = snap.val();
+                if (!data) return;
+                playlist = Object.keys(data).map(id => ({ id, ...data[id] })).sort(() => Math.random() - 0.5);
+            }, () => {});
+        }
 
-        // ============================================================
-        // 🔗 PARTAGE ARTICLE
-        // ============================================================
+        // ---------- 🔗 PARTAGE D'UN ARTICLE ----------
         window.shareArticle = () => {
-            if (!selectedItem) return;
-            const shareUrl = window.location.origin + window.location.pathname + '?article=' + selectedItem.id;
+            const ctx = D() && D().getCtx();
+            const item = ctx && ctx.selectedItem;
+            if (!item) return;
+            const url = location.origin + location.pathname + '?article=' + item.id;
             if (navigator.share) {
-                navigator.share({ title: '🔥 ' + selectedItem.name + ' sur Driprush', text: 'Regarde cet article 👀🔥', url: shareUrl }).catch(() => {});
+                navigator.share({ title: '🔥 ' + item.name + ' sur Driprush', text: 'Regarde cet article 👀🔥', url }).catch(() => {});
             } else {
-                navigator.clipboard.writeText(shareUrl).then(() => window.showToast('Lien copié ! Partage-le 🔗')).catch(() => window.showToast(shareUrl));
+                navigator.clipboard.writeText(url).then(() => toast('Lien copié ! Partage-le 🔗')).catch(() => toast(url));
             }
         };
 
-        // ============================================================
-        // 💳 LIEN DE PAIEMENT
-        // ============================================================
+        // ---------- 💳 GÉNÉRER UN LIEN DE PAIEMENT ----------
         window.generatePaymentLink = () => {
-            const pendingItems = cart.filter(i => !i.validated);
-            if (pendingItems.length === 0) return window.showToast('Ton panier est vide !', true);
-            const nameEl = document.getElementById('checkout-name');
-            const phoneEl = document.getElementById('checkout-phone');
-            const addrEl = document.getElementById('checkout-address');
-            if (!nameEl || !nameEl.value.trim()) return window.showToast("Remplis ton nom d'abord !", true);
-            if (!phoneEl || !phoneEl.value.trim()) return window.showToast("Remplis ton numéro d'abord !", true);
-            if (!addrEl || !addrEl.value.trim()) return window.showToast("Remplis ton adresse d'abord !", true);
-            if (!clientCoords) return window.showToast("📍 Active ta localisation d'abord !", true);
-            const name = nameEl.value.trim();
-            const phone = phoneEl.value.trim();
-            const addr = addrEl.value.trim();
-            const gps = 'https://www.google.com/maps?q=' + clientCoords.lat + ',' + clientCoords.lng;
-            const subtotal = pendingItems.reduce((sum, i) => sum + getPrixFinal(i), 0);
-            let total = subtotal + (deliveryFee || 0);
-            if (appliedCodePromo) total = Math.round(total * (1 - appliedCodePromo / 100));
-            const firstItem = pendingItems[0];
+            const d = D(); if (!d) return;
+            const ctx = d.getCtx();
+            const items = ctx.cart.filter(i => !i.validated);
+            if (items.length === 0) return toast('Ton panier est vide !', true);
+
+            const name = (document.getElementById('c-name') || {}).value || '';
+            const phone = (document.getElementById('c-phone') || {}).value || '';
+            const addr = (document.getElementById('c-addr') || {}).value || '';
+            if (!name.trim() || !phone.trim() || !addr.trim()) return toast('Remplis ton nom, ton numéro et ton adresse !', true);
+            if (ctx.deliveryTypeSelected === '') return toast('Choisis un mode de livraison !', true);
+            if (!ctx.clientCoords) return toast('📍 Choisis la livraison pour capturer ta position !', true);
+
+            const gps = 'https://www.google.com/maps?q=' + ctx.clientCoords.lat + ',' + ctx.clientCoords.lng;
+            const subtotal = items.reduce((s, i) => s + ctx.getPrixFinal(i), 0);
+            let total = subtotal + (ctx.deliveryFee || 0);
+            if (ctx.appliedCodePromo) total = Math.round(total * (1 - ctx.appliedCodePromo / 100));
+
+            const f = items[0];
             const linkId = Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
-            set(ref(db, 'driprush_payment_links/' + linkId), {
-                items: pendingItems.map(i => ({ name: i.name, size: i.size || 'Unique', color: i.color || '', price: getPrixFinal(i), image: i.image || '' })),
-                clientName: name, phone, address: addr, clientGPS: gps,
-                total, subtotal, deliveryFee: deliveryFee || 0, deliveryMode: deliveryTypeSelected || 'standard',
-                shopPhone: firstItem.shopPhone || '2290147535343', shopName: firstItem.shop || 'Driprush',
-                shopGPS: firstItem.shopGPS || '', shopMomo: firstItem.shopMomo || firstItem.shopPhone || '',
+            d.set(d.ref(d.db, 'driprush_payment_links/' + linkId), {
+                items: items.map(i => ({ name: i.name, size: i.size || 'Unique', color: i.color || '', price: ctx.getPrixFinal(i), image: i.image || '' })),
+                clientName: name.trim(), phone: phone.trim(), address: addr.trim(), clientGPS: gps,
+                total, subtotal, deliveryFee: ctx.deliveryFee || 0, deliveryMode: ctx.deliveryTypeSelected || 'standard',
+                shopPhone: f.shopPhone || '2290147535343', shopName: f.shop || 'Driprush',
+                shopGPS: f.shopGPS || '', shopMomo: f.shopMomo || f.shopPhone || '',
+                codePromo: (ctx.appliedCodePromo && ctx.promos && ctx.promos.codePromo) ? ctx.promos.codePromo.code : null,
                 status: 'pending_payment', createdAt: Date.now(), expiresAt: Date.now() + 86400000
             }).then(() => {
-                const payUrl = window.location.origin + window.location.pathname + '?pay=' + linkId;
+                const payUrl = location.origin + location.pathname + '?pay=' + linkId;
                 if (navigator.share) {
-                    navigator.share({ title: '💳 Paye ma commande Driprush !', text: name + " t'envoie un lien de paiement 🛍️", url: payUrl }).catch(() => navigator.clipboard.writeText(payUrl).then(() => window.showToast('Lien copié ! 🔗')));
+                    navigator.share({ title: '💳 Paye ma commande Driprush', text: name.trim() + " t'envoie un lien de paiement 🛍️", url: payUrl })
+                        .catch(() => navigator.clipboard.writeText(payUrl).then(() => toast('Lien de paiement copié 🔗')));
                 } else {
-                    navigator.clipboard.writeText(payUrl).then(() => window.showToast('Lien de paiement copié ! Envoie-le 🔗'));
+                    navigator.clipboard.writeText(payUrl).then(() => toast('Lien de paiement copié ! Envoie-le 🔗'));
                 }
-            }).catch(() => window.showToast('Erreur lors de la génération du lien', true));
+            }).catch(() => toast('Erreur lors de la génération du lien', true));
         };
 
+        // ---------- 💳 PAGE DE PAIEMENT (?pay=) ----------
         window.showPaymentLinkPage = (linkId) => {
+            const d = D(); if (!d) return;
             document.getElementById('payment-link-page').classList.remove('hidden');
-            const container = document.getElementById('pay-link-content');
-            container.innerHTML = '<div class="text-center py-10"><p class="text-4xl mb-4">⏳</p><p class="text-gray-400 text-xs font-bold uppercase">Chargement...</p></div>';
-            get(ref(db, 'driprush_payment_links/' + linkId)).then((snap) => {
-                if (!snap.exists()) { container.innerHTML = '<div class="text-center py-10"><p class="text-4xl mb-4">❌</p><p class="text-white font-black uppercase">Lien invalide ou expiré</p></div>'; return; }
-                const data = snap.val();
-                if (data.expiresAt < Date.now()) { container.innerHTML = '<div class="text-center py-10"><p class="text-4xl mb-4">⏰</p><p class="text-white font-black uppercase">Lien expiré</p><p class="text-gray-400 text-xs mt-2">Ce lien était valide 24h seulement</p></div>'; return; }
-                if (data.status === 'paid') { container.innerHTML = '<div class="text-center py-10"><p class="text-4xl mb-4">✅</p><p class="text-lime font-black uppercase text-lg">Déjà payé !</p></div>'; return; }
-                const photosHtml = data.items.filter(i => i.image).slice(0, 4).map(i => '<img src="' + i.image + '" class="w-full h-40 object-cover rounded-2xl">').join('');
-                const itemsHtml = data.items.map(i => '<div class="flex justify-between items-center py-2 border-b border-white/10"><div><p class="text-xs font-bold text-white uppercase">' + i.name + '</p><p class="text-[9px] text-gray-500">' + i.size + (i.color ? ' · ' + i.color : '') + '</p></div><p class="text-xs font-black" style="color:#C8FF4D">' + i.price.toLocaleString() + ' F</p></div>').join('');
-                container.innerHTML = '<div style="background:linear-gradient(145deg,#141414,#1c1c1c);border:1px solid rgba(255,255,255,0.06);border-radius:1.5rem;padding:1rem;margin-bottom:1rem"><p class="text-[9px] text-drip font-black uppercase tracking-widest mb-3">📦 Articles</p><div class="grid grid-cols-2 gap-2 mb-4">' + photosHtml + '</div><div class="space-y-1">' + itemsHtml + '</div></div>'
-                + '<div style="background:linear-gradient(145deg,#141414,#1c1c1c);border:1px solid rgba(255,255,255,0.06);border-radius:1.5rem;padding:1rem;margin-bottom:1rem"><p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-2">📋 Détails</p><div class="space-y-2"><div class="flex justify-between"><span class="text-[10px] text-gray-400">Client</span><span class="text-[10px] font-bold text-white">' + data.clientName + '</span></div><div class="flex justify-between"><span class="text-[10px] text-gray-400">Adresse</span><span class="text-[10px] font-bold text-white text-right max-w-xs">' + data.address + '</span></div><div class="flex justify-between"><span class="text-[10px] text-gray-400">Livraison</span><span class="text-[10px] font-bold text-white">' + (data.deliveryFee > 0 ? data.deliveryFee.toLocaleString() + ' F' : 'Gratuite') + '</span></div><div class="flex justify-between items-center pt-2" style="border-top:1px solid rgba(255,255,255,0.1)"><span class="text-xs font-black text-white uppercase">Total</span><span class="text-xl font-black" style="font-family:Archivo Black,sans-serif;color:#C8FF4D">' + data.total.toLocaleString() + ' F</span></div></div></div>'
-                + '<div style="background:rgba(255,77,28,0.1);border:1px solid rgba(255,77,28,0.3);border-radius:1rem;padding:1rem;margin-bottom:1rem"><p class="text-[10px] text-drip font-black uppercase mb-1">ℹ️ Comment payer</p><p class="text-[9px] text-gray-300 leading-relaxed">Clique sur le bouton → Choisis Mobile Money ou carte → Valide → Commande confirmée ✅</p></div>'
-                + '<button onclick="window.payFromLink(\'' + linkId + '\')" style="width:100%;background:#FF4D1C;color:white;padding:1.25rem;border-radius:1rem;font-family:Archivo Black,sans-serif;font-size:0.875rem;text-transform:uppercase;border:none;cursor:pointer">💳 Payer ' + data.total.toLocaleString() + ' F maintenant</button>'
-                + '<p class="text-center text-[8px] text-gray-600 mt-3">🔒 Paiement sécurisé via FedaPay · Lien valide 24h</p>';
-            }).catch(() => { container.innerHTML = '<div class="text-center py-10"><p class="text-red-400 font-bold uppercase">Erreur de chargement</p></div>'; });
+            const box = document.getElementById('pay-link-content');
+            const msg = (icon, t, s) => '<div class="text-center py-16"><p class="text-5xl mb-4">' + icon + '</p><p class="text-white font-display text-lg uppercase">' + t + '</p>' + (s ? '<p class="text-gray-400 text-xs mt-2">' + s + '</p>' : '') + '</div>';
+            box.innerHTML = msg('⏳', 'Chargement...', '');
+
+            d.get(d.ref(d.db, 'driprush_payment_links/' + linkId)).then((snap) => {
+                if (!snap.exists()) { box.innerHTML = msg('❌', 'Lien invalide', "Ce lien de paiement n'existe pas"); return; }
+                const o = snap.val();
+                if (o.expiresAt < Date.now()) { box.innerHTML = msg('⏰', 'Lien expiré', 'Ce lien était valable 24h'); return; }
+                if (o.status === 'paid') { box.innerHTML = msg('✅', 'Déjà payé', 'Cette commande a déjà été réglée'); return; }
+
+                const photos = o.items.filter(i => i.image).slice(0, 4).map(i => '<img src="' + i.image + '" class="w-full h-36 object-cover rounded-2xl">').join('');
+                const lignes = o.items.map(i => '<div class="flex justify-between items-center py-2 border-b border-white/10"><div><p class="text-xs font-bold text-white uppercase">' + i.name + '</p><p class="text-[9px] text-gray-500">' + i.size + (i.color ? ' · ' + i.color : '') + '</p></div><p class="text-xs font-black text-lime">' + i.price.toLocaleString() + ' F</p></div>').join('');
+                const carte = 'background:linear-gradient(145deg,#141414,#1c1c1c);border:1px solid rgba(255,255,255,0.06);border-radius:1.5rem;padding:1rem;margin-bottom:1rem';
+
+                box.innerHTML =
+                    '<div style="' + carte + '"><p class="text-[9px] text-drip font-black uppercase tracking-widest mb-3">📦 Articles commandés</p><div class="grid grid-cols-2 gap-2 mb-3">' + photos + '</div>' + lignes + '</div>' +
+                    '<div style="' + carte + '"><p class="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-2">📋 Détails</p>' +
+                    '<div class="flex justify-between py-1"><span class="text-[10px] text-gray-400">Client</span><span class="text-[10px] font-bold text-white">' + o.clientName + '</span></div>' +
+                    '<div class="flex justify-between py-1"><span class="text-[10px] text-gray-400">Livraison chez</span><span class="text-[10px] font-bold text-white text-right" style="max-width:60%">' + o.address + '</span></div>' +
+                    '<div class="flex justify-between py-1"><span class="text-[10px] text-gray-400">Mode</span><span class="text-[10px] font-bold text-white">' + (o.deliveryMode === 'express' ? '🚀 Rapide' : '🚲 Normale') + '</span></div>' +
+                    '<div class="flex justify-between py-1"><span class="text-[10px] text-gray-400">Frais livraison</span><span class="text-[10px] font-bold text-white">' + (o.deliveryFee > 0 ? o.deliveryFee.toLocaleString() + ' F' : 'Gratuite') + '</span></div>' +
+                    '<div class="flex justify-between items-center pt-3 mt-2 border-t border-white/10"><span class="text-xs font-black text-white uppercase">Total à payer</span><span class="text-xl font-display text-lime">' + o.total.toLocaleString() + ' F</span></div></div>' +
+                    '<div style="background:rgba(255,77,28,0.1);border:1px solid rgba(255,77,28,0.3);border-radius:1rem;padding:1rem;margin-bottom:1rem"><p class="text-[10px] text-drip font-black uppercase mb-1">ℹ️ Comment payer</p><p class="text-[9px] text-gray-300 leading-relaxed">Appuie sur le bouton ci-dessous → choisis Mobile Money ou carte → valide. La commande est confirmée automatiquement ✅</p></div>' +
+                    '<button id="pay-link-btn" class="w-full bg-drip text-white py-5 rounded-2xl font-display text-sm uppercase active:scale-95 transition">💳 Payer ' + o.total.toLocaleString() + ' F</button>' +
+                    '<p class="text-center text-[8px] text-gray-600 mt-3">🔒 Paiement sécurisé FedaPay · Lien valable 24h</p>';
+
+                document.getElementById('pay-link-btn').onclick = () => window.payFromLink(linkId, o);
+            }).catch(() => { box.innerHTML = msg('⚠️', 'Erreur', 'Impossible de charger ce lien'); });
         };
 
-        window.payFromLink = (linkId) => {
-            get(ref(db, 'driprush_payment_links/' + linkId)).then((snap) => {
-                if (!snap.exists()) return;
-                const data = snap.val();
-                try {
-                    const handler = new FedaPay.Init({
-                        sandbox: false, environment: 'live',
-                        public_key: 'pk_live_1EVs9lvE_nNNKUI2TEOI-qvB',
-                        transaction: { amount: data.total, description: 'Commande Driprush - ' + data.clientName },
-                        customer: { email: 'client@driprush.bj', lastname: data.clientName, phone_number: { number: data.phone, country: 'BJ' } },
-                        onComplete: function(response) {
-                            const status = response && response.transaction && response.transaction.status;
-                            if (status === 'approved' || status === 'approved_partially') {
-                                const orderRef = push(ref(db, 'driprush_orders'));
-                                set(orderRef, { clientName: data.clientName, phone: data.phone, address: data.address, clientGPS: data.clientGPS, shopName: data.shopName, shopGPS: data.shopGPS, shopPhone: data.shopPhone, shopMomo: data.shopMomo, items: data.items.map(i => i.name + ' [' + i.size + ']').join(', '), itemImages: data.items.map(i => i.image).filter(Boolean), deliveryMode: data.deliveryMode, deliveryFee: data.deliveryFee, total: data.total, commission: Math.round(data.total * 0.1), montantBoutique: Math.round(data.total * 0.9), status: 'Payée', timestamp: Date.now(), paidViaLink: true }).then(() => {
-                                    update(ref(db, 'driprush_payment_links/' + linkId), { status: 'paid' });
-                                    document.getElementById('pay-link-content').innerHTML = '<div class="text-center py-16"><p class="text-5xl mb-4">✅</p><p style="color:#C8FF4D;font-family:Archivo Black,sans-serif;font-size:1.25rem;text-transform:uppercase">Paiement validé !</p><p class="text-gray-300 text-xs mt-2 leading-relaxed">Commande de ' + data.clientName + ' confirmée. Le livreur est en route.</p></div>';
-                                    fetch('https://driprush-webhook.onrender.com/notify-shop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopPhone: data.shopPhone, orderId: orderRef.key, amount: data.total }) }).catch(() => {});
-                                });
-                            } else { alert('❌ Paiement non validé. Réessaie.'); }
-                        }
+        window.payFromLink = (linkId, o) => {
+            const d = D(); if (!d) return;
+            const btn = document.getElementById('pay-link-btn');
+            if (btn) { btn.innerText = '⏳ Connexion...'; btn.disabled = true; }
+            const widget = FedaPay.init({
+                public_key: 'pk_live_1EVs9lvE_nNNKUI2TEOI-qvB',
+                environment: 'live',
+                transaction: { amount: o.total, description: 'Commande Driprush - ' + o.clientName },
+                currency: { iso: 'XOF' },
+                customer: { firstname: o.clientName, lastname: 'Driprush', email: 'client' + String(o.phone).replace(/\D/g, '') + '@driprush.bj', phone_number: { number: o.phone, country: 'BJ' } },
+                onComplete: function (resp) {
+                    if (btn) { btn.innerText = '💳 Payer ' + o.total.toLocaleString() + ' F'; btn.disabled = false; }
+                    const st = resp && resp.transaction && resp.transaction.status;
+                    if (st !== 'approved' && st !== 'approved_partially') { alert('❌ Paiement non validé. Réessaie.'); return; }
+                    const orderRef = d.push(d.ref(d.db, 'driprush_orders'));
+                    d.set(orderRef, {
+                        clientName: o.clientName, phone: o.phone, address: o.address, clientGPS: o.clientGPS,
+                        shopName: o.shopName, shopGPS: o.shopGPS, shopPhone: o.shopPhone, shopMomo: o.shopMomo,
+                        items: o.items.map(i => i.name + ' [' + i.size + (i.color ? ', ' + i.color : '') + ']').join(', '),
+                        itemImages: o.items.map(i => i.image).filter(Boolean),
+                        deliveryMode: o.deliveryMode, deliveryFee: o.deliveryFee, total: o.total,
+                        commission: Math.round(o.total * 0.10), montantBoutique: o.total - Math.round(o.total * 0.10),
+                        codePromo: o.codePromo || null, status: 'Payée', timestamp: Date.now(), paidViaLink: true
+                    }).then(() => {
+                        d.update(d.ref(d.db, 'driprush_payment_links/' + linkId), { status: 'paid' });
+                        document.getElementById('pay-link-content').innerHTML =
+                            '<div class="text-center py-16"><p class="text-5xl mb-4">✅</p><p class="text-lime font-display text-xl uppercase mb-2">Paiement validé !</p>' +
+                            '<p class="text-gray-300 text-xs leading-relaxed">La commande de ' + o.clientName + ' est confirmée.<br>La livraison se fera à son adresse.</p></div>';
+                        fetch('https://driprush-webhook.onrender.com/notify-shop', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ shopPhone: o.shopPhone, clientName: o.clientName, productName: 'une commande payée par lien' })
+                        }).catch(() => {});
                     });
-                    handler.render();
-                } catch(e) { alert('Erreur FedaPay : ' + e.message); }
+                }
             });
+            widget.open();
         };
 
-        // ============================================================
-        // 🔍 URL PARAMS (?article= / ?pay=)
-        // ============================================================
-        try {
-            const urlParams = new URLSearchParams(window.location.search);
-            const payId = urlParams.get('pay');
-            const articleId = urlParams.get('article');
-            if (payId) {
-                window.showPaymentLinkPage(payId);
-            } else if (articleId) {
-                window._pendingArticleOpen = articleId;
-            }
-        } catch(e) {}
-
+        // ---------- 🔍 PARAMÈTRES D'URL ----------
+        const qs = new URLSearchParams(location.search);
+        const payId = qs.get('pay');
+        const artId = qs.get('article');
+        if (payId) {
+            window.showPaymentLinkPage(payId);
+        } else if (artId) {
+            let tries = 0;
+            const timer = setInterval(() => {
+                tries++;
+                if (D() && D().openArticle(artId)) { clearInterval(timer); }
+                else if (tries > 40) clearInterval(timer);
+            }, 250);
+        }
+    } catch (e) {
+        console.warn('Module bonus (musique/partage/lien) désactivé :', e);
+    }
     </script>
 </head>
 <body class="pb-24">
@@ -1563,7 +1602,7 @@
         <div id="product-modal" onclick="window.closeModalOutside(event)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end hidden cursor-pointer">
             <div class="w-full bg-white rounded-t-[2.5rem] p-6 space-y-6 animate-slide-up modal-height-fix pb-10 cursor-default relative">
                 <button id="close-modal-btn" onclick="window.closeModalOutside(null)" class="absolute top-4 right-6 text-gray-400 hover:text-black transition text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
-                <button onclick="window.shareArticle()" class="absolute top-4 right-16 text-gray-400 hover:text-black transition text-lg p-2" title="Partager"><i class="fa-solid fa-share-nodes"></i></button>
+                <button onclick="window.shareArticle && window.shareArticle()" class="absolute top-4 right-16 text-gray-400 hover:text-black transition text-lg p-2" title="Partager"><i class="fa-solid fa-share-nodes"></i></button>
                 <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2"></div>
                 <div class="flex gap-4">
                     <img id="modal-img" src="" onclick="window.toggleZoom(true)" class="w-32 h-32 object-cover rounded-2xl shadow-lg cursor-zoom-in active:scale-95 transition duration-200">
@@ -1629,7 +1668,7 @@
                     <p id="code-promo-result" class="hidden text-[10px] font-bold mt-1 px-1"></p>
                 </div>
 
-                <button onclick="window.generatePaymentLink()" class="w-full bg-white border-2 border-black text-black py-4 rounded-2xl font-black uppercase italic text-sm active:scale-95 transition">🔗 Générer un lien de paiement</button>
+                <button onclick="window.generatePaymentLink && window.generatePaymentLink()" class="w-full bg-white border-2 border-black text-black py-4 rounded-2xl font-black uppercase italic text-sm active:scale-95 transition">🔗 Générer un lien de paiement</button>
                 <p class="text-[9px] text-center text-gray-400 font-bold">ou</p>
                 <button onclick="window.confirmOrder(this)" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase italic shadow-2xl text-sm">Confirmer la commande ✅</button>
             </div>
@@ -1788,10 +1827,10 @@
                     <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">🎵 Musique d'ambiance</p>
                     <div class="flex items-center justify-between mb-1">
                         <div>
-                            <p class="text-xs font-bold text-gray-700">Musique en fond</p>
+                            <p class="text-xs font-bold text-ink">Musique en fond</p>
                             <p class="text-[9px] text-gray-400">Joue pendant ton shopping</p>
                         </div>
-                        <button onclick="window.toggleMusicSetting()" id="music-toggle-btn" class="bg-black text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase active:scale-95 transition">🔇 Désactiver</button>
+                        <button onclick="window.toggleMusicSetting && window.toggleMusicSetting()" id="music-toggle-btn" class="bg-black text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase active:scale-95 transition">🔇 Désactiver</button>
                     </div>
                 </div>
                 <div class="bg-gray-50 rounded-2xl p-4">
@@ -1816,7 +1855,6 @@
         </div>
     </div>
     <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-ink text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl z-[60] max-w-[85%] text-center"></div>
-    <!-- 💳 PAGE LIEN DE PAIEMENT -->
     <div id="payment-link-page" class="hidden fixed inset-0 z-[100] bg-ink overflow-y-auto">
         <div class="max-w-md mx-auto p-5 pb-20 pt-8">
             <div class="text-center mb-6">
