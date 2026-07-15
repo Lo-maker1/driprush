@@ -82,6 +82,11 @@
         body.dark-mode #settings-panel .bg-gray-50 { background-color: #141414 !important; }
         body.dark-mode #settings-panel .bg-white { background-color: #1a1a1a !important; }
         body.dark-mode .price-tag::before { background: #0B0B0C !important; }
+        .nav-item { color: #9ca3af; }
+        .nav-item.active { color: #FF4D1C; }
+        .nav-item:active { color: #FF4D1C; }
+        body.dark-mode #bottom-nav { background-color: #141414 !important; border-color: rgba(255,255,255,0.08) !important; }
+        body.dark-mode .nav-item { color: #6b7280; }
     </style>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -113,6 +118,8 @@
 
         const FEDAPAY_PUBLIC_KEY = 'pk_live_1EVs9lvE_nNNKUI2TEOI-qvB';
         const WEBHOOK_SERVER_URL = "https://driprush-webhook.onrender.com";
+        const CLOUDINARY_CLOUD_NAME = "dshzay8cf";
+        const CLOUDINARY_UPLOAD_PRESET = "drip_rush";
         const SHOP_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
         const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
 
@@ -1356,15 +1363,48 @@
         let currentChatUnsub = null;
         let currentChatRefPath = null;
 
-        window.openChatModal = () => {
-            if (!selectedItem) return;
-            document.getElementById('chat-shop-name').innerText = selectedItem.shop;
-            document.getElementById('chat-product-name').innerText = selectedItem.name;
+        let currentChatMeta = null;
+
+        window.openChatWith = (shopPhone, shopName, chatKey, productId, productName) => {
+            currentChatMeta = { shopPhone: String(shopPhone), shopName: shopName || 'Boutique', chatKey: chatKey, productId: productId || null, productName: productName || 'Discussion générale' };
+            document.getElementById('chat-shop-name').innerText = currentChatMeta.shopName;
+            document.getElementById('chat-product-name').innerText = currentChatMeta.productName;
+            window.applyChatTheme(currentChatMeta.shopPhone);
             const clientName = localStorage.getItem('driprush_client_name');
             document.getElementById('chat-name-screen').classList.toggle('hidden', !!clientName);
             document.getElementById('chat-thread-screen').classList.toggle('hidden', !clientName);
             document.getElementById('chat-modal').classList.remove('hidden');
-            if (clientName) { window.startOrLoadChat(clientName); }
+            document.getElementById('emoji-panel').classList.add('hidden');
+            if (clientName) window.startOrLoadChat(clientName);
+        };
+
+        window.openChatModal = () => {
+            if (!selectedItem) return;
+            window.openChatWith(selectedItem.shopPhone || '2290147535343', selectedItem.shop, selectedItem.id, selectedItem.id, selectedItem.name);
+        };
+
+        const CHAT_THEMES = {
+            drip:   { head: '#FF4D1C', bubble: '#FFE9E2', text: '#0B0B0C' },
+            lime:   { head: '#4D7C0F', bubble: '#ECFCCB', text: '#0B0B0C' },
+            blue:   { head: '#1D4ED8', bubble: '#DBEAFE', text: '#0B0B0C' },
+            purple: { head: '#6D28D9', bubble: '#EDE9FE', text: '#0B0B0C' },
+            pink:   { head: '#DB2777', bubble: '#FCE7F3', text: '#0B0B0C' },
+            dark:   { head: '#0B0B0C', bubble: '#F3F4F6', text: '#0B0B0C' }
+        };
+        let chatTheme = CHAT_THEMES.dark;
+
+        window.applyChatTheme = (shopPhone) => {
+            get(ref(db, 'driprush_boutiques/' + shopPhone)).then(s => {
+                const b = s.val();
+                chatTheme = CHAT_THEMES[(b && b.chatTheme) || 'dark'] || CHAT_THEMES.dark;
+                const head = document.getElementById('chat-header');
+                if (head) head.style.background = chatTheme.head;
+                const nm = document.getElementById('chat-shop-name');
+                const pn = document.getElementById('chat-product-name');
+                if (nm) nm.style.color = '#fff';
+                if (pn) pn.style.color = 'rgba(255,255,255,0.7)';
+                if (currentChatRefPath) window.attachChatListener(currentChatRefPath.shopPhone, currentChatRefPath.chatId);
+            }).catch(() => {});
         };
 
         window.submitClientName = () => {
@@ -1377,67 +1417,405 @@
         };
 
         window.startOrLoadChat = (clientName) => {
-            const productId = selectedItem.id;
-            const shopPhone = selectedItem.shopPhone || '2290147535343';
+            if (!currentChatMeta) return;
+            const key = currentChatMeta.chatKey;
+            const shopPhone = currentChatMeta.shopPhone;
             let myChats = {};
-            try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) { myChats = {}; }
-            if (myChats[productId] && myChats[productId].chatId) {
-                window.attachChatListener(shopPhone, myChats[productId].chatId);
+            try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch (e) { myChats = {}; }
+            if (myChats[key] && myChats[key].chatId) {
+                window.attachChatListener(shopPhone, myChats[key].chatId);
             } else {
                 const chatRef = push(ref(db, 'driprush_chats/' + shopPhone));
-                set(chatRef, { clientName, productName: selectedItem.name, productId, createdAt: Date.now() }).then(() => {
-                    myChats[productId] = { chatId: chatRef.key, shopPhone };
+                set(chatRef, {
+                    clientName: clientName,
+                    productName: currentChatMeta.productName,
+                    productId: currentChatMeta.productId,
+                    shopName: currentChatMeta.shopName,
+                    createdAt: Date.now()
+                }).then(() => {
+                    myChats[key] = { chatId: chatRef.key, shopPhone: shopPhone, shopName: currentChatMeta.shopName, productName: currentChatMeta.productName, lastReadByClient: Date.now() };
                     localStorage.setItem('driprush_my_chats', JSON.stringify(myChats));
-                    const clientFCMToken = localStorage.getItem('driprush_client_fcm_token');
-                    if (clientFCMToken) { update(ref(db, 'driprush_chats/' + shopPhone + '/' + chatRef.key), { clientFCMToken }).catch(() => {}); }
+                    const tok = localStorage.getItem('driprush_client_fcm_token');
+                    if (tok) update(ref(db, 'driprush_chats/' + shopPhone + '/' + chatRef.key), { clientFCMToken: tok }).catch(() => {});
                     window.attachChatListener(shopPhone, chatRef.key);
-                }).catch((err) => window.showToast("Erreur : " + err.message, true));
+                }).catch(err => window.showToast('Erreur : ' + err.message, true));
             }
         };
 
         window.attachChatListener = (shopPhone, chatId) => {
             if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
-            currentChatRefPath = { shopPhone, chatId };
-            const clientFCMToken = localStorage.getItem('driprush_client_fcm_token');
-            if (clientFCMToken) { update(ref(db, `driprush_chats/${shopPhone}/${chatId}`), { clientFCMToken }).catch(() => {}); }
-            if (selectedItem) {
+            currentChatRefPath = { shopPhone: shopPhone, chatId: chatId };
+            const tok = localStorage.getItem('driprush_client_fcm_token');
+            if (tok) update(ref(db, 'driprush_chats/' + shopPhone + '/' + chatId), { clientFCMToken: tok }).catch(() => {});
+            const key = currentChatMeta ? currentChatMeta.chatKey : null;
+            if (key) {
                 let myChats = {};
-                try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) { myChats = {}; }
-                if (myChats[selectedItem.id]) { myChats[selectedItem.id].lastReadByClient = Date.now(); localStorage.setItem('driprush_my_chats', JSON.stringify(myChats)); }
+                try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch (e) { myChats = {}; }
+                myChats[key] = Object.assign({}, myChats[key], { chatId: chatId, shopPhone: shopPhone, lastReadByClient: Date.now() });
+                localStorage.setItem('driprush_my_chats', JSON.stringify(myChats));
             }
-            document.getElementById('chat-unread-dot').classList.add('hidden');
-            const messagesRef = ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`);
-            currentChatUnsub = onValue(messagesRef, (snapshot) => {
-                const data = snapshot.val();
-                const messages = data ? Object.keys(data).map(id => ({ id, ...data[id] })).sort((a,b) => a.timestamp - b.timestamp) : [];
-                window.renderChatMessages(messages);
+            const dot = document.getElementById('chat-unread-dot');
+            if (dot) dot.classList.add('hidden');
+            currentChatUnsub = onValue(ref(db, 'driprush_chats/' + shopPhone + '/' + chatId + '/messages'), (snap) => {
+                const data = snap.val();
+                const msgs = data ? Object.keys(data).map(id => Object.assign({ id: id }, data[id])).sort((a, b) => a.timestamp - b.timestamp) : [];
+                window.renderChatMessages(msgs);
             });
         };
 
         window.renderChatMessages = (messages) => {
-            const container = document.getElementById('chat-messages-list');
-            container.innerHTML = '';
-            if (messages.length === 0) container.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Pose ta question à la boutique 👋</p>';
+            const box = document.getElementById('chat-messages-list');
+            box.innerHTML = '';
+            if (messages.length === 0) {
+                box.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Pose ta question à la boutique 👋</p>';
+                return;
+            }
             messages.forEach(m => {
-                const isClient = m.sender === 'client';
-                container.innerHTML += `<div class="flex ${isClient ? 'justify-end' : 'justify-start'} mb-2"><div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs ${isClient ? 'bg-black text-white' : 'bg-gray-100 text-black'}">${m.text}</div></div>`;
+                const mine = m.sender === 'client';
+                const align = mine ? 'justify-end' : 'justify-start';
+                const bubbleStyle = mine ? 'background:#0B0B0C;color:#fff' : 'background:' + chatTheme.bubble + ';color:' + chatTheme.text;
+
+                if (m.type === 'image') {
+                    box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[70%] rounded-2xl overflow-hidden border border-gray-200">' +
+                        '<img src="' + m.imageUrl + '" onclick="window.openChatImage(\'' + m.imageUrl + '\')" class="w-full h-auto max-h-56 object-cover cursor-zoom-in">' +
+                        '</div></div>';
+                    return;
+                }
+
+                if (m.type === 'offer') {
+                    const paid = m.status === 'paid';
+                    const cancelled = m.status === 'cancelled';
+                    box.innerHTML += '<div class="flex justify-start mb-2"><div class="max-w-[85%] w-full rounded-2xl border-2 p-3" style="border-color:' + chatTheme.head + ';background:#fff">' +
+                        '<p class="text-[9px] font-black uppercase tracking-widest mb-1" style="color:' + chatTheme.head + '">💰 Proposition de la boutique</p>' +
+                        (m.imageUrl ? '<img src="' + m.imageUrl + '" onclick="window.openChatImage(\'' + m.imageUrl + '\')" class="w-full h-28 object-cover rounded-xl mb-2 cursor-zoom-in">' : '') +
+                        '<p class="text-[11px] font-bold text-gray-800 uppercase">' + (m.productName || 'Article') + '</p>' +
+                        (m.sizes ? '<p class="text-[10px] text-gray-500 mt-1">📏 Tailles : <span class="font-bold text-gray-700">' + m.sizes + '</span></p>' : '') +
+                        (m.colors ? '<p class="text-[10px] text-gray-500">🎨 Couleurs : <span class="font-bold text-gray-700">' + m.colors + '</span></p>' : '') +
+                        (m.deliveryTime ? '<p class="text-[10px] text-gray-500">⏱️ Livraison : <span class="font-bold text-gray-700">' + m.deliveryTime + '</span></p>' : '') +
+                        '<p class="text-2xl font-display mt-1" style="color:' + chatTheme.head + '">' + Number(m.price).toLocaleString() + ' F</p>' +
+                        (paid ? '<p class="mt-2 text-[10px] font-black text-green-600 uppercase">✅ Payé — commande envoyée à la boutique</p>' :
+                         cancelled ? '<p class="mt-2 text-[10px] font-black text-gray-400 uppercase">Offre annulée</p>' :
+                         '<div class="grid grid-cols-2 gap-2 mt-3">' +
+                            '<button onclick="window.payOffer(\'' + m.id + '\')" class="bg-black text-white py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">💳 Payer</button>' +
+                            '<button onclick="window.openCounterOffer(\'' + m.id + '\')" class="bg-gray-100 text-black py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">🤝 Négocier</button>' +
+                         '</div>') +
+                        '</div></div>';
+                    return;
+                }
+
+                if (m.type === 'counter') {
+                    box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[80%] rounded-2xl px-4 py-2.5 border-2 border-dashed border-amber-400 bg-amber-50">' +
+                        '<p class="text-[9px] font-black text-amber-600 uppercase">🤝 Contre-proposition</p>' +
+                        '<p class="text-lg font-display text-amber-700">' + Number(m.price).toLocaleString() + ' F</p>' +
+                        '</div></div>';
+                    return;
+                }
+
+                if (m.type === 'system') {
+                    box.innerHTML += '<div class="flex justify-center mb-2"><p class="text-[9px] font-black uppercase text-gray-400 bg-gray-100 px-3 py-1 rounded-full">' + m.text + '</p></div>';
+                    return;
+                }
+
+                box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs" style="' + bubbleStyle + '">' + m.text + '</div></div>';
             });
-            container.scrollTop = container.scrollHeight;
+            box.scrollTop = box.scrollHeight;
         };
 
         window.sendClientMessage = () => {
             const input = document.getElementById('chat-message-input');
             const text = input.value.trim();
             if (!text || !currentChatRefPath) return;
-            if (containsContactAttempt(text)) { window.showToast("Pour ta sécurité, les échanges de numéros/contacts sont interdits ici — tout passe par Driprush 🔒", true); return; }
-            const { shopPhone, chatId } = currentChatRefPath;
-            push(ref(db, `driprush_chats/${shopPhone}/${chatId}/messages`), { sender: 'client', text, timestamp: Date.now() }).then(() => {
+            if (containsContactAttempt(text)) { window.showToast('Pour ta sécurité, les échanges de numéros/contacts sont interdits ici — utilise le bouton 🤝 Négocier pour proposer un prix 🔒', true); return; }
+            const sp = currentChatRefPath.shopPhone, ci = currentChatRefPath.chatId;
+            push(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages'), { sender: 'client', text: text, timestamp: Date.now() }).then(() => {
                 input.value = '';
-                fetch(WEBHOOK_SERVER_URL + '/notify-shop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopPhone: shopPhone, clientName: localStorage.getItem('driprush_client_name') || 'Un client', productName: selectedItem ? selectedItem.name : 'un article' }) }).catch(() => {});
-            }).catch((err) => window.showToast("Erreur : " + err.message, true));
+                document.getElementById('emoji-panel').classList.add('hidden');
+                fetch(WEBHOOK_SERVER_URL + '/notify-shop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopPhone: sp, clientName: localStorage.getItem('driprush_client_name') || 'Un client', productName: currentChatMeta ? currentChatMeta.productName : 'un article' }) }).catch(() => {});
+            }).catch(err => window.showToast('Erreur : ' + err.message, true));
         };
 
-        window.closeChatModal = () => { if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; } document.getElementById('chat-modal').classList.add('hidden'); };
+        window.openShopProfile = () => {
+            if (!currentChatMeta) return;
+            const phone = currentChatMeta.shopPhone;
+            const prods = allProducts.filter(p => String(p.shopPhone) === String(phone));
+            document.getElementById('shop-profile-name').innerText = currentChatMeta.shopName;
+            document.getElementById('shop-profile-count').innerText = prods.length + ' article' + (prods.length > 1 ? 's' : '') + ' disponible' + (prods.length > 1 ? 's' : '');
+            const grid = document.getElementById('shop-profile-grid');
+            if (prods.length === 0) {
+                grid.innerHTML = '<p class="col-span-2 text-center text-gray-400 text-xs font-bold uppercase py-16">Cette boutique n\'a pas encore d\'article en ligne</p>';
+            } else {
+                grid.innerHTML = prods.map(p => {
+                    const img = (p.images && p.images[0]) || p.image || '';
+                    const pf = getPrixFinal(p);
+                    const red = getReductionPercent ? getReductionPercent(p) : 0;
+                    return '<div onclick="window.openShopProfileProduct(\'' + String(p.id).replace(/'/g, "\\'") + '\')" class="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm cursor-pointer active:scale-95 transition">' +
+                        '<div class="relative">' + (red > 0 ? '<span class="absolute top-1 left-1 bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full z-10">-' + red + '%</span>' : '') +
+                        '<img src="' + img + '" class="w-full h-40 object-cover" loading="lazy"></div>' +
+                        '<div class="p-2"><p class="text-[10px] font-bold uppercase truncate">' + p.name + '</p>' +
+                        (red > 0 ? '<p class="text-[9px] text-gray-400 line-through">' + parseInt(p.price).toLocaleString() + ' F</p>' : '') +
+                        '<p class="text-[11px] font-black text-drip">' + pf.toLocaleString() + ' F</p></div></div>';
+                }).join('');
+            }
+            document.getElementById('shop-profile-modal').classList.remove('hidden');
+        };
+
+        window.openShopProfileProduct = (id) => {
+            document.getElementById('shop-profile-modal').classList.add('hidden');
+            document.getElementById('chat-modal').classList.add('hidden');
+            window.openModal(id);
+        };
+
+        window.closeShopProfile = () => { document.getElementById('shop-profile-modal').classList.add('hidden'); };
+
+                window.closeChatModal = () => { if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; } document.getElementById('chat-modal').classList.add('hidden'); };
+
+        // ---------- 💬 HUB : TOUTES LES BOUTIQUES + MES DISCUSSIONS ----------
+        window.openChatHub = (tab) => {
+            document.getElementById('chat-hub-modal').classList.remove('hidden');
+            window.switchHubTab(tab || 'recent');
+        };
+        window.closeChatHub = () => { document.getElementById('chat-hub-modal').classList.add('hidden'); };
+
+        window.switchHubTab = (tab) => {
+            const t1 = document.getElementById('hub-tab-recent'), t2 = document.getElementById('hub-tab-shops');
+            [[t1, tab === 'recent'], [t2, tab === 'shops']].forEach(p => {
+                p[0].classList.toggle('bg-black', p[1]); p[0].classList.toggle('text-white', p[1]);
+                p[0].classList.toggle('bg-gray-100', !p[1]); p[0].classList.toggle('text-gray-500', !p[1]);
+            });
+            if (tab === 'recent') window.loadRecentChats(); else window.loadPartnerShops();
+        };
+
+        window.loadRecentChats = () => {
+            const box = document.getElementById('hub-content');
+            let m = {};
+            try { m = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch (e) {}
+            const keys = Object.keys(m);
+            if (keys.length === 0) { box.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Aucune discussion — écris à une boutique 👋</p>'; return; }
+            box.innerHTML = '<p class="text-center text-gray-400 text-[10px] font-bold uppercase py-4">Chargement...</p>';
+            Promise.all(keys.map(k => {
+                const i = m[k];
+                if (!i || !i.chatId || !i.shopPhone) return Promise.resolve(null);
+                return get(ref(db, 'driprush_chats/' + i.shopPhone + '/' + i.chatId)).then(s => {
+                    const ch = s.val(); if (!ch) return null;
+                    const msgs = ch.messages ? Object.values(ch.messages) : [];
+                    const last = msgs.length ? msgs.sort((a, b) => b.timestamp - a.timestamp)[0] : null;
+                    const unread = msgs.some(x => x.sender === 'shop' && x.timestamp > (i.lastReadByClient || 0));
+                    return { key: k, shopPhone: i.shopPhone, shopName: ch.shopName || i.shopName || 'Boutique', productName: ch.productName || 'Discussion', productId: ch.productId || null, last: last, ts: last ? last.timestamp : (ch.createdAt || 0), unread: unread };
+                }).catch(() => null);
+            })).then(list => {
+                const rows = list.filter(Boolean).sort((a, b) => b.ts - a.ts);
+                if (rows.length === 0) { box.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Aucune discussion</p>'; return; }
+                box.innerHTML = rows.map(r => {
+                    let apercu = 'Aucun message';
+                    if (r.last) {
+                        if (r.last.type === 'image') apercu = '📸 Photo';
+                        else if (r.last.type === 'offer') apercu = '💰 Proposition : ' + Number(r.last.price).toLocaleString() + ' F';
+                        else if (r.last.type === 'counter') apercu = '🤝 Contre-proposition';
+                        else apercu = r.last.text || '';
+                    }
+                    const pid = r.productId || r.key;
+                    return '<div onclick="window.openChatFromHub(\'' + r.shopPhone + '\',\'' + String(r.shopName).replace(/'/g, "") + '\',\'' + r.key + '\',\'' + (r.productId || '') + '\',\'' + String(r.productName).replace(/'/g, "") + '\')" class="bg-gray-50 border border-gray-100 rounded-2xl p-3 mb-2 cursor-pointer active:scale-95 transition">' +
+                        '<div class="flex justify-between items-center mb-1"><p class="text-[11px] font-black uppercase text-ink">🏪 ' + r.shopName + '</p>' + (r.unread ? '<span class="w-2.5 h-2.5 bg-red-500 rounded-full"></span>' : '') + '</div>' +
+                        '<p class="text-[9px] text-drip font-bold uppercase mb-1">' + r.productName + '</p>' +
+                        '<p class="text-[11px] text-gray-600 line-clamp-1">' + apercu + '</p></div>';
+                }).join('');
+            });
+        };
+
+        window.loadPartnerShops = () => {
+            const box = document.getElementById('hub-content');
+            box.innerHTML = '<p class="text-center text-gray-400 text-[10px] font-bold uppercase py-4">Chargement...</p>';
+            get(ref(db, 'driprush_boutiques')).then(s => {
+                const d = s.val();
+                if (!d) { box.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Aucune boutique</p>'; return; }
+                const shops = Object.values(d).filter(b => b && b.name);
+                window._hubShops = shops;
+                window.renderHubShops('');
+            }).catch(() => { box.innerHTML = '<p class="text-center text-red-400 text-xs font-bold uppercase py-10">Erreur de chargement</p>'; });
+        };
+
+        window.renderHubShops = (q) => {
+            const box = document.getElementById('hub-content');
+            const shops = (window._hubShops || []).filter(b => !q || b.name.toLowerCase().includes(q.toLowerCase()));
+            if (shops.length === 0) { box.innerHTML = '<p class="text-center text-gray-400 text-xs font-bold uppercase py-10">Aucune boutique trouvée</p>'; return; }
+            box.innerHTML = shops.map(b => {
+                const nm = String(b.name).replace(/'/g, "");
+                return '<div onclick="window.openChatFromHub(\'' + b.phone + '\',\'' + nm + '\',\'shop_' + b.phone + '\',\'\',\'Discussion générale\')" class="bg-gray-50 border border-gray-100 rounded-2xl p-3 mb-2 flex items-center gap-3 cursor-pointer active:scale-95 transition">' +
+                    '<div class="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-display text-sm flex-shrink-0">' + String(b.name).charAt(0).toUpperCase() + '</div>' +
+                    '<div class="flex-1 min-w-0"><p class="text-[11px] font-black uppercase truncate">' + b.name + '</p>' +
+                    '<p class="text-[9px] text-gray-400 uppercase">' + (b.location || 'Boutique partenaire') + '</p></div>' +
+                    '<i class="fa-solid fa-comment-dots text-drip"></i></div>';
+            }).join('');
+        };
+
+        window.openChatFromHub = (shopPhone, shopName, chatKey, productId, productName) => {
+            window.closeChatHub();
+            const ws = document.getElementById('welcome-screen'); if (ws) ws.classList.add('hidden');
+            const mc = document.getElementById('main-content'); if (mc) mc.classList.remove('hidden');
+            window.openChatWith(shopPhone, shopName, chatKey, productId || null, productName);
+        };
+
+        // ---------- 📎 PHOTO DANS LE CHAT ----------
+        window.uploadChatImage = (file) => {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const MAX = 900;
+                    const scale = Math.min(1, MAX / img.width);
+                    const cv = document.createElement('canvas');
+                    cv.width = img.width * scale; cv.height = img.height * scale;
+                    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+                    URL.revokeObjectURL(url);
+                    cv.toBlob(blob => {
+                        const fd = new FormData();
+                        fd.append('file', blob, 'chat.jpg');
+                        fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('POST', 'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload');
+                        xhr.onload = () => { try { const d = JSON.parse(xhr.responseText); d.secure_url ? resolve(d.secure_url) : reject(new Error('Upload échoué')); } catch (e) { reject(e); } };
+                        xhr.onerror = () => reject(new Error('Erreur réseau'));
+                        xhr.send(fd);
+                    }, 'image/jpeg', 0.8);
+                };
+                img.onerror = () => reject(new Error('Image illisible'));
+                img.src = url;
+            });
+        };
+
+        window.handleChatImage = async (ev) => {
+            const file = ev.target.files[0];
+            if (!file || !currentChatRefPath) return;
+            const btn = document.getElementById('chat-attach-btn');
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            try {
+                const url = await window.uploadChatImage(file);
+                const sp = currentChatRefPath.shopPhone, ci = currentChatRefPath.chatId;
+                await push(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages'), { sender: 'client', type: 'image', imageUrl: url, timestamp: Date.now() });
+                fetch(WEBHOOK_SERVER_URL + '/notify-shop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopPhone: sp, clientName: localStorage.getItem('driprush_client_name') || 'Un client', productName: 'une photo' }) }).catch(() => {});
+                window.showToast('Photo envoyée 📸');
+            } catch (e) { window.showToast('Erreur envoi photo : ' + e.message, true); }
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-paperclip"></i>';
+            ev.target.value = '';
+        };
+
+        window.openChatImage = (url) => {
+            document.getElementById('chat-img-full').src = url;
+            document.getElementById('chat-img-download').href = url;
+            document.getElementById('chat-image-viewer').classList.remove('hidden');
+        };
+        window.closeChatImage = () => { document.getElementById('chat-image-viewer').classList.add('hidden'); };
+
+        // ---------- 😀 EMOJIS ----------
+        const EMOJIS = ['😀','😁','😂','🤣','😊','😍','🥰','😎','🤩','🥳','😅','🙃','🤔','🤗','😴','😭','😡','🙏','👍','👎','👌','🤝','👏','💪','🔥','✨','💯','❤️','💔','🎁','🛍️','👕','👗','👟','👜','🧢','⌚','💍','🧴','💰','💳','📸','📦','🚀','🚲','📍','✅','❌','⏰','❓'];
+        window.toggleEmojiPanel = () => {
+            const p = document.getElementById('emoji-panel');
+            if (p.innerHTML.trim() === '') {
+                p.innerHTML = EMOJIS.map(e => '<button onclick="window.addEmoji(\'' + e + '\')" class="text-xl p-1 active:scale-90 transition">' + e + '</button>').join('');
+            }
+            p.classList.toggle('hidden');
+        };
+        window.addEmoji = (e) => {
+            const i = document.getElementById('chat-message-input');
+            i.value = i.value + e;
+            i.focus();
+        };
+
+        // ---------- 🤝 NÉGOCIATION ----------
+        let counterOfferId = null;
+        window.openCounterOffer = (msgId) => {
+            counterOfferId = msgId;
+            document.getElementById('counter-price-input').value = '';
+            document.getElementById('counter-modal').classList.remove('hidden');
+        };
+        window.closeCounterOffer = () => { document.getElementById('counter-modal').classList.add('hidden'); };
+        window.sendCounterOffer = () => {
+            const p = parseInt(document.getElementById('counter-price-input').value);
+            if (!p || p < 100) return window.showToast('Entre un prix valide', true);
+            if (!currentChatRefPath) return;
+            const sp = currentChatRefPath.shopPhone, ci = currentChatRefPath.chatId;
+            push(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages'), { sender: 'client', type: 'counter', price: p, offerId: counterOfferId, timestamp: Date.now() }).then(() => {
+                window.closeCounterOffer();
+                window.showToast('Contre-proposition envoyée 🤝');
+                fetch(WEBHOOK_SERVER_URL + '/notify-shop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopPhone: sp, clientName: localStorage.getItem('driprush_client_name') || 'Un client', productName: 'une contre-proposition de prix' }) }).catch(() => {});
+            }).catch(err => window.showToast('Erreur : ' + err.message, true));
+        };
+
+        // ---------- 💳 PAYER UNE OFFRE DU CHAT ----------
+        let payingOffer = null;
+        window.payOffer = (msgId) => {
+            if (!currentChatRefPath) return;
+            const sp = currentChatRefPath.shopPhone, ci = currentChatRefPath.chatId;
+            get(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages/' + msgId)).then(s => {
+                const o = s.val();
+                if (!o || o.status === 'paid') return;
+                payingOffer = Object.assign({ id: msgId, shopPhone: sp, chatId: ci }, o);
+                const st = loadSettings();
+                document.getElementById('offer-name').value = st.clientName || localStorage.getItem('driprush_client_name') || '';
+                document.getElementById('offer-addr').value = st.clientAddress || '';
+                document.getElementById('offer-amount').innerText = Number(o.price).toLocaleString() + ' F';
+                document.getElementById('offer-pay-modal').classList.remove('hidden');
+            });
+        };
+        window.closeOfferPay = () => { document.getElementById('offer-pay-modal').classList.add('hidden'); };
+
+        window.confirmOfferPay = (btn) => {
+            if (!payingOffer) return;
+            const name = document.getElementById('offer-name').value.trim();
+            const phone = document.getElementById('offer-phone').value.trim();
+            const addr = document.getElementById('offer-addr').value.trim();
+            if (!name || !phone || !addr) return window.showToast('Remplis ton nom, ton numéro et ton adresse', true);
+            if (phone.replace(/\D/g, '').length < 8) return window.showToast('Numéro invalide', true);
+            const original = btn.innerText;
+            btn.disabled = true; btn.innerText = '📍 LOCALISATION...';
+            const go = (gps) => {
+                btn.innerText = original; btn.disabled = false;
+                window.launchOfferFedaPay(name, phone, addr, gps);
+            };
+            if (clientCoords) return go('https://www.google.com/maps?q=' + clientCoords.lat + ',' + clientCoords.lng);
+            navigator.geolocation.getCurrentPosition(
+                p => { clientCoords = { lat: p.coords.latitude, lng: p.coords.longitude }; go('https://www.google.com/maps?q=' + p.coords.latitude + ',' + p.coords.longitude); },
+                () => { btn.innerText = original; btn.disabled = false; window.showToast('📍 Active ta localisation pour être livré', true); const g = document.getElementById('gps-required-modal'); if (g) g.classList.remove('hidden'); },
+                { timeout: 10000 }
+            );
+        };
+
+        window.launchOfferFedaPay = (name, phone, addr, gps) => {
+            const o = payingOffer;
+            const total = Number(o.price);
+            const com = Math.round(total * 0.10);
+            const widget = FedaPay.init({
+                public_key: FEDAPAY_PUBLIC_KEY, environment: 'live',
+                transaction: { amount: total, description: 'Driprush — ' + (o.productName || 'article négocié') },
+                currency: { iso: 'XOF' },
+                customer: { firstname: name.split(' ')[0] || 'Client', lastname: name.split(' ').slice(1).join(' ') || 'Driprush', email: 'client' + phone.replace(/\D/g, '') + '@driprush.bj', phone_number: { number: phone, country: 'BJ' } },
+                onComplete: function (resp) {
+                    const st = resp && resp.transaction && resp.transaction.status;
+                    if (st !== 'approved' && st !== 'approved_partially') { window.showToast('❌ Paiement non validé', true); return; }
+                    get(ref(db, 'driprush_boutiques/' + o.shopPhone)).then(bs => {
+                        const b = bs.val() || {};
+                        const orderRef = push(ref(db, 'driprush_orders'));
+                        return set(orderRef, {
+                            clientName: name, phone: phone, address: addr, clientGPS: gps,
+                            shopName: b.name || 'Boutique', shopPhone: o.shopPhone, shopGPS: b.gps || '', shopMomo: b.momo || o.shopPhone,
+                            items: (o.productName || 'Article négocié') + ' [via chat] x1',
+                            itemImages: o.imageUrl ? [o.imageUrl] : [],
+                            itemsDetail: [{ name: o.productName || 'Article négocié', size: 'Unique', color: '', qty: 1, price: total, image: o.imageUrl || '' }],
+                            deliveryMode: 'standard', deliveryFee: 0,
+                            subtotal: total, total: total, commission: com, montantBoutique: total - com,
+                            status: 'Payée', timestamp: Date.now(), fromChat: true
+                        });
+                    }).then(() => {
+                        update(ref(db, 'driprush_chats/' + o.shopPhone + '/' + o.chatId + '/messages/' + o.id), { status: 'paid' }).catch(() => {});
+                        push(ref(db, 'driprush_chats/' + o.shopPhone + '/' + o.chatId + '/messages'), { sender: 'client', type: 'system', text: '✅ Paiement effectué — ' + total.toLocaleString() + ' F', timestamp: Date.now() }).catch(() => {});
+                        window.closeOfferPay();
+                        window.showToast('✅ Paiement validé — la boutique prépare ta commande');
+                        fetch(WEBHOOK_SERVER_URL + '/notify-shop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shopPhone: o.shopPhone, clientName: name, productName: 'une commande payée via le chat' }) }).catch(() => {});
+                    }).catch(e => window.showToast('Erreur : ' + e.message, true));
+                }
+            });
+            widget.open();
+        };
 
         window.openCommentsModal = () => { document.getElementById('comments-modal').classList.remove('hidden'); window.loadComments(); };
         window.closeCommentsModal = () => { document.getElementById('comments-modal').classList.add('hidden'); };
@@ -1777,6 +2155,24 @@
             if (modal) modal.scrollTop = 0;
         };
 
+        // ---------- 🧭 BARRE DE NAVIGATION ----------
+        window.navGoHome = () => {
+            ['product-modal', 'chat-modal', 'chat-hub-modal', 'comments-modal', 'settings-panel', 'checkout-modal', 'zoom-modal', 'chat-image-viewer']
+                .forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+            const ws = document.getElementById('welcome-screen'); if (ws) ws.classList.add('hidden');
+            const mc = document.getElementById('main-content'); if (mc) mc.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.setNavActive('nav-home');
+        };
+
+        window.setNavActive = (id) => {
+            ['nav-home', 'nav-msg', 'nav-avis', 'nav-menu'].forEach(x => {
+                const el = document.getElementById(x);
+                if (el) el.classList.toggle('active', x === id);
+            });
+        };
+        window.setNavActive('nav-home');
+
         // ---------- 💬 ALERTE : LA BOUTIQUE A RÉPONDU ----------
         let chatBeepCtx = null, chatAlarmTimer = null, chatReminder = null;
         let unreadChats = [];
@@ -1803,10 +2199,11 @@
         }
 
         function refreshChatFab() {
-            const fab = document.getElementById('chat-alert-fab');
-            const cnt = document.getElementById('chat-alert-count');
-            if (cnt) cnt.innerText = unreadChats.length;
-            if (fab) fab.classList.toggle('hidden', unreadChats.length === 0);
+            const badge = document.getElementById('nav-msg-badge');
+            if (badge) {
+                badge.innerText = unreadChats.length;
+                badge.classList.toggle('hidden', unreadChats.length === 0);
+            }
             if (unreadChats.length === 0 && chatAlarmTimer) { clearInterval(chatAlarmTimer); chatAlarmTimer = null; }
         }
 
@@ -1844,16 +2241,22 @@
             document.getElementById('chat-alert-modal').classList.add('hidden');
         };
 
-        window.openChatFromAlert = (productId) => {
+        window.openChatFromAlert = (key) => {
             const m = myChats();
-            if (m[productId]) { m[productId].lastReadByClient = Date.now(); saveMyChats(m); }
-            unreadChats = unreadChats.filter(u => u.productId !== productId);
+            const info = m[key] || {};
+            if (m[key]) { m[key].lastReadByClient = Date.now(); saveMyChats(m); }
+            unreadChats = unreadChats.filter(u => u.productId !== key);
             refreshChatFab();
             window.closeChatAlert();
             const ws = document.getElementById('welcome-screen'); if (ws) ws.classList.add('hidden');
             const mc = document.getElementById('main-content'); if (mc) mc.classList.remove('hidden');
-            if (window.openModal) window.openModal(productId);
-            setTimeout(() => { if (window.openChatModal) window.openChatModal(); }, 350);
+            const isProduct = key.indexOf('shop_') !== 0;
+            if (isProduct && window.openModal) {
+                window.openModal(key);
+                setTimeout(() => { if (window.openChatModal) window.openChatModal(); }, 350);
+            } else if (window.openChatWith) {
+                window.openChatWith(info.shopPhone, info.shopName || 'Boutique', key, null, info.productName || 'Discussion générale');
+            }
         };
 
         function watchChats() {
@@ -1913,9 +2316,8 @@
                     }
 
                     // Nom réel de la boutique (via le produit)
-                    let shopName = 'La boutique';
                     const prod = (ctx.allProducts || []).find(p => p.id === productId);
-                    if (prod && prod.shopName) shopName = prod.shopName;
+                    let shopName = chat.shopName || (prod && prod.shopName) || 'La boutique';
 
                     const last = msgs.sort((a, b) => b.timestamp - a.timestamp)[0];
                     const entry = {
@@ -1967,7 +2369,7 @@
     }
     </script>
 </head>
-<body class="pb-24">
+<body class="pb-28">
     <div id="test-mode-banner" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center text-[10px] font-black uppercase py-1.5 z-[100] tracking-widest">🧪 Mode Test — Paiement simulé, aucun vrai débit</div>
     <!-- ✅ FLASH SALE BANNER -->
     <div id="flash-sale-banner" class="hidden fixed top-0 left-0 right-0 bg-drip text-white z-[101] py-2 px-4 text-center">
@@ -2045,7 +2447,7 @@
                 <div class="skeleton rounded-2xl h-64"></div><div class="skeleton rounded-2xl h-64"></div>
             </div>
         </main>
-        <div id="cart-bar" class="fixed bottom-20 left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-30 border border-gray-100">
+        <div id="cart-bar" class="fixed bottom-[76px] left-4 right-4 bg-white text-black p-4 rounded-3xl flex justify-between items-center hidden shadow-2xl z-30 border border-gray-100">
             <div><p class="text-[8px] font-black uppercase opacity-40">Sous-total</p><p id="cart-total" class="text-lg font-black italic tracking-tighter">0 F</p></div>
             <button onclick="window.toggleCheckout(true)" class="bg-black text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] italic active:scale-95 transition">Commander 🚀</button>
         </div>
@@ -2187,9 +2589,9 @@
     </div>
     <div id="chat-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[55] flex items-end">
         <div class="w-full bg-white rounded-t-[2.5rem] flex flex-col" style="height: 85vh;">
-            <div class="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
-                <div><p id="chat-shop-name" class="text-sm font-display uppercase"></p><p id="chat-product-name" class="text-[10px] text-gray-400 font-bold uppercase"></p></div>
-                <button onclick="window.closeChatModal()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            <div id="chat-header" class="flex items-center justify-between p-4 shrink-0" style="background:#0B0B0C">
+                <div onclick="window.openShopProfile()" class="cursor-pointer active:opacity-70 transition flex items-center gap-2"><div><p id="chat-shop-name" class="text-sm font-display uppercase text-white"></p><p id="chat-product-name" class="text-[10px] font-bold uppercase" style="color:rgba(255,255,255,0.7)"></p><p class="text-[8px] font-bold uppercase text-white/50 mt-0.5">👆 Voir la boutique</p></div></div>
+                <button onclick="window.closeChatModal()" class="text-white text-xl p-2 opacity-80"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="chat-name-screen" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center">
                 <p class="text-xs font-bold text-gray-500 uppercase mb-4">Comment t'appelles-tu ?</p>
@@ -2198,9 +2600,13 @@
             </div>
             <div id="chat-thread-screen" class="hidden flex-1 flex flex-col overflow-hidden">
                 <div id="chat-messages-list" class="flex-1 overflow-y-auto p-4"></div>
-                <div class="flex gap-2 p-4 border-t border-gray-100 shrink-0">
-                    <input id="chat-message-input" placeholder="Écris ton message..." class="flex-1 bg-gray-100 p-4 rounded-2xl outline-none text-xs font-bold border" onkeydown="if(event.key==='Enter'){window.sendClientMessage();}">
-                    <button onclick="window.sendClientMessage()" class="bg-black text-white w-12 h-12 rounded-2xl flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
+                <div id="emoji-panel" class="hidden border-t border-gray-100 p-2 grid grid-cols-8 gap-1 max-h-32 overflow-y-auto shrink-0 bg-gray-50"></div>
+                <div class="flex gap-2 p-3 border-t border-gray-100 shrink-0 items-center">
+                    <input type="file" id="chat-img-input" accept="image/*" class="hidden" onchange="window.handleChatImage(event)">
+                    <button id="chat-attach-btn" onclick="document.getElementById('chat-img-input').click()" class="w-11 h-11 rounded-2xl bg-gray-100 text-gray-600 flex items-center justify-center active:scale-95 transition shrink-0"><i class="fa-solid fa-paperclip"></i></button>
+                    <button onclick="window.toggleEmojiPanel()" class="w-11 h-11 rounded-2xl bg-gray-100 text-gray-600 flex items-center justify-center active:scale-95 transition shrink-0"><i class="fa-regular fa-face-smile"></i></button>
+                    <input id="chat-message-input" placeholder="Écris ton message..." class="flex-1 min-w-0 bg-gray-100 p-3 rounded-2xl outline-none text-xs font-bold border" onkeydown="if(event.key==='Enter'){window.sendClientMessage();}">
+                    <button onclick="window.sendClientMessage()" class="bg-black text-white w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane"></i></button>
                 </div>
             </div>
         </div>
@@ -2213,7 +2619,7 @@
             <button onclick="document.getElementById('maintenance-modal').classList.add('hidden')" class="w-full bg-black text-white py-3 rounded-xl text-xs font-black uppercase">D'accord</button>
         </div>
     </div>
-    <div id="install-banner" class="hidden fixed bottom-4 left-4 right-4 bg-ink text-white p-4 rounded-2xl shadow-2xl z-[70] flex items-center gap-3">
+    <div id="install-banner" class="hidden fixed bottom-[76px] left-4 right-4 bg-ink text-white p-4 rounded-2xl shadow-2xl z-[70] flex items-center gap-3">
         <i class="fa-solid fa-download text-drip text-lg"></i>
         <div class="flex-1"><p class="text-xs font-display uppercase">Installer Driprush</p><p class="text-[10px] text-gray-400">Accède au site en 1 tap, comme une vraie appli</p></div>
         <button onclick="window.installApp()" class="bg-drip text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">Installer</button>
@@ -2228,14 +2634,8 @@
             <button onclick="window.closeDeliveryModal()" class="w-full bg-black text-white py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition">Super, merci ! 🙌</button>
         </div>
     </div>
-    <button onclick="window.openCommentsModal()" class="fixed bottom-28 left-4 z-[65] bg-drip text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(255,77,28,0.4)] flex flex-col items-center justify-center active:scale-95 transition-all">
-        <i class="fa-solid fa-star text-sm"></i>
-        <span class="text-[7px] font-black uppercase mt-0.5">Avis</span>
-    </button>
-    <button onclick="window.openSettingsPanel()" class="fixed bottom-28 right-4 z-[65] bg-ink text-white w-14 h-14 rounded-full shadow-xl flex flex-col items-center justify-center active:scale-95 transition-all border border-white/10">
-        <i class="fa-solid fa-gear text-sm"></i>
-        <span class="text-[7px] font-black uppercase mt-0.5">Menu</span>
-    </button>
+
+
     <div id="comments-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-end justify-center">
         <div class="bg-white w-full max-w-md rounded-t-[2.5rem] flex flex-col border-t border-gray-100" style="height: 88vh;">
             <div class="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
@@ -2330,11 +2730,7 @@
             <div id="pay-link-content" class="space-y-4"></div>
         </div>
     </div>
-    <button id="chat-alert-fab" onclick="window.openChatAlert()" class="hidden fixed bottom-44 right-4 z-[66] bg-green-500 text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(34,197,94,0.5)] flex flex-col items-center justify-center active:scale-95 transition-all">
-        <i class="fa-solid fa-comment-dots text-base"></i>
-        <span class="text-[7px] font-black uppercase mt-0.5">Réponse</span>
-        <span id="chat-alert-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">0</span>
-    </button>
+
 
     <div id="chat-alert-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[92] flex items-center justify-center p-6">
         <div class="bg-white w-full max-w-sm rounded-3xl p-6 text-center space-y-4 border-2 border-green-500" style="box-shadow:0 0 60px rgba(34,197,94,0.4)">
@@ -2343,6 +2739,88 @@
             <div id="chat-alert-list" class="space-y-2 max-h-64 overflow-y-auto text-left"></div>
             <button onclick="window.closeChatAlert()" class="w-full bg-gray-100 text-black font-black py-3 rounded-2xl text-xs uppercase active:scale-95 transition">Plus tard</button>
         </div>
+    </div>
+
+
+    <div id="chat-hub-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[93] flex items-end justify-center">
+        <div class="bg-white w-full max-w-md rounded-t-[2.5rem] flex flex-col" style="height:88vh">
+            <div class="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
+                <div><h3 class="text-sm font-display uppercase tracking-tight text-ink">Discussions</h3><p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Écris à n'importe quelle boutique</p></div>
+                <button onclick="window.closeChatHub()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="flex gap-2 p-4 shrink-0">
+                <button id="hub-tab-recent" onclick="window.switchHubTab('recent')" class="flex-1 bg-black text-white py-2.5 rounded-xl text-[10px] font-black uppercase transition">💬 Mes discussions</button>
+                <button id="hub-tab-shops" onclick="window.switchHubTab('shops')" class="flex-1 bg-gray-100 text-gray-500 py-2.5 rounded-xl text-[10px] font-black uppercase transition">🏪 Boutiques</button>
+            </div>
+            <div class="px-4 pb-2 shrink-0">
+                <input oninput="window.renderHubShops(this.value)" placeholder="RECHERCHER UNE BOUTIQUE..." class="w-full bg-gray-100 p-3 rounded-xl text-[10px] font-bold uppercase outline-none border border-transparent focus:border-black transition">
+            </div>
+            <div id="hub-content" class="flex-1 overflow-y-auto px-4 pb-6"></div>
+        </div>
+    </div>
+
+    <div id="chat-image-viewer" class="hidden fixed inset-0 bg-black/95 z-[96] flex flex-col items-center justify-center p-4">
+        <button onclick="window.closeChatImage()" class="absolute top-6 right-6 text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
+        <img id="chat-img-full" src="" class="max-w-full max-h-[75vh] rounded-2xl object-contain">
+        <a id="chat-img-download" href="#" download="driprush.jpg" target="_blank" class="mt-5 bg-drip text-white px-6 py-3 rounded-2xl text-xs font-black uppercase active:scale-95 transition"><i class="fa-solid fa-download mr-2"></i>Enregistrer la photo</a>
+    </div>
+
+    <div id="counter-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[95] flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 space-y-4 text-center">
+            <div class="text-4xl">🤝</div>
+            <h3 class="text-sm font-display uppercase tracking-tight">Proposer ton prix</h3>
+            <p class="text-[10px] text-gray-500">La boutique recevra ta proposition et pourra l'accepter ou ajuster.</p>
+            <input id="counter-price-input" type="number" inputmode="numeric" placeholder="TON PRIX (F)" class="w-full bg-gray-100 p-4 rounded-2xl text-lg font-black text-center outline-none border">
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="window.closeCounterOffer()" class="bg-gray-100 text-black py-3.5 rounded-2xl text-[11px] font-black uppercase">Annuler</button>
+                <button onclick="window.sendCounterOffer()" class="bg-black text-white py-3.5 rounded-2xl text-[11px] font-black uppercase">Envoyer 🤝</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="offer-pay-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-[95] flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 space-y-3">
+            <div class="text-center"><div class="text-4xl mb-1">💳</div>
+                <h3 class="text-sm font-display uppercase tracking-tight">Payer l'article</h3>
+                <p id="offer-amount" class="text-2xl font-display text-drip mt-1">0 F</p>
+            </div>
+            <input id="offer-name" placeholder="NOM COMPLET" class="w-full bg-gray-100 p-3.5 rounded-2xl text-xs font-bold uppercase outline-none border">
+            <input id="offer-phone" type="tel" placeholder="NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-3.5 rounded-2xl text-xs font-bold outline-none border">
+            <textarea id="offer-addr" placeholder="ADRESSE DE LIVRAISON" class="w-full bg-gray-100 p-3.5 rounded-2xl text-xs font-bold uppercase h-16 outline-none border"></textarea>
+            <p class="text-[9px] text-gray-400 text-center">📍 Ta position GPS sera capturée pour la livraison</p>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="window.closeOfferPay()" class="bg-gray-100 text-black py-3.5 rounded-2xl text-[11px] font-black uppercase">Annuler</button>
+                <button onclick="window.confirmOfferPay(this)" class="bg-black text-white py-3.5 rounded-2xl text-[11px] font-black uppercase">Payer ✅</button>
+            </div>
+        </div>
+    </div>
+    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 z-[67] bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <div class="max-w-md mx-auto grid grid-cols-4">
+            <button onclick="window.navGoHome()" id="nav-home" class="nav-item flex flex-col items-center justify-center py-2.5 gap-0.5 active:scale-95 transition">
+                <i class="fa-solid fa-house text-base"></i>
+                <span class="text-[8px] font-black uppercase tracking-wide">Accueil</span>
+            </button>
+            <button onclick="window.openChatHub('recent')" id="nav-msg" class="nav-item relative flex flex-col items-center justify-center py-2.5 gap-0.5 active:scale-95 transition">
+                <i class="fa-solid fa-comments text-base"></i>
+                <span class="text-[8px] font-black uppercase tracking-wide">Messages</span>
+                <span id="nav-msg-badge" class="hidden absolute top-1 right-[26%] bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
+            </button>
+            <button onclick="window.openCommentsModal()" id="nav-avis" class="nav-item flex flex-col items-center justify-center py-2.5 gap-0.5 active:scale-95 transition">
+                <i class="fa-solid fa-star text-base"></i>
+                <span class="text-[8px] font-black uppercase tracking-wide">Avis</span>
+            </button>
+            <button onclick="window.openSettingsPanel()" id="nav-menu" class="nav-item flex flex-col items-center justify-center py-2.5 gap-0.5 active:scale-95 transition">
+                <i class="fa-solid fa-gear text-base"></i>
+                <span class="text-[8px] font-black uppercase tracking-wide">Menu</span>
+            </button>
+        </div>
+    </nav>
+    <div id="shop-profile-modal" class="hidden fixed inset-0 bg-white z-[80] flex flex-col">
+        <div id="shop-profile-header" class="flex items-center justify-between p-4 shrink-0" style="background:#0B0B0C">
+            <div><p id="shop-profile-name" class="text-base font-display uppercase text-white"></p><p id="shop-profile-count" class="text-[9px] font-bold uppercase text-white/60"></p></div>
+            <button onclick="window.closeShopProfile()" class="text-white text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="shop-profile-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 content-start"></div>
     </div>
 </body>
 </html>

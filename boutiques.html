@@ -478,9 +478,16 @@
                 <button onclick="window.closeShopChatModal()" class="text-gray-400 text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="shop-chat-messages-list" class="flex-1 overflow-y-auto p-4"></div>
-            <div class="flex gap-2 p-4 border-t border-white/10 shrink-0">
-                <input id="shop-chat-message-input" placeholder="Réponds au client..." class="flex-1 input-dark p-4 rounded-2xl outline-none text-xs font-bold" onkeydown="if(event.key==='Enter'){window.sendShopMessage();}">
-                <button onclick="window.sendShopMessage()" class="bg-drip text-white w-12 h-12 rounded-2xl flex items-center justify-center"><i class="fa-solid fa-paper-plane"></i></button>
+            <div class="px-4 pb-2 shrink-0">
+                <button onclick="window.openOfferForm(null)" class="w-full bg-drip text-white py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">💰 Proposer un prix au client</button>
+            </div>
+            <div id="shop-emoji-panel" class="hidden border-t border-white/10 p-2 grid grid-cols-8 gap-1 max-h-32 overflow-y-auto shrink-0 bg-black/40"></div>
+            <div class="flex gap-2 p-3 border-t border-white/10 shrink-0 items-center">
+                <input type="file" id="shop-chat-img" accept="image/*" class="hidden" onchange="window.handleShopChatImage(event)">
+                <button id="shop-attach-btn" onclick="document.getElementById('shop-chat-img').click()" class="w-11 h-11 rounded-2xl bg-white/10 text-gray-300 flex items-center justify-center active:scale-95 transition shrink-0"><i class="fa-solid fa-paperclip"></i></button>
+                <button onclick="window.toggleShopEmoji()" class="w-11 h-11 rounded-2xl bg-white/10 text-gray-300 flex items-center justify-center active:scale-95 transition shrink-0"><i class="fa-regular fa-face-smile"></i></button>
+                <input id="shop-chat-message-input" placeholder="Réponds au client..." class="flex-1 min-w-0 input-dark p-3 rounded-2xl outline-none text-xs font-bold" onkeydown="if(event.key==='Enter'){window.sendShopMessage();}">
+                <button onclick="window.sendShopMessage()" class="bg-drip text-white w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
         </div>
     </div>
@@ -499,6 +506,15 @@
             <input id="profile-gps" placeholder="Ex: 6.3671,2.4323 ou lien Google Maps (pas goo.gl)" class="w-full input-dark p-4 rounded-2xl outline-none text-[10px] text-gray-500" oninput="window.validateGpsInput('profile-gps','profile-gps-status')">
             <p id="profile-gps-status" class="text-[9px] text-gray-600 mt-1"></p>
             <input id="profile-momo" placeholder="NUMÉRO MOBILE MONEY" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
+            <p class="text-[9px] font-black text-gray-500 uppercase tracking-widest pt-2">🎨 Thème de ma discussion</p>
+            <div class="grid grid-cols-6 gap-2">
+                <button onclick="window.pickTheme('drip')"   id="th-drip"   class="h-10 rounded-xl border-2 border-transparent" style="background:#FF4D1C"></button>
+                <button onclick="window.pickTheme('lime')"   id="th-lime"   class="h-10 rounded-xl border-2 border-transparent" style="background:#4D7C0F"></button>
+                <button onclick="window.pickTheme('blue')"   id="th-blue"   class="h-10 rounded-xl border-2 border-transparent" style="background:#1D4ED8"></button>
+                <button onclick="window.pickTheme('purple')" id="th-purple" class="h-10 rounded-xl border-2 border-transparent" style="background:#6D28D9"></button>
+                <button onclick="window.pickTheme('pink')"   id="th-pink"   class="h-10 rounded-xl border-2 border-transparent" style="background:#DB2777"></button>
+                <button onclick="window.pickTheme('dark')"   id="th-dark"   class="h-10 rounded-xl border-2 border-transparent" style="background:#0B0B0C"></button>
+            </div>
             <button onclick="window.saveProfile()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase mt-2">Enregistrer les modifications ✅</button>
         </div>
     </div>
@@ -1665,21 +1681,63 @@
         };
 
         window.renderShopChatMessages = (messages) => {
-            const container = document.getElementById('shop-chat-messages-list');
-            container.innerHTML = '';
-            if (messages.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-10">Aucun message encore</p>';
-            }
+            const box = document.getElementById('shop-chat-messages-list');
+            box.innerHTML = '';
+            if (messages.length === 0) { box.innerHTML = '<p class="text-center text-gray-500 text-xs font-bold uppercase py-10">Aucun message encore</p>'; return; }
             messages.forEach(m => {
-                const isShop = m.sender === 'shop';
-                container.innerHTML += `
-                    <div class="flex ${isShop ? 'justify-end' : 'justify-start'} mb-2">
-                        <div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs ${isShop ? 'bg-drip text-white' : 'bg-white/10 text-white'}">
-                            ${m.text}
-                        </div>
-                    </div>`;
+                const mine = m.sender === 'shop';
+                const align = mine ? 'justify-end' : 'justify-start';
+
+                if (m.type === 'image') {
+                    box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[70%] rounded-2xl overflow-hidden border border-white/10">' +
+                        '<img src="' + m.imageUrl + '" onclick="window.openShopImage(\'' + m.imageUrl + '\')" class="w-full max-h-56 object-cover cursor-zoom-in">' +
+                        (!mine ? '<button onclick="window.openOfferForm(\'' + m.imageUrl + '\')" class="w-full bg-drip text-white py-2 text-[10px] font-black uppercase active:scale-95 transition">💰 Proposer un prix</button>' : '') +
+                        '</div></div>';
+                    return;
+                }
+
+                if (m.type === 'offer') {
+                    const paid = m.status === 'paid';
+                    box.innerHTML += '<div class="flex justify-end mb-2"><div class="max-w-[85%] w-full rounded-2xl border-2 border-drip p-3 bg-black/40">' +
+                        '<p class="text-[9px] font-black uppercase tracking-widest text-drip mb-1">💰 Ta proposition</p>' +
+                        (m.imageUrl ? '<img src="' + m.imageUrl + '" onclick="window.openShopImage(\'' + m.imageUrl + '\')" class="w-full h-24 object-cover rounded-xl mb-2 cursor-zoom-in">' : '') +
+                        '<p class="text-[11px] font-bold uppercase text-white">' + (m.productName || 'Article') + '</p>' +
+                        '<p class="text-2xl font-display text-lime">' + Number(m.price).toLocaleString() + ' F</p>' +
+                        (paid ? '<p class="mt-2 text-[10px] font-black text-lime uppercase">✅ Payé par le client</p>'
+                              : '<button onclick="window.editOfferPrice(\'' + m.id + '\',' + Number(m.price) + ')" class="mt-2 w-full bg-white/10 border border-white/15 text-white py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">✏️ Modifier le prix</button>') +
+                        '</div></div>';
+                    return;
+                }
+
+                if (m.type === 'counter') {
+                    box.innerHTML += '<div class="flex justify-start mb-2"><div class="max-w-[85%] w-full rounded-2xl border-2 border-dashed border-amber-400 p-3 bg-amber-500/10">' +
+                        '<p class="text-[9px] font-black text-amber-400 uppercase">🤝 Le client propose</p>' +
+                        '<p class="text-xl font-display text-amber-300">' + Number(m.price).toLocaleString() + ' F</p>' +
+                        '<button onclick="window.acceptCounter(' + Number(m.price) + ')" class="mt-2 w-full bg-lime text-black py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">✅ Accepter ce prix</button>' +
+                        '</div></div>';
+                    return;
+                }
+
+                if (m.type === 'system') {
+                    box.innerHTML += '<div class="flex justify-center mb-2"><p class="text-[9px] font-black uppercase text-lime bg-lime/10 px-3 py-1 rounded-full">' + m.text + '</p></div>';
+                    return;
+                }
+
+                box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs ' + (mine ? 'bg-drip text-white' : 'bg-white/10 text-white') + '">' + m.text + '</div></div>';
             });
-            container.scrollTop = container.scrollHeight;
+            box.scrollTop = box.scrollHeight;
+        };
+
+        window.notifyClient = (preview) => {
+            get(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef)).then(snap => {
+                const chat = snap.val();
+                if (chat && chat.clientFCMToken) {
+                    fetch(WEBHOOK_SERVER_URL + '/notify-client', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ clientToken: chat.clientFCMToken, shopName: currentBoutique ? currentBoutique.name : 'La boutique', messagePreview: preview })
+                    }).catch(() => {});
+                }
+            }).catch(() => {});
         };
 
         window.sendShopMessage = () => {
@@ -1687,24 +1745,102 @@
             const text = input.value.trim();
             if (!text || !currentShopChatRef) return;
             if (containsContactAttempt(text)) {
-                alert("⚠️ Les échanges de numéros/contacts sont interdits dans ce chat pour la sécurité de la plateforme.");
+                alert('⚠️ Les numéros sont interdits dans le texte. Pour proposer un prix, utilise le bouton 💰 Proposer un prix.');
                 return;
             }
-            push(ref(db, `driprush_chats/${currentShopPhone}/${currentShopChatRef}/messages`), {
-                sender: 'shop', text, timestamp: Date.now()
-            }).then(() => {
-                input.value = '';
-                get(ref(db, `driprush_chats/${currentShopPhone}/${currentShopChatRef}`)).then((snap) => {
-                    const chat = snap.val();
-                    if (chat && chat.clientFCMToken) {
-                        fetch(WEBHOOK_SERVER_URL + '/notify-client', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ clientToken: chat.clientFCMToken, shopName: currentBoutique ? currentBoutique.name : 'La boutique', messagePreview: text.substring(0, 60) })
-                        }).catch(() => {});
-                    }
-                }).catch(() => {});
-            }).catch((err) => alert("Erreur : " + err.message));
+            push(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages'), { sender: 'shop', text: text, timestamp: Date.now() })
+                .then(() => { input.value = ''; document.getElementById('shop-emoji-panel').classList.add('hidden'); window.notifyClient(text.substring(0, 60)); })
+                .catch(err => alert('Erreur : ' + err.message));
+        };
+
+        // ---------- 📎 PHOTO (boutique) ----------
+        window.handleShopChatImage = async (ev) => {
+            const file = ev.target.files[0];
+            if (!file || !currentShopChatRef) return;
+            const btn = document.getElementById('shop-attach-btn');
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            try {
+                const url = await window.processAndUploadFile(file);
+                await push(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages'), { sender: 'shop', type: 'image', imageUrl: url, timestamp: Date.now() });
+                window.notifyClient('📸 Photo');
+            } catch (e) { alert('Erreur envoi photo : ' + e.message); }
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-paperclip"></i>';
+            ev.target.value = '';
+        };
+
+        window.openShopImage = (url) => {
+            document.getElementById('shop-img-full').src = url;
+            document.getElementById('shop-img-download').href = url;
+            document.getElementById('shop-image-viewer').classList.remove('hidden');
+        };
+        window.closeShopImage = () => { document.getElementById('shop-image-viewer').classList.add('hidden'); };
+
+        // ---------- 😀 EMOJIS (boutique) ----------
+        const SHOP_EMOJIS = ['😀','😁','😂','😊','😍','😎','🤝','👍','👌','🙏','🔥','✨','💯','❤️','🎁','🛍️','👕','👗','👟','👜','🧢','⌚','💍','🧴','💰','💳','📸','📦','🚀','✅','❌','⏰','❓','🙌','💪','👏'];
+        window.toggleShopEmoji = () => {
+            const p = document.getElementById('shop-emoji-panel');
+            if (p.innerHTML.trim() === '') p.innerHTML = SHOP_EMOJIS.map(e => '<button onclick="window.addShopEmoji(\'' + e + '\')" class="text-xl p-1 active:scale-90 transition">' + e + '</button>').join('');
+            p.classList.toggle('hidden');
+        };
+        window.addShopEmoji = (e) => { const i = document.getElementById('shop-chat-message-input'); i.value += e; i.focus(); };
+
+        // ---------- 💰 PROPOSITION DE PRIX ----------
+        let offerImageUrl = null;
+        let editingOfferId = null;
+
+        window.openOfferForm = (imgUrl) => {
+            offerImageUrl = imgUrl || null;
+            editingOfferId = null;
+            document.getElementById('offer-form-title').innerText = '💰 Proposer un prix';
+            document.getElementById('offer-product-input').value = '';
+            document.getElementById('offer-price-input').value = '';
+            document.getElementById('offer-sizes-input').value = '';
+            document.getElementById('offer-colors-input').value = '';
+            document.getElementById('offer-delay-input').value = '';
+            document.getElementById('offer-preview').innerHTML = imgUrl ? '<img src="' + imgUrl + '" class="w-full h-28 object-cover rounded-xl">' : '';
+            document.getElementById('offer-form-modal').classList.remove('hidden');
+        };
+        window.editOfferPrice = (msgId, currentPrice) => {
+            editingOfferId = msgId;
+            offerImageUrl = null;
+            document.getElementById('offer-form-title').innerText = '✏️ Modifier le prix';
+            document.getElementById('offer-product-input').value = '';
+            document.getElementById('offer-price-input').value = currentPrice;
+            document.getElementById('offer-preview').innerHTML = '';
+            document.getElementById('offer-form-modal').classList.remove('hidden');
+        };
+        window.closeOfferForm = () => { document.getElementById('offer-form-modal').classList.add('hidden'); };
+
+        window.sendOffer = () => {
+            const price = parseInt(document.getElementById('offer-price-input').value);
+            if (!price || price < 100) return alert('Entre un prix valide (min 100 F)');
+            if (!currentShopChatRef) return;
+
+            if (editingOfferId) {
+                update(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages/' + editingOfferId), { price: price })
+                    .then(() => { window.closeOfferForm(); window.notifyClient('💰 Nouveau prix : ' + price.toLocaleString() + ' F'); })
+                    .catch(err => alert('Erreur : ' + err.message));
+                return;
+            }
+            const name = document.getElementById('offer-product-input').value.trim() || 'Article';
+            const sizes = document.getElementById('offer-sizes-input').value.trim();
+            const colors = document.getElementById('offer-colors-input').value.trim();
+            const delay = document.getElementById('offer-delay-input').value.trim();
+            push(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages'), {
+                sender: 'shop', type: 'offer', productName: name, price: price,
+                sizes: sizes || null, colors: colors || null, deliveryTime: delay || null,
+                imageUrl: offerImageUrl || null, status: 'pending', timestamp: Date.now()
+            }).then(() => { window.closeOfferForm(); window.notifyClient('💰 Proposition : ' + price.toLocaleString() + ' F'); })
+              .catch(err => alert('Erreur : ' + err.message));
+        };
+
+        window.acceptCounter = (price) => {
+            if (!confirm('Accepter ' + price.toLocaleString() + ' F et envoyer la demande de paiement ?')) return;
+            push(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages'), {
+                sender: 'shop', type: 'offer', productName: 'Article négocié', price: price,
+                imageUrl: null, status: 'pending', timestamp: Date.now()
+            }).then(() => window.notifyClient('✅ Prix accepté : ' + price.toLocaleString() + ' F'))
+              .catch(err => alert('Erreur : ' + err.message));
         };
 
         window.closeShopChatModal = () => {
@@ -1719,6 +1855,7 @@
             document.getElementById('profile-location').value = currentBoutique.location || '';
             document.getElementById('profile-gps').value = currentBoutique.gps || '';
             document.getElementById('profile-momo').value = currentBoutique.momo || '';
+            window.pickTheme(currentBoutique.chatTheme || 'dark');
             document.getElementById('profile-modal').classList.remove('hidden');
         };
 
@@ -1744,6 +1881,15 @@
             }
         };
 
+        let selectedTheme = 'dark';
+        window.pickTheme = (t) => {
+            selectedTheme = t;
+            ['drip','lime','blue','purple','pink','dark'].forEach(x => {
+                const el = document.getElementById('th-' + x);
+                if (el) el.style.borderColor = (x === t) ? '#fff' : 'transparent';
+            });
+        };
+
         window.saveProfile = () => {
             const name = document.getElementById('profile-name').value.trim();
             const location = document.getElementById('profile-location').value.trim();
@@ -1752,7 +1898,7 @@
             const momo = cleanPhone(document.getElementById('profile-momo').value);
             if (!name) return alert("Le nom de la boutique ne peut pas être vide !");
             if (!momo || momo.length < 8) return alert("Numéro Mobile Money invalide !");
-            update(ref(db, 'driprush_boutiques/' + currentShopPhone), { name, location, gps, momo }).then(() => {
+            update(ref(db, 'driprush_boutiques/' + currentShopPhone), { name, location, gps, momo, chatTheme: selectedTheme }).then(() => {
                 currentBoutique = { ...currentBoutique, name, location, gps, momo };
                 const saved = JSON.parse(localStorage.getItem('driprush_shop_session') || '{}');
                 saved.boutique = currentBoutique;
@@ -2090,6 +2236,28 @@
             <p class="text-sm text-white"><span id="new-order-count" class="text-3xl font-display text-lime">0</span><br><span class="text-[11px] text-gray-400 uppercase font-bold">commande(s) à traiter</span></p>
             <p class="text-[10px] text-gray-400 leading-relaxed">Prépare le colis et marque la commande comme livrée une fois expédiée.</p>
             <button onclick="window.stopOrderAlarm()" class="w-full bg-drip text-white font-display py-4 rounded-2xl text-sm uppercase active:scale-95 transition">Voir la commande 📦</button>
+        </div>
+    </div>
+    <div id="shop-image-viewer" class="hidden fixed inset-0 bg-black/95 z-[96] flex flex-col items-center justify-center p-4">
+        <button onclick="window.closeShopImage()" class="absolute top-6 right-6 text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
+        <img id="shop-img-full" src="" class="max-w-full max-h-[75vh] rounded-2xl object-contain">
+        <a id="shop-img-download" href="#" download="driprush.jpg" target="_blank" class="mt-5 bg-drip text-white px-6 py-3 rounded-2xl text-xs font-black uppercase active:scale-95 transition"><i class="fa-solid fa-download mr-2"></i>Enregistrer la photo</a>
+    </div>
+
+    <div id="offer-form-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[95] flex items-center justify-center p-6">
+        <div class="bg-ink w-full max-w-sm rounded-3xl p-6 border border-white/10 space-y-3">
+            <h3 id="offer-form-title" class="text-sm font-display uppercase text-drip tracking-tight text-center">💰 Proposer un prix</h3>
+            <div id="offer-preview"></div>
+            <input type="text" id="offer-product-input" placeholder="NOM DE L'ARTICLE" class="w-full input-dark p-3.5 rounded-2xl text-xs font-bold uppercase">
+            <input type="number" id="offer-price-input" inputmode="numeric" placeholder="PRIX (F)" class="w-full input-dark p-4 rounded-2xl text-lg font-black text-center">
+            <input type="text" id="offer-sizes-input" placeholder="TAILLES DISPO (ex: 40,41,42)" class="w-full input-dark p-3 rounded-2xl text-xs font-bold uppercase">
+            <input type="text" id="offer-colors-input" placeholder="COULEURS DISPO (ex: Noir, Blanc)" class="w-full input-dark p-3 rounded-2xl text-xs font-bold">
+            <input type="text" id="offer-delay-input" placeholder="DÉLAI LIVRAISON (ex: 24h, 2-3 jours)" class="w-full input-dark p-3 rounded-2xl text-xs font-bold uppercase">
+            <p class="text-[9px] text-gray-500 text-center">Le client pourra payer directement ou négocier 🤝</p>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="window.closeOfferForm()" class="bg-white/10 text-white py-3.5 rounded-2xl text-[11px] font-black uppercase">Annuler</button>
+                <button onclick="window.sendOffer()" class="bg-drip text-white py-3.5 rounded-2xl text-[11px] font-black uppercase">Envoyer 💰</button>
+            </div>
         </div>
     </div>
 </body>
