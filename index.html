@@ -1376,6 +1376,7 @@
             const clientName = localStorage.getItem('driprush_client_name');
 
             document.getElementById('chat-modal').classList.remove('hidden');
+            const navHide = document.getElementById('bottom-nav'); if (navHide) navHide.style.display = 'none';
             document.getElementById('emoji-panel').classList.add('hidden');
 
             if (clientName) {
@@ -1593,6 +1594,7 @@
             const ep = document.getElementById('emoji-panel'); if (ep) ep.classList.add('hidden');
             const inp = document.getElementById('chat-message-input'); if (inp) inp.blur();
             document.getElementById('chat-modal').classList.add('hidden');
+            const nav = document.getElementById('bottom-nav'); if (nav) nav.style.display = '';
         };
 
         // ---------- 💬 HUB : TOUTES LES BOUTIQUES + MES DISCUSSIONS ----------
@@ -2187,6 +2189,7 @@
                 .forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
             const ws = document.getElementById('welcome-screen'); if (ws) ws.classList.add('hidden');
             const mc = document.getElementById('main-content'); if (mc) mc.classList.remove('hidden');
+            const navB = document.getElementById('bottom-nav'); if (navB) navB.style.display = '';
             window.scrollTo({ top: 0, behavior: 'smooth' });
             window.setNavActive('nav-home');
         };
@@ -2613,7 +2616,7 @@
             </div>
         </div>
     </div>
-    <div id="chat-modal" class="hidden fixed inset-0 bg-white z-[55] flex flex-col" style="height:100dvh">
+    <div id="chat-modal" class="hidden fixed inset-0 bg-white z-[100] flex flex-col" style="height:100dvh">
         <div class="w-full bg-white flex flex-col flex-1 min-h-0">
             <div id="chat-header" class="flex items-center gap-3 p-3 shrink-0" style="background:#0B0B0C">
                 <button onclick="window.closeChatModal()" class="text-white text-lg px-1 opacity-90"><i class="fa-solid fa-arrow-left"></i></button>
@@ -2848,7 +2851,7 @@
             </button>
         </div>
     </nav>
-    <div id="shop-profile-modal" class="hidden fixed inset-0 bg-white z-[80] flex flex-col">
+    <div id="shop-profile-modal" class="hidden fixed inset-0 bg-white z-[101] flex flex-col">
         <div id="shop-profile-header" class="flex items-center justify-between p-4 shrink-0" style="background:#0B0B0C">
             <div><p id="shop-profile-name" class="text-base font-display uppercase text-white"></p><p id="shop-profile-count" class="text-[9px] font-bold uppercase text-white/60"></p></div>
             <button onclick="window.closeShopProfile()" class="text-white text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
