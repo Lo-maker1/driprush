@@ -1350,6 +1350,7 @@
         // ✅ FIX 2 — toggleCheckout : fallback Firebase si shopGPS vide
         window.toggleCheckout = (show) => {
             document.getElementById('checkout-modal').classList.toggle('hidden', !show);
+            const navc = document.getElementById('bottom-nav'); if (navc) navc.style.display = show ? 'none' : '';
             if (!show) { window.scrollTo(0, 0); window.updateCartUI(); return; }
             window.updateCartUI();
             const s = loadSettings();
@@ -2617,7 +2618,7 @@
             <button onclick="window.toggleZoom(false)" class="absolute top-6 right-6 text-white text-2xl opacity-70 hover:opacity-100 transition"><i class="fa-solid fa-xmark"></i></button>
             <img id="zoom-img" src="" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl">
         </div>
-        <div id="checkout-modal" class="fixed inset-0 bg-white z-50 p-4 flex flex-col hidden overflow-y-auto">
+        <div id="checkout-modal" class="fixed inset-0 bg-white z-[105] p-4 flex flex-col hidden overflow-y-auto">
             <div class="flex items-center justify-between mb-6 pt-4 shrink-0">
                 <button onclick="window.toggleCheckout(false)" class="flex items-center gap-2 font-bold text-xs uppercase"><i class="fa-solid fa-chevron-left text-xl"></i> Retour</button>
                 <h2 class="text-lg font-display tracking-tighter">Mon Panier</h2>
@@ -2966,6 +2967,20 @@
             </div>
         </div>
         <div id="shop-profile-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 content-start"></div>
+    </div>
+    <div id="gps-required-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[115] flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 text-center space-y-4">
+            <div class="text-5xl">📍</div>
+            <h3 class="text-base font-display uppercase text-drip tracking-tight">Localisation requise</h3>
+            <p class="text-xs text-gray-600 leading-relaxed">On a besoin de ta position GPS pour calculer les frais de livraison et envoyer le livreur chez toi.</p>
+            <div class="bg-gray-50 rounded-2xl p-4 text-left space-y-2">
+                <p class="text-[10px] font-black text-gray-700 uppercase">Comment activer :</p>
+                <p class="text-[10px] text-gray-500">📱 <b>Android</b> — Paramètres → Localisation → Activer</p>
+                <p class="text-[10px] text-gray-500">🍎 <b>iPhone</b> — Réglages → Confidentialité → Localisation → Activer</p>
+                <p class="text-[10px] text-gray-500">🌐 <b>Navigateur</b> — quand le site demande ta position, appuie sur "Autoriser"</p>
+            </div>
+            <button onclick="document.getElementById('gps-required-modal').classList.add('hidden')" class="w-full bg-drip text-white font-display py-4 rounded-2xl text-sm uppercase active:scale-95 transition">J'ai compris, réessayer ✅</button>
+        </div>
     </div>
 </body>
 </html>
