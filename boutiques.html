@@ -1714,6 +1714,7 @@
                         '<p class="text-[9px] font-black text-amber-400 uppercase">🤝 Le client propose</p>' +
                         '<p class="text-xl font-display text-amber-300">' + Number(m.price).toLocaleString() + ' F</p>' +
                         '<button onclick="window.acceptCounter(' + Number(m.price) + ')" class="mt-2 w-full bg-lime text-black py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">✅ Accepter ce prix</button>' +
+                        '<button onclick="window.stopNegotiation()" class="mt-1 w-full bg-red-500/15 text-red-400 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">🚫 Stopper la négociation</button>' +
                         '</div></div>';
                     return;
                 }
@@ -1832,6 +1833,28 @@
                 imageUrl: offerImageUrl || null, status: 'pending', timestamp: Date.now()
             }).then(() => { window.closeOfferForm(); window.notifyClient('💰 Proposition : ' + price.toLocaleString() + ' F'); })
               .catch(err => alert('Erreur : ' + err.message));
+        };
+
+        window.stopNegotiation = () => {
+            if (!currentShopChatRef) return;
+            if (!confirm('Stopper la négociation sur cette discussion ?\n\nLe client ne pourra plus proposer de prix, mais pourra toujours payer le dernier prix que tu as proposé.')) return;
+            Promise.all([
+                update(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef), { negotiationClosed: true }),
+                push(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages'), {
+                    sender: 'shop', type: 'system', text: '🚫 La boutique a mis fin à la négociation. Le dernier prix proposé reste valable pour le paiement.', timestamp: Date.now()
+                })
+            ]).then(() => window.notifyClient('🚫 Négociation terminée'))
+              .catch(err => alert('Erreur : ' + err.message));
+        };
+
+        window.reopenNegotiation = () => {
+            if (!currentShopChatRef) return;
+            update(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef), { negotiationClosed: false })
+                .then(() => {
+                    push(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages'), {
+                        sender: 'shop', type: 'system', text: '✅ La boutique a rouvert la négociation.', timestamp: Date.now()
+                    });
+                }).catch(err => alert('Erreur : ' + err.message));
         };
 
         window.acceptCounter = (price) => {

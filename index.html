@@ -1367,6 +1367,7 @@
 
         window.openChatWith = (shopPhone, shopName, chatKey, productId, productName) => {
             currentChatMeta = { shopPhone: String(shopPhone), shopName: shopName || 'Boutique', chatKey: chatKey, productId: productId || null, productName: productName || 'Discussion générale' };
+            window.currentChatMeta = currentChatMeta;
             document.getElementById('chat-shop-name').innerText = currentChatMeta.shopName;
             document.getElementById('chat-product-name').innerText = currentChatMeta.productName;
             window.applyChatTheme(currentChatMeta.shopPhone);
@@ -1478,9 +1479,15 @@
             }
             const dot = document.getElementById('chat-unread-dot');
             if (dot) dot.classList.add('hidden');
+            // Écoute le statut "négociation fermée"
+            onValue(ref(db, 'driprush_chats/' + shopPhone + '/' + chatId + '/negotiationClosed'), (s) => {
+                window._negoClosed = s.val() === true;
+                if (window._lastChatMsgs) window.renderChatMessages(window._lastChatMsgs);
+            }, () => {});
             currentChatUnsub = onValue(ref(db, 'driprush_chats/' + shopPhone + '/' + chatId + '/messages'), (snap) => {
                 const data = snap.val();
                 const msgs = data ? Object.keys(data).map(id => Object.assign({ id: id }, data[id])).sort((a, b) => a.timestamp - b.timestamp) : [];
+                window._lastChatMsgs = msgs;
                 window.renderChatMessages(msgs);
             });
         };
@@ -1517,10 +1524,12 @@
                         '<p class="text-2xl font-display mt-1" style="color:' + chatTheme.head + '">' + Number(m.price).toLocaleString() + ' F</p>' +
                         (paid ? '<p class="mt-2 text-[10px] font-black text-green-600 uppercase">✅ Payé — commande envoyée à la boutique</p>' :
                          cancelled ? '<p class="mt-2 text-[10px] font-black text-gray-400 uppercase">Offre annulée</p>' :
-                         '<div class="grid grid-cols-2 gap-2 mt-3">' +
-                            '<button onclick="window.payOffer(\'' + m.id + '\')" class="bg-black text-white py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">💳 Payer</button>' +
-                            '<button onclick="window.openCounterOffer(\'' + m.id + '\')" class="bg-gray-100 text-black py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">🤝 Négocier</button>' +
-                         '</div>') +
+                         (window._negoClosed
+                            ? '<button onclick="window.payOffer(\'' + m.id + '\')" class="w-full mt-3 bg-black text-white py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">💳 Payer</button>'
+                            : '<div class="grid grid-cols-2 gap-2 mt-3">' +
+                              '<button onclick="window.payOffer(\'' + m.id + '\')" class="bg-black text-white py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">💳 Payer</button>' +
+                              '<button onclick="window.openCounterOffer(\'' + m.id + '\')" class="bg-gray-100 text-black py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">🤝 Négocier</button>' +
+                              '</div>')) +
                         '</div></div>';
                     return;
                 }
@@ -1758,6 +1767,7 @@
         };
         window.closeCounterOffer = () => { document.getElementById('counter-modal').classList.add('hidden'); };
         window.sendCounterOffer = () => {
+            if (window._negoClosed) { window.closeCounterOffer(); return window.showToast('🚫 La boutique a fermé la négociation', true); }
             const p = parseInt(document.getElementById('counter-price-input').value);
             if (!p || p < 100) return window.showToast('Entre un prix valide', true);
             if (!currentChatRefPath) return;
@@ -1782,17 +1792,67 @@
                 document.getElementById('offer-name').value = st.clientName || localStorage.getItem('driprush_client_name') || '';
                 document.getElementById('offer-addr').value = st.clientAddress || '';
                 document.getElementById('offer-amount').innerText = Number(o.price).toLocaleString() + ' F';
+                // reset livraison
+                offerDeliveryMode = ''; offerStdFee = 0; offerExpFee = 0;
+                document.getElementById('offer-std-fee').innerText = '...';
+                document.getElementById('offer-exp-fee').innerText = '...';
+                document.getElementById('offer-total').innerText = '—';
+                document.querySelectorAll('.offer-ship-btn').forEach(b => b.classList.remove('bg-black','text-white','border-black'));
                 document.getElementById('offer-pay-modal').classList.remove('hidden');
+                window.computeOfferDelivery(sp);
             });
         };
         window.closeOfferPay = () => { document.getElementById('offer-pay-modal').classList.add('hidden'); };
 
-        window.confirmOfferPay = (btn) => {
+        let offerDeliveryMode = '', offerStdFee = 0, offerExpFee = 0;
+
+        window.computeOfferDelivery = (shopPhone) => {
+            const setFees = (std, exp) => {
+                offerStdFee = std; offerExpFee = exp;
+                document.getElementById('offer-std-fee').innerText = std > 0 ? '+' + std.toLocaleString() + ' F' : 'Gratuit';
+                document.getElementById('offer-exp-fee').innerText = exp > 0 ? '+' + exp.toLocaleString() + ' F' : 'Gratuit';
+            };
+            const fallback = () => setFees(500, 900);
+            const compute = (coords) => {
+                clientCoords = coords;
+                get(ref(db, 'driprush_boutiques/' + shopPhone)).then(s => {
+                    const b = s.val();
+                    const cc = (b && b.gps) ? parseGPSCoords(b.gps) : null;
+                    if (!cc) return fallback();
+                    const dist = haversineDistance(cc.lat, cc.lng, coords.lat, coords.lng) * 1.25;
+                    setFees(roundTo25(dist * 0.179), roundTo25(dist * 0.20));
+                }).catch(fallback);
+            };
+            if (clientCoords) return compute(clientCoords);
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    p => compute({ lat: p.coords.latitude, lng: p.coords.longitude }),
+                    () => fallback(), { timeout: 10000 }
+                );
+            } else fallback();
+        };
+
+        window.selectOfferShipping = (mode, btn) => {
+            offerDeliveryMode = mode;
+            document.querySelectorAll('.offer-ship-btn').forEach(b => b.classList.remove('bg-black','text-white','border-black'));
+            btn.classList.add('bg-black','text-white','border-black');
+            window.refreshOfferTotal();
+        };
+
+        window.refreshOfferTotal = () => {
+            if (!payingOffer) return;
+            const fee = offerDeliveryMode === 'express' ? offerExpFee : (offerDeliveryMode === 'standard' ? offerStdFee : 0);
+            const total = Number(payingOffer.price) + fee;
+            document.getElementById('offer-total').innerText = offerDeliveryMode ? total.toLocaleString() + ' F' : 'Choisis la livraison';
+        };
+
+                window.confirmOfferPay = (btn) => {
             if (!payingOffer) return;
             const name = document.getElementById('offer-name').value.trim();
             const phone = document.getElementById('offer-phone').value.trim();
             const addr = document.getElementById('offer-addr').value.trim();
             if (!name || !phone || !addr) return window.showToast('Remplis ton nom, ton numéro et ton adresse', true);
+            if (!offerDeliveryMode) return window.showToast('Choisis un mode de livraison', true);
             if (phone.replace(/\D/g, '').length < 8) return window.showToast('Numéro invalide', true);
             const original = btn.innerText;
             btn.disabled = true; btn.innerText = '📍 LOCALISATION...';
@@ -1810,7 +1870,8 @@
 
         window.launchOfferFedaPay = (name, phone, addr, gps) => {
             const o = payingOffer;
-            const total = Number(o.price);
+            const fee = offerDeliveryMode === 'express' ? offerExpFee : offerStdFee;
+            const total = Number(o.price) + fee;
             const com = Math.round(total * 0.10);
             const widget = FedaPay.init({
                 public_key: FEDAPAY_PUBLIC_KEY, environment: 'live',
@@ -1829,8 +1890,8 @@
                             items: (o.productName || 'Article négocié') + ' [via chat] x1',
                             itemImages: o.imageUrl ? [o.imageUrl] : [],
                             itemsDetail: [{ name: o.productName || 'Article négocié', size: 'Unique', color: '', qty: 1, price: total, image: o.imageUrl || '' }],
-                            deliveryMode: 'standard', deliveryFee: 0,
-                            subtotal: total, total: total, commission: com, montantBoutique: total - com,
+                            deliveryMode: offerDeliveryMode || 'standard', deliveryFee: fee,
+                            subtotal: Number(o.price), total: total, commission: com, montantBoutique: total - com,
                             status: 'Payée', timestamp: Date.now(), fromChat: true
                         });
                     }).then(() => {
@@ -1895,7 +1956,17 @@
         window.__drip = {
             db, ref, onValue, get, set, push, update,
             getCtx: () => ({ cart, deliveryFee, deliveryTypeSelected, clientCoords, appliedCodePromo, promos, selectedItem, getPrixFinal, allProducts, getReductionPercent }),
+            getChatMeta: () => currentChatMeta,
             buildShopOrders: (n, p, a, g) => window.buildShopOrders(n, p, a, g),
+            openShopChannel: (phone) => {
+                if (!phone) return false;
+                const p = allProducts.find(x => String(x.shopPhone) === String(phone));
+                const shopName = p ? (p.shop || p.shopName || 'Boutique') : 'Boutique';
+                document.getElementById('welcome-screen').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                window.openChatWith(String(phone), shopName, 'shop_' + phone, null, 'Discussion générale');
+                return true;
+            },
             openArticle: (id) => {
                 const p = allProducts.find(x => x.id === id);
                 if (!p) return false;
@@ -2000,6 +2071,21 @@
                 navigator.share({ title: '🔥 ' + item.name + ' sur Driprush', text: 'Regarde cet article 👀🔥', url }).catch(() => {});
             } else {
                 navigator.clipboard.writeText(url).then(() => toast('Lien copié ! Partage-le 🔗')).catch(() => toast(url));
+            }
+        };
+
+        // ---------- 🏪 PARTAGER LE CANAL D'UNE BOUTIQUE ----------
+        window.shareShopLink = () => {
+            let phone = '', name = 'la boutique';
+            const meta = (D() && D().getChatMeta) ? D().getChatMeta() : null;
+            if (meta && meta.shopPhone) { phone = meta.shopPhone; name = meta.shopName || 'la boutique'; }
+            if (!phone) { toast('Ouvre une boutique pour partager son lien', true); return; }
+            const url = location.origin + location.pathname + '?shop=' + encodeURIComponent(phone);
+            if (navigator.share) {
+                navigator.share({ title: '🏪 ' + name + ' sur Driprush', text: 'Écris à ' + name + ' sur Driprush 👇', url: url })
+                    .catch(() => navigator.clipboard.writeText(url).then(() => toast('Lien de la boutique copié 🔗')));
+            } else {
+                navigator.clipboard.writeText(url).then(() => toast('Lien de la boutique copié ! Partage-le 🔗'));
             }
         };
 
@@ -2383,8 +2469,16 @@
         const qs = new URLSearchParams(location.search);
         const payId = qs.get('pay');
         const artId = qs.get('article');
+        const shopId = qs.get('shop');
         if (payId) {
             window.showPaymentLinkPage(payId);
+        } else if (shopId) {
+            let st = 0;
+            const t = setInterval(() => {
+                st++;
+                if (D() && D().openShopChannel(shopId)) { clearInterval(t); }
+                else if (st > 40) clearInterval(t);
+            }, 250);
         } else if (artId) {
             let tries = 0;
             const timer = setInterval(() => {
@@ -2627,6 +2721,7 @@
                         <p id="chat-product-name" class="text-[10px] font-medium truncate" style="color:rgba(255,255,255,0.55)"></p>
                     </div>
                 </div>
+                <button onclick="window.shareShopLink()" class="text-white/70 text-sm px-2" title="Partager la boutique"><i class="fa-solid fa-share-nodes"></i></button>
                 <button onclick="window.openShopProfile()" class="text-white/70 text-sm px-2" title="Voir la boutique"><i class="fa-solid fa-store"></i></button>
             </div>
             <div id="chat-name-screen" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -2824,6 +2919,17 @@
             <input id="offer-phone" type="tel" placeholder="NUMÉRO WHATSAPP" class="w-full bg-gray-100 p-3.5 rounded-2xl text-xs font-bold outline-none border">
             <textarea id="offer-addr" placeholder="ADRESSE DE LIVRAISON" class="w-full bg-gray-100 p-3.5 rounded-2xl text-xs font-bold uppercase h-16 outline-none border"></textarea>
             <p class="text-[9px] text-gray-400 text-center">📍 Ta position GPS sera capturée pour la livraison</p>
+            <div class="pt-1">
+                <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Mode de livraison</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="window.selectOfferShipping('standard', this)" id="offer-ship-std" class="offer-ship-btn border border-gray-200 py-3 rounded-2xl text-[10px] font-black uppercase transition">🚲 Normale<br><span id="offer-std-fee" class="text-drip">...</span></button>
+                    <button type="button" onclick="window.selectOfferShipping('express', this)" id="offer-ship-exp" class="offer-ship-btn border border-gray-200 py-3 rounded-2xl text-[10px] font-black uppercase transition">🚀 Rapide<br><span id="offer-exp-fee" class="text-drip">...</span></button>
+                </div>
+            </div>
+            <div class="flex justify-between items-center bg-gray-50 rounded-2xl p-3">
+                <span class="text-[10px] font-black text-gray-500 uppercase">Total à payer</span>
+                <span id="offer-total" class="text-lg font-display text-ink">—</span>
+            </div>
             <div class="grid grid-cols-2 gap-2 pt-1">
                 <button onclick="window.closeOfferPay()" class="bg-gray-100 text-black py-3.5 rounded-2xl text-[11px] font-black uppercase">Annuler</button>
                 <button onclick="window.confirmOfferPay(this)" class="bg-black text-white py-3.5 rounded-2xl text-[11px] font-black uppercase">Payer ✅</button>
@@ -2854,7 +2960,10 @@
     <div id="shop-profile-modal" class="hidden fixed inset-0 bg-white z-[101] flex flex-col">
         <div id="shop-profile-header" class="flex items-center justify-between p-4 shrink-0" style="background:#0B0B0C">
             <div><p id="shop-profile-name" class="text-base font-display uppercase text-white"></p><p id="shop-profile-count" class="text-[9px] font-bold uppercase text-white/60"></p></div>
-            <button onclick="window.closeShopProfile()" class="text-white text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            <div class="flex items-center gap-1">
+                <button onclick="window.shareShopLink()" class="text-white text-lg p-2" title="Partager la boutique"><i class="fa-solid fa-share-nodes"></i></button>
+                <button onclick="window.closeShopProfile()" class="text-white text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            </div>
         </div>
         <div id="shop-profile-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 content-start"></div>
     </div>
