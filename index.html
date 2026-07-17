@@ -1375,7 +1375,8 @@
 
             const nameScreen = document.getElementById('chat-name-screen');
             const threadScreen = document.getElementById('chat-thread-screen');
-            const clientName = localStorage.getItem('driprush_client_name');
+            let clientName = localStorage.getItem('driprush_client_name');
+            if (!clientName) { try { const s = loadSettings(); if (s.clientName) { clientName = s.clientName; localStorage.setItem('driprush_client_name', s.clientName); } } catch(e) {} }
 
             document.getElementById('chat-modal').classList.remove('hidden');
             const navHide = document.getElementById('bottom-nav'); if (navHide) navHide.style.display = 'none';
@@ -1392,7 +1393,10 @@
                 // Pas encore de prénom -> écran prénom, focus dessus
                 threadScreen.classList.add('hidden');
                 nameScreen.classList.remove('hidden');
-                setTimeout(() => { const inp = document.getElementById('chat-client-name-input'); if (inp) inp.focus(); }, 250);
+                setTimeout(() => {
+                    const inp = document.getElementById('chat-client-name-input');
+                    if (inp) { try { const s = loadSettings(); if (s.clientName) inp.value = s.clientName; } catch(e) {} inp.focus(); }
+                }, 250);
             }
         };
 
@@ -1434,6 +1438,7 @@
             const name = document.getElementById('chat-client-name-input').value.trim();
             if (!name) return window.showToast("Entre ton nom pour démarrer la discussion", true);
             localStorage.setItem('driprush_client_name', name);
+            try { const s = loadSettings(); s.clientName = name; saveSettings(s); } catch(e) {}
             document.getElementById('chat-name-screen').classList.add('hidden');
             document.getElementById('chat-thread-screen').classList.remove('hidden');
             window.startOrLoadChat(name);
@@ -2079,8 +2084,9 @@
         window.shareShopLink = () => {
             let phone = '', name = 'la boutique';
             const meta = (D() && D().getChatMeta) ? D().getChatMeta() : null;
-            if (meta && meta.shopPhone) { phone = meta.shopPhone; name = meta.shopName || 'la boutique'; }
+            if (meta && meta.shopPhone) { phone = String(meta.shopPhone); name = meta.shopName || 'la boutique'; }
             if (!phone) { toast('Ouvre une boutique pour partager son lien', true); return; }
+            if (phone === '2290147535343') { toast('Cette boutique n\'a pas de canal dédié partageable', true); return; }
             const url = location.origin + location.pathname + '?shop=' + encodeURIComponent(phone);
             if (navigator.share) {
                 navigator.share({ title: '🏪 ' + name + ' sur Driprush', text: 'Écris à ' + name + ' sur Driprush 👇', url: url })
