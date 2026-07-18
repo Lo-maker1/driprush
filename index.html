@@ -2472,6 +2472,285 @@
             if (unreadChats.length > 0 && !chatAlarmTimer) { chatBeep(); toast('💬 ' + unreadChats.length + ' réponse(s) de boutique non lue(s)'); }
         }, 5 * 60 * 1000);
 
+        // ============================================================
+        // 🤖 ASSISTANT DRIPRUSH (FAQ intelligente, hors-ligne)
+        // ============================================================
+        const AI_KB = [
+            {
+                keys: ['bonjour','salut','coucou','hey','yo','bonsoir','cc','slt'],
+                answer: "Salut 👋 Je suis l'assistant Driprush ! Je peux t'aider à commander, discuter avec les boutiques, payer, ou comprendre comment marche la plateforme. Qu'est-ce que tu veux savoir ?",
+                actions: []
+            },
+            {
+                keys: ['commander','acheter','commande','panier','ajouter','comment acheter','passer commande'],
+                answer: "Pour commander c'est simple 🛍️\n\n1️⃣ Choisis un article et clique dessus\n2️⃣ Sélectionne ta taille et la quantité\n3️⃣ Ajoute au panier\n4️⃣ Ouvre ton panier et choisis ton mode de livraison\n5️⃣ Remplis tes infos et paie 💳\n\nTu peux même mettre des articles de plusieurs boutiques dans le même panier !",
+                actions: [{label:'🏠 Voir les articles', fn:'navGoHome'}]
+            },
+            {
+                keys: ['livraison','livrer','frais','frais de livraison','combien','prix livraison','delai','delais','temps'],
+                answer: "🚚 La livraison est calculée selon la distance entre toi et la boutique (grâce à ta position GPS).\n\nTu as 2 choix :\n🚲 Normale — moins chère\n🚀 Rapide — plus rapide, un peu plus chère\n\nSi tu commandes chez plusieurs boutiques, les frais sont groupés et réduits pour toi ! Active bien ta localisation pour un calcul exact.",
+                actions: [{label:'🛒 Ouvrir mon panier', fn:'toggleCheckout', arg:true}]
+            },
+            {
+                keys: ['payer','paiement','payment','fedapay','mobile money','momo','carte','argent'],
+                answer: "💳 Le paiement se fait via FedaPay, 100% sécurisé.\n\nTu peux payer par :\n📱 Mobile Money (MTN, Moov...)\n💳 Carte bancaire\n\nUne fois ton panier prêt, clique sur Payer, remplis tes infos, et suis les étapes. Ta commande part directement à la boutique une fois le paiement validé ✅",
+                actions: [{label:'🛒 Aller au panier', fn:'toggleCheckout', arg:true}]
+            },
+            {
+                keys: ['chat','discuter','message','parler','boutique','contacter','question boutique','negocier','negociation','discussion'],
+                answer: "💬 Tu peux discuter directement avec les boutiques !\n\n• Depuis un article → bouton 'Discuter avec la boutique'\n• Ou via l'onglet Messages en bas 💬\n\nTu peux envoyer des photos de ce que tu cherches 📸, demander un prix, et même négocier 🤝. La boutique te propose un prix et tu peux payer directement dans la discussion !",
+                actions: [{label:'💬 Ouvrir mes messages', fn:'openChatHub', arg:'recent'}]
+            },
+            {
+                keys: ['photo','image','envoyer photo','tof','envoyer image'],
+                answer: "📸 Oui ! Dans une discussion avec une boutique, appuie sur l'icône 📎 pour envoyer une photo de l'article que tu cherches. La boutique la voit, et si elle l'a, elle t'envoie le prix directement. Tu peux aussi enregistrer les photos qu'elle t'envoie !",
+                actions: [{label:'💬 Discuter avec une boutique', fn:'openChatHub', arg:'recent'}]
+            },
+            {
+                keys: ['negocier','comment negocier','negociation','marchander','baisser prix','baisser le prix','reduire prix','moins cher','faire une contre offre','contre proposition'],
+                answer: "🤝 Quand une boutique te propose un prix dans le chat, tu vois 2 boutons :\n💳 Payer — tu acceptes le prix\n🤝 Négocier — tu proposes ton prix\n\nLa boutique peut accepter, refuser, ou te faire une nouvelle offre. Une fois d'accord, tu paies directement dans la discussion !",
+                actions: []
+            },
+            {
+                keys: ['localisation','gps','position','activer gps','autoriser'],
+                answer: "📍 Ta position GPS sert à calculer les frais de livraison et à envoyer le livreur chez toi.\n\nQuand le site te demande ta localisation, appuie sur 'Autoriser'. Si tu as refusé, va dans les réglages de ton téléphone :\n📱 Android → Paramètres → Localisation\n🍎 iPhone → Réglages → Confidentialité → Localisation",
+                actions: []
+            },
+            {
+                keys: ['promo','reduction','code promo','solde','vente flash','bon plan','promotion'],
+                answer: "🎉 Driprush a souvent des promos !\n\n• Des réductions sur certains articles (prix barrés)\n• Des ventes flash ⚡\n• Des codes promo à entrer dans le panier\n• Parfois la livraison gratuite dès un certain montant\n\nGarde un œil sur la page d'accueil pour ne rien rater !",
+                actions: [{label:'🏠 Voir les promos', fn:'navGoHome'}]
+            },
+            {
+                keys: ['taille','pointure','size','quelle taille','tailles dispo'],
+                answer: "📏 Chaque article affiche les tailles disponibles. Sélectionne ta taille avant d'ajouter au panier. Pour certains articles, le prix peut varier selon la taille. Si tu n'es pas sûr(e), demande directement à la boutique dans le chat !",
+                actions: []
+            },
+            {
+                keys: ['plusieurs boutiques','multi','plusieurs','differentes boutiques','plusieurs magasins'],
+                answer: "🏪 Oui ! Tu peux mettre dans ton panier des articles de plusieurs boutiques différentes en même temps. Tu paies une seule fois, et chaque boutique reçoit sa partie de la commande. En bonus, les frais de livraison sont groupés et réduits 🎁",
+                actions: [{label:'🏠 Continuer mes achats', fn:'navGoHome'}]
+            },
+            {
+                keys: ['partager','partage','lien','envoyer a un ami','recommander'],
+                answer: "🔗 Tu peux partager plein de choses !\n\n• Un article → bouton partage sur sa fiche\n• Une boutique → partage son canal pour qu'un ami puisse lui écrire\n• Un lien de paiement → laisse quelqu'un payer ta commande à ta place\n\nPratique pour faire découvrir Driprush 😎",
+                actions: []
+            },
+            {
+                keys: ['musique','son','chanson','audio','ambiance'],
+                answer: "🎵 Driprush joue une petite musique d'ambiance pendant que tu fais tes achats. Si tu préfères le silence, tu peux la désactiver dans le menu ⚙️ Réglages.",
+                actions: [{label:'⚙️ Ouvrir les réglages', fn:'openSettingsPanel'}]
+            },
+            {
+                keys: ['avis','commentaire','note','review','laisser avis'],
+                answer: "⭐ Tu peux laisser un avis sur la plateforme et lire ceux des autres clients via l'onglet Avis en bas de l'écran. Ça aide toute la communauté Driprush !",
+                actions: [{label:'⭐ Voir les avis', fn:'openCommentsModal'}]
+            },
+            {
+                keys: ['suivi','ou est ma commande','tracking','statut commande','recu'],
+                answer: "📦 Une fois ta commande payée, elle part directement à la boutique qui prépare ton colis et organise la livraison à ton adresse. Pour toute question sur ta commande en cours, écris directement à la boutique via le chat 💬",
+                actions: [{label:'💬 Contacter la boutique', fn:'openChatHub', arg:'recent'}]
+            },
+            {
+                keys: ['probleme','bug','marche pas','erreur','aide','ca bug','fonctionne pas'],
+                answer: "😕 Désolé pour la gêne ! Essaie ceci :\n\n1️⃣ Recharge la page\n2️⃣ Vérifie ta connexion internet\n3️⃣ Autorise la localisation si demandé\n\nSi le souci persiste, contacte directement une boutique via le chat, ou réessaie dans quelques minutes.",
+                actions: [{label:'🏠 Recharger l\'accueil', fn:'navGoHome'}]
+            },
+            {
+                keys: ['messages','rubrique message','onglet message','ou sont mes messages','mes discussions','centre de message','messagerie'],
+                answer: "💬 L'onglet Messages (en bas de l'écran) c'est ton centre de discussions ! Tu y trouves 2 parties :\n\n📩 Mes discussions — toutes tes conversations en cours, la plus récente en haut\n🏪 Boutiques — la liste de TOUTES les boutiques partenaires, pour écrire à n'importe laquelle même sans passer par un article\n\nTape sur une boutique pour lui parler directement !",
+                actions: [{label:'💬 Ouvrir mes messages', fn:'openChatHub', arg:'recent'}]
+            },
+            {
+                keys: ['ecrire a une boutique','contacter sans article','parler sans acheter','ecrire directement','trouver une boutique'],
+                answer: "🏪 Tu veux écrire à une boutique sans passer par un article ? Facile !\n\n1️⃣ Ouvre l'onglet Messages 💬\n2️⃣ Va dans l'onglet 'Boutiques'\n3️⃣ Tu vois toutes les boutiques partenaires (tu peux même chercher par nom)\n4️⃣ Tape sur celle que tu veux et écris-lui !\n\nParfait si tu cherches un article précis à demander.",
+                actions: [{label:'🏪 Voir les boutiques', fn:'openChatHub', arg:'shops'}]
+            },
+            {
+                keys: ['comment discussion marche','fonctionnement chat','comment ca marche le chat','utiliser le chat','comment discuter'],
+                answer: "💬 Voici comment marche une discussion :\n\n📝 Écris ton message en bas et envoie\n📎 Envoie une photo de ce que tu cherches\n😀 Ajoute des emojis\n🏪 Tape sur le nom de la boutique en haut pour voir TOUS ses articles\n💰 Quand la boutique te propose un prix, tu peux payer ou négocier directement\n\nLa boutique te répond et tu reçois une alerte 🔔",
+                actions: [{label:'💬 Essayer', fn:'openChatHub', arg:'recent'}]
+            },
+            {
+                keys: ['profil boutique','voir articles boutique','tous les articles','articles de la boutique','catalogue boutique'],
+                answer: "🏬 Quand tu es dans une discussion, tape sur le NOM de la boutique tout en haut. Ça ouvre son profil avec TOUS ses articles affichés comme sur la page d'accueil ! Tu peux cliquer sur n'importe quel article pour le voir et l'acheter directement. 👀",
+                actions: []
+            },
+            {
+                keys: ['offre','une offre','proposition','prix propose','la boutique propose','carte de prix','proposer prix','c koi une offre'],
+                answer: "💰 Quand tu demandes un article, la boutique peut t'envoyer une OFFRE dans le chat : une carte avec le prix, les tailles dispo, les couleurs et le délai de livraison.\n\nTu as alors 2 choix :\n💳 Payer — tu acceptes\n🤝 Négocier — tu proposes ton prix\n\nTout se passe dans la discussion, pas besoin de repasser par le panier !",
+                actions: []
+            },
+            {
+                keys: ['alerte','notification message','boutique a repondu','savoir si repondu','reponse boutique','sonnerie'],
+                answer: "🔔 Dès qu'une boutique te répond, tu reçois une alerte : un son, une vibration et une notification, même si tu es sur une autre page ! Un badge rouge apparaît aussi sur l'onglet Messages. Comme ça tu ne rates jamais une réponse. 😎",
+                actions: [{label:'💬 Voir mes messages', fn:'openChatHub', arg:'recent'}]
+            },
+            {
+                keys: ['enregistrer photo','sauvegarder image','telecharger photo','garder photo','photo galerie'],
+                answer: "💾 Quand une boutique t'envoie une photo dans le chat, tape dessus pour l'agrandir en plein écran, puis appuie sur 'Enregistrer' pour la garder dans la galerie de ton téléphone. Pratique pour garder l'article en tête ! 📸",
+                actions: []
+            },
+            {
+                keys: ['theme','couleur','couleur boutique','couleur discussion','personnalisation chat','chaque boutique couleur'],
+                answer: "🎨 Chaque boutique a sa propre couleur dans le chat ! Ça t'aide à reconnaître avec qui tu parles d'un coup d'œil. La couleur apparaît dans l'en-tête et l'avatar de la boutique. 🌈",
+                actions: []
+            },
+            {
+                keys: ['emoji','emojis','smiley','emoticone'],
+                answer: "😀 Dans une discussion, appuie sur l'icône 😀 à côté du champ de texte pour ouvrir le panneau d'emojis. Tape sur celui que tu veux et il s'ajoute à ton message ! Comme sur WhatsApp. 👍",
+                actions: []
+            },
+            {
+                keys: ['nom','changer nom','mon prenom','pseudo','identifier'],
+                answer: "👤 La première fois que tu écris à une boutique, on te demande ton prénom pour qu'elle sache à qui elle parle. Ton nom est ensuite retenu automatiquement pour tes prochaines discussions et tes commandes. Pas besoin de le retaper ! 😊",
+                actions: []
+            },
+            {
+                keys: ['numero','telephone','donner numero','contact telephone','appeler'],
+                answer: "🔒 Pour ta sécurité, on ne peut pas échanger de numéros de téléphone dans le chat — les messages avec des numéros sont bloqués. Tout se passe sur la plateforme : discussion, prix, paiement. C'est plus sûr pour toi comme pour la boutique ! 🛡️",
+                actions: []
+            },
+            {
+                keys: ['merci','thanks','cool','super','parfait','ok merci','nickel'],
+                answer: "Avec plaisir ! 😎 N'hésite pas si tu as d'autres questions. Bon shopping sur Driprush 🔥",
+                actions: []
+            }
+        ];
+
+        const AI_SUGGESTIONS = ['Comment commander ?','Frais de livraison ?','Comment payer ?','Discuter avec une boutique','Les promos ?'];
+
+        function aiNormalize(s) {
+            return (s || '').toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+
+        function aiFindAnswer(q) {
+            const nq = aiNormalize(q);
+            if (!nq) return null;
+            let best = null, bestScore = 0;
+            AI_KB.forEach(entry => {
+                let score = 0;
+                entry.keys.forEach(k => {
+                    const nk = aiNormalize(k);
+                    if (nq.includes(nk)) score += nk.split(' ').length * 2;
+                    else { nk.split(' ').forEach(word => { if (word.length > 2 && nq.includes(word)) score += 1; }); }
+                });
+                if (score > bestScore) { bestScore = score; best = entry; }
+            });
+            return bestScore > 0 ? best : null;
+        }
+
+        function aiAddMessage(text, who, actions) {
+            const box = document.getElementById('ai-messages');
+            const wrap = document.createElement('div');
+            wrap.className = 'flex ' + (who === 'user' ? 'justify-end' : 'justify-start');
+            let btns = '';
+            if (actions && actions.length) {
+                btns = '<div class="mt-2 space-y-1">' + actions.map((a, i) =>
+                    '<button data-fn="' + a.fn + '" data-arg="' + (a.arg !== undefined ? String(a.arg) : '') + '" class="ai-action w-full text-left bg-white border border-drip/30 text-drip px-3 py-2 rounded-xl text-[11px] font-black uppercase active:scale-95 transition">' + a.label + '</button>'
+                ).join('') + '</div>';
+            }
+            const bubble = who === 'user'
+                ? '<div class="max-w-[80%] bg-drip text-white px-4 py-2.5 rounded-2xl rounded-br-md text-sm">' + text.replace(/\n/g, '<br>') + '</div>'
+                : '<div class="max-w-[85%] bg-white px-4 py-3 rounded-2xl rounded-bl-md text-sm text-gray-800 shadow-sm">' + text.replace(/\n/g, '<br>') + btns + '</div>';
+            wrap.innerHTML = bubble;
+            box.appendChild(wrap);
+            box.querySelectorAll('.ai-action').forEach(btn => {
+                if (btn._bound) return; btn._bound = true;
+                btn.addEventListener('click', () => {
+                    const fn = btn.getAttribute('data-fn');
+                    const arg = btn.getAttribute('data-arg');
+                    window.closeAssistant();
+                    setTimeout(() => {
+                        try {
+                            if (arg === 'true') window[fn](true);
+                            else if (arg === '') window[fn]();
+                            else window[fn](arg);
+                        } catch (e) {}
+                    }, 200);
+                });
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function aiRenderSuggestions() {
+            const box = document.getElementById('ai-suggestions');
+            if (!box) return;
+            box.innerHTML = AI_SUGGESTIONS.map(s =>
+                '<button class="ai-sug flex-shrink-0 bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap active:scale-95 transition">' + s + '</button>'
+            ).join('');
+            box.querySelectorAll('.ai-sug').forEach(btn => {
+                btn.addEventListener('click', () => { document.getElementById('ai-input').value = btn.innerText; window.askAssistant(); });
+            });
+        }
+
+        // 💬 Bulle d'attention qui apparaît régulièrement
+        let aiBubbleTimer = null;
+        let aiAssistantUsed = false;
+
+        function showAiBubble() {
+            if (aiAssistantUsed) return;
+            const modal = document.getElementById('ai-modal');
+            if (modal && !modal.classList.contains('hidden')) return; // pas pendant que l'assistant est ouvert
+            const bubble = document.getElementById('ai-bubble');
+            const dot = document.getElementById('ai-fab-dot');
+            if (!bubble) return;
+            const messages = [
+                "👋 Une question ? Je te réponds tout de suite !",
+                "🛍️ Besoin d'aide pour commander ?",
+                "💬 Je suis là si tu as une préoccupation !",
+                "🚚 Des questions sur la livraison ? Demande-moi !",
+                "💳 Comment payer ? Je t'explique !",
+                "🤔 Tu cherches quelque chose ? Je peux t'aider !"
+            ];
+            bubble.querySelector('p').innerText = messages[Math.floor(Math.random() * messages.length)];
+            bubble.classList.remove('hidden');
+            if (dot) dot.classList.remove('hidden');
+            // Disparaît après 6 secondes
+            setTimeout(() => { bubble.classList.add('hidden'); }, 6000);
+        }
+
+        function startAiBubbleLoop() {
+            if (aiBubbleTimer) clearInterval(aiBubbleTimer);
+            // 1re apparition après 8s, puis toutes les 25s
+            setTimeout(showAiBubble, 8000);
+            aiBubbleTimer = setInterval(showAiBubble, 25000);
+        }
+        startAiBubbleLoop();
+
+        window.openAssistant = () => {
+            aiAssistantUsed = true;
+            const bubble = document.getElementById('ai-bubble'); if (bubble) bubble.classList.add('hidden');
+            const dot = document.getElementById('ai-fab-dot'); if (dot) dot.classList.add('hidden');
+            document.getElementById('ai-modal').classList.remove('hidden');
+            const navb = document.getElementById('bottom-nav'); if (navb) navb.style.display = 'none';
+            const box = document.getElementById('ai-messages');
+            if (box && box.children.length === 0) {
+                aiAddMessage("Salut ! 👋 Je suis l'assistant Driprush. Je peux t'aider à commander, payer, discuter avec les boutiques, et répondre à tes questions sur la plateforme. Comment puis-je t'aider ?", 'ai', []);
+            }
+            aiRenderSuggestions();
+        };
+
+        window.closeAssistant = () => {
+            document.getElementById('ai-modal').classList.add('hidden');
+            const navb = document.getElementById('bottom-nav'); if (navb) navb.style.display = '';
+        };
+
+        window.askAssistant = () => {
+            const inp = document.getElementById('ai-input');
+            const q = inp.value.trim();
+            if (!q) return;
+            aiAddMessage(q, 'user', []);
+            inp.value = '';
+            setTimeout(() => {
+                const found = aiFindAnswer(q);
+                if (found) aiAddMessage(found.answer, 'ai', found.actions);
+                else aiAddMessage("Hmm, je ne suis pas sûr d'avoir compris 🤔. Essaie de reformuler, ou choisis un sujet ci-dessous. Pour une question précise sur un article, le mieux est d'écrire directement à la boutique via l'onglet Messages 💬", 'ai', [{label:'💬 Ouvrir les messages', fn:'openChatHub', arg:'recent'}]);
+            }, 300);
+        };
+
         // ---------- 🔍 PARAMÈTRES D'URL ----------
         const qs = new URLSearchParams(location.search);
         const payId = qs.get('pay');
@@ -2986,6 +3265,36 @@
                 <p class="text-[10px] text-gray-500">🌐 <b>Navigateur</b> — quand le site demande ta position, appuie sur "Autoriser"</p>
             </div>
             <button onclick="document.getElementById('gps-required-modal').classList.add('hidden')" class="w-full bg-drip text-white font-display py-4 rounded-2xl text-sm uppercase active:scale-95 transition">J'ai compris, réessayer ✅</button>
+        </div>
+    </div>
+    <div id="ai-bubble" onclick="window.openAssistant()" class="hidden fixed right-4 z-[66] cursor-pointer active:scale-95 transition" style="bottom:150px">
+        <div class="relative bg-white text-ink px-3 py-2 rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.15)] border border-drip/20 max-w-[180px]">
+            <p class="text-[10px] font-black leading-snug">👋 Une question ? Je te réponds tout de suite !</p>
+            <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white border-r border-b border-drip/20 rotate-45"></div>
+        </div>
+    </div>
+
+    <button id="ai-fab" onclick="window.openAssistant()" class="fixed right-4 z-[66] bg-drip text-white w-14 h-14 rounded-full shadow-[0_4px_20px_rgba(255,77,28,0.45)] flex items-center justify-center active:scale-95 transition-all" style="bottom:88px">
+        <i class="fa-solid fa-headset text-lg"></i>
+        <span id="ai-fab-dot" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-lime rounded-full border-2 border-white animate-pulse"></span>
+    </button>
+
+    <div id="ai-modal" class="hidden fixed inset-0 bg-white z-[102] flex flex-col" style="height:100dvh">
+        <div class="flex items-center gap-3 p-3 shrink-0" style="background:#0B0B0C">
+            <button onclick="window.closeAssistant()" class="text-white text-lg px-1 opacity-90"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-drip"><i class="fa-solid fa-headset text-white"></i></div>
+            <div class="min-w-0">
+                <p class="text-sm font-black uppercase text-white">Assistant Driprush</p>
+                <p class="text-[10px] font-medium" style="color:rgba(255,255,255,0.55)">Là pour t'aider 24/7</p>
+            </div>
+        </div>
+        <div id="ai-messages" class="flex-1 overflow-y-auto p-4 space-y-3" style="background:#f4f4f5"></div>
+        <div class="p-3 border-t border-gray-100 shrink-0 bg-white">
+            <div id="ai-suggestions" class="flex gap-2 overflow-x-auto hide-scrollbar mb-2 pb-1"></div>
+            <div class="flex gap-2 items-center">
+                <input id="ai-input" type="text" enterkeyhint="send" autocomplete="off" placeholder="Pose ta question..." class="flex-1 min-w-0 bg-gray-100 px-4 py-3 rounded-full outline-none text-sm border-none" onkeydown="if(event.key==='Enter'){event.preventDefault();window.askAssistant();}">
+                <button onclick="window.askAssistant()" class="bg-drip text-white w-11 h-11 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition"><i class="fa-solid fa-paper-plane text-sm"></i></button>
+            </div>
         </div>
     </div>
 </body>
