@@ -2733,6 +2733,26 @@
                 actions: []
             },
             {
+                keys: ['frais supplementaire','frais en plus','complement','supplement livraison','payer en plus','livraison plus chere','frais additionnel'],
+                answer: "🚚 Si la livraison a coûté plus cher que prévu (distance plus longue, embouteillage...), la boutique peut t'envoyer une demande de FRAIS SUPPLÉMENTAIRES dans le chat.\n\nTu reçois une carte orange avec le montant et la raison. Tu cliques sur 💳 Payer ce complément, et une fois réglé, ça passe au vert ✅. C'est un petit ajout, pas toute la livraison à repayer !",
+                actions: [{label:'💬 Voir mes messages', fn:'openChatHub', arg:'recent'}]
+            },
+            {
+                keys: ['partager ma position','envoyer ma localisation','partager localisation chat','envoyer position','donner ma position','ma position boutique'],
+                answer: "📍 Dans une discussion avec une boutique, appuie sur l'icône 📍 dans la barre de saisie pour partager ta position exacte. La boutique la reçoit avec un bouton pour voir sur la carte, ce qui lui permet d'estimer précisément tes frais de livraison. Pratique pour une commande sur mesure !",
+                actions: [{label:'💬 Ouvrir une discussion', fn:'openChatHub', arg:'recent'}]
+            },
+            {
+                keys: ['gps obligatoire','pourquoi activer gps','localisation obligatoire','forcer gps','pourquoi ma position'],
+                answer: "📍 La localisation est obligatoire pour commander, et c'est normal : sans ta position, impossible de calculer les frais de livraison ni d'envoyer le livreur chez toi ! Si tu ne l'actives pas, la commande ne peut pas être validée. Appuie sur 'Autoriser' quand c'est demandé, ou active-la dans les réglages de ton téléphone.",
+                actions: []
+            },
+            {
+                keys: ['comment sont calcules les frais','tarif au metre','pourquoi ce prix livraison','comment frais calcules','calcul livraison'],
+                answer: "🚚 Les frais de livraison dépendent de la distance entre toi et la boutique. Chaque boutique fixe son propre tarif au mètre, donc le prix peut varier d'une boutique à l'autre. Plus tu es loin, plus c'est cher — et la livraison rapide coûte un peu plus que la normale. Active ton GPS pour voir le montant exact !",
+                actions: []
+            },
+            {
                 keys: ['merci','thanks','cool','super','parfait','ok merci','nickel'],
                 answer: "Avec plaisir ! 😎 N'hésite pas si tu as d'autres questions. Bon shopping sur Driprush 🔥",
                 actions: []

@@ -1114,6 +1114,8 @@
         };
 
         window.logoutBoutique = () => {
+            const saf = document.getElementById('shop-ai-fab'); if (saf) saf.classList.add('hidden');
+            const sam = document.getElementById('shop-ai-modal'); if (sam) sam.classList.add('hidden');
             currentShopPhone = null;
             currentBoutique = null;
             if (chatBadgeUnsub) { chatBadgeUnsub(); chatBadgeUnsub = null; }
@@ -1272,6 +1274,7 @@
             document.getElementById('dash-shop-name').innerText = boutique.name;
             ['landing-card', 'admin-panel', 'login-panel'].forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById('dashboard').classList.remove('hidden');
+            const saf = document.getElementById('shop-ai-fab'); if (saf) saf.classList.remove('hidden');
 
             // Pré-remplir les tarifs de livraison de la boutique
             const rs = document.getElementById('dash-rate-std'); if (rs) rs.value = boutique.rateStd || '';
@@ -2364,6 +2367,167 @@
                 localStorage.removeItem('driprush_shop_session');
             }
         }
+    
+        // ============================================================
+        // 🤖 ASSISTANT BOUTIQUE (FAQ intelligente hors-ligne)
+        // ============================================================
+        const SHOP_KB = [
+            {
+                keys: ['bonjour','salut','coucou','hey','yo','bonsoir','cc','slt'],
+                answer: "Salut 👋 Je suis l'assistant de ta boutique ! Je peux t'expliquer comment gérer tes commandes, ajouter des articles, régler tes tarifs de livraison, discuter avec les clients et plus. Que veux-tu savoir ?",
+                actions: []
+            },
+            {
+                keys: ['ajouter article','ajouter produit','mettre article','vendre','publier article','nouveau produit','comment vendre'],
+                answer: "📦 Pour ajouter un article :\n\n1️⃣ Va dans l'onglet 'Produits'\n2️⃣ Clique sur 'Ajouter un article'\n3️⃣ Mets une photo, le nom, le prix, le type, les tailles et couleurs\n4️⃣ Valide !\n\nTon article apparaît aussitôt sur la page d'accueil pour tous les clients. 🔥",
+                actions: [{label:'📦 Onglet Produits', fn:'setTab', arg:'products'}]
+            },
+            {
+                keys: ['commande','recevoir commande','gerer commande','nouvelle commande','commande payee','traiter commande','a traiter'],
+                answer: "🔔 Quand un client paie, sa commande arrive dans l'onglet 'À traiter' avec une ALARME sonore que tu ne peux pas rater.\n\n1️⃣ Tu vois les articles, la taille, la quantité et l'adresse du client\n2️⃣ Prépare le colis\n3️⃣ Une fois expédié, clique sur 'Marquer livrée'\n\nLa commande passe alors dans l'onglet 'Livrées'. ✅",
+                actions: [{label:'📋 Voir mes commandes', fn:'setTab', arg:'active'}]
+            },
+            {
+                keys: ['alarme','son commande','bip','sonnerie','pas rater commande','notification commande'],
+                answer: "🔔 Dès qu'une commande payée arrive, ton dashboard sonne en boucle, vibre et affiche une grande alerte 'NOUVELLE COMMANDE'. Un badge rouge apparaît sur l'onglet 'À traiter'. L'alarme continue jusqu'à ce que tu cliques dessus, et te rappelle toutes les 5 min tant qu'il reste des commandes non traitées. Tu ne peux littéralement rien rater ! 😎",
+                actions: []
+            },
+            {
+                keys: ['tarif livraison','frais livraison','prix livraison','changer tarif','tarif metre','regler livraison','modifier tarif'],
+                answer: "🚚 Tu fixes tes propres tarifs de livraison !\n\n1️⃣ Va dans l'onglet 'Promos'\n2️⃣ En haut, tu as 'Mes tarifs de livraison'\n3️⃣ Mets ton prix au mètre pour la livraison normale et rapide (max 0,6 F le mètre)\n4️⃣ Enregistre !\n\nLe système calcule automatiquement selon la distance client → ta boutique. Laisse vide pour le tarif standard de la plateforme.",
+                actions: [{label:'🚚 Régler mes tarifs', fn:'setTab', arg:'promos'}]
+            },
+            {
+                keys: ['discuter client','chat client','repondre client','message client','parler client','discussion'],
+                answer: "💬 Va dans l'onglet 'Discussions' pour voir tous les clients qui t'écrivent. Tu peux :\n\n📸 Recevoir et envoyer des photos\n💰 Proposer un prix pour un article\n🤝 Négocier avec le client\n🚚 Demander des frais de livraison en plus si besoin\n\nRéponds vite, ça rassure les clients et augmente tes ventes !",
+                actions: [{label:'💬 Mes discussions', fn:'setTab', arg:'chats'}]
+            },
+            {
+                keys: ['proposer prix','offre','proposer un prix','envoyer prix','carte prix','devis'],
+                answer: "💰 Quand un client te demande un article dans le chat :\n\n1️⃣ Ouvre la discussion\n2️⃣ Clique sur 'Proposer un prix au client'\n3️⃣ Remplis le prix, les tailles, couleurs, délai et frais de livraison\n4️⃣ Envoie !\n\nLe client reçoit une carte et peut payer directement ou négocier. Une fois payé, ça passe au vert ✅ et la commande arrive dans 'À traiter'.",
+                actions: [{label:'💬 Aller au chat', fn:'setTab', arg:'chats'}]
+            },
+            {
+                keys: ['negocier','negociation','contre offre','client negocie','le client veut negocier','client veut negocier','baisse prix','stopper negociation','accepter prix client'],
+                answer: "🤝 Quand tu proposes un prix, le client peut négocier. Tu vois sa contre-offre et tu peux :\n\n✅ Accepter son prix\n🚫 Stopper la négociation (si le client insiste trop)\n\nSi tu stoppes, le client ne peut plus négocier mais peut toujours payer ton dernier prix. Tu gardes le contrôle ! 💪",
+                actions: []
+            },
+            {
+                keys: ['frais supplementaire','frais en plus','livraison plus chere','demander plus','complement livraison'],
+                answer: "🚚 Si une livraison a coûté plus cher que prévu, tu peux demander un complément au client :\n\n1️⃣ Dans la discussion, clique sur 'Frais de livraison supplémentaires'\n2️⃣ Mets le montant en plus et la raison\n3️⃣ Envoie !\n\nLe client reçoit une demande de paiement qu'il règle directement. Tu vois quand c'est payé. ✅",
+                actions: [{label:'💬 Ouvrir le chat', fn:'setTab', arg:'chats'}]
+            },
+            {
+                keys: ['promo','reduction','solde','baisser prix articles','faire promo','vente flash'],
+                answer: "🎯 Dans l'onglet 'Promos', tu peux créer des réductions sur tes articles ! Prix barrés, ventes flash, offres spéciales... Tes promos boutique sont prioritaires sur celles de l'admin pour tes propres articles. Ça attire les clients ! 🔥",
+                actions: [{label:'🎯 Onglet Promos', fn:'setTab', arg:'promos'}]
+            },
+            {
+                keys: ['photo','ajouter photo','image article','photo produit','mettre photo'],
+                answer: "📸 Pour la photo d'un article, quand tu l'ajoutes, clique sur la zone photo et choisis une image depuis ton téléphone. Une belle photo claire et bien éclairée fait toute la différence pour vendre ! Tu peux aussi envoyer des photos aux clients directement dans le chat.",
+                actions: [{label:'📦 Ajouter un article', fn:'setTab', arg:'products'}]
+            },
+            {
+                keys: ['gps','position boutique','localisation boutique','adresse boutique','ou est ma boutique'],
+                answer: "📍 Ta position GPS est très importante : c'est elle qui sert à calculer les frais de livraison des clients ! Assure-toi qu'elle soit bien renseignée dans ton profil. Tu peux la capturer automatiquement ou coller tes coordonnées (ex: 6.3671,2.4323).",
+                actions: []
+            },
+            {
+                keys: ['argent','paiement','recevoir argent','commission','combien je gagne','mon argent','retrait'],
+                answer: "💰 Sur chaque vente, tu reçois 90% du montant (la plateforme prend 10% de commission). L'argent est versé via FedaPay sur ton Mobile Money. Chaque commande payée affiche ta part exacte. Pour les retraits, ça se passe directement côté FedaPay.",
+                actions: []
+            },
+            {
+                keys: ['musique','playlist','son du site','ajouter musique'],
+                answer: "🎵 Si tu es admin, tu peux gérer la playlist musicale du site dans la section dédiée. Utilise le bouton 'Tester' pour vérifier qu'un lien MP3 fonctionne avant de l'ajouter. Attention : ça doit être un vrai fichier .mp3 (pas un lien YouTube ou Spotify).",
+                actions: []
+            },
+            {
+                keys: ['pin','code','mot de passe','connexion','me connecter','pin oublie','perdu pin'],
+                answer: "🔑 Tu te connectes à ta boutique avec ton numéro WhatsApp et ton code PIN à 4 chiffres. Si tu as oublié ton PIN, clique sur 'PIN oublié ?' sur l'écran de connexion — l'admin sera prévenu pour t'en générer un nouveau.",
+                actions: []
+            },
+            {
+                keys: ['probleme','bug','marche pas','erreur','aide','ca bug','souci'],
+                answer: "😕 Si quelque chose ne marche pas :\n\n1️⃣ Recharge la page\n2️⃣ Vérifie ta connexion internet\n3️⃣ Reconnecte-toi avec ton PIN\n\nSi ça persiste, contacte l'administrateur de la plateforme. La plupart des soucis se règlent en rechargeant !",
+                actions: []
+            },
+            {
+                keys: ['merci','thanks','cool','super','parfait','ok merci','nickel'],
+                answer: "Avec plaisir ! 😎 Bonne vente sur Driprush 🔥 N'hésite pas si tu as d'autres questions sur la gestion de ta boutique.",
+                actions: []
+            }
+        ];
+
+        const SHOP_SUGGESTIONS = ['Ajouter un article','Gérer mes commandes','Régler mes tarifs livraison','Proposer un prix dans le chat','Comment je gagne de l\'argent ?'];
+
+        function shopAiNorm(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim(); }
+
+        function shopAiFind(q){
+            const nq = shopAiNorm(q); if (!nq) return null;
+            let best=null, bestScore=0;
+            SHOP_KB.forEach(e=>{ let sc=0; e.keys.forEach(k=>{ const nk=shopAiNorm(k);
+                if(nq.includes(nk)) sc+=nk.split(' ').length*2;
+                else nk.split(' ').forEach(w=>{ if(w.length>2&&nq.includes(w)) sc+=1; });
+            }); if(sc>bestScore){bestScore=sc;best=e;} });
+            return bestScore>0?best:null;
+        }
+
+        function shopAiAdd(text, who, actions){
+            const box = document.getElementById('shop-ai-messages');
+            const wrap = document.createElement('div');
+            wrap.className = 'flex ' + (who==='user'?'justify-end':'justify-start');
+            let btns='';
+            if(actions&&actions.length){
+                btns = '<div class="mt-2 space-y-1">' + actions.map(a=>
+                    '<button data-fn="'+a.fn+'" data-arg="'+(a.arg!==undefined?String(a.arg):'')+'" class="shop-ai-act w-full text-left bg-drip/15 border border-drip/40 text-drip px-3 py-2 rounded-xl text-[11px] font-black uppercase active:scale-95 transition">'+a.label+'</button>'
+                ).join('') + '</div>';
+            }
+            const bubble = who==='user'
+                ? '<div class="max-w-[80%] bg-drip text-white px-4 py-2.5 rounded-2xl rounded-br-md text-sm">'+text.replace(/\n/g,'<br>')+'</div>'
+                : '<div class="max-w-[85%] px-4 py-3 rounded-2xl rounded-bl-md text-sm text-gray-200" style="background:#1c1c1e">'+text.replace(/\n/g,'<br>')+btns+'</div>';
+            wrap.innerHTML = bubble;
+            box.appendChild(wrap);
+            box.querySelectorAll('.shop-ai-act').forEach(btn=>{
+                if(btn._b) return; btn._b=true;
+                btn.addEventListener('click',()=>{
+                    const fn=btn.getAttribute('data-fn'), arg=btn.getAttribute('data-arg');
+                    window.closeShopAssistant();
+                    setTimeout(()=>{ try{ if(arg==='') window[fn](); else window[fn](arg); }catch(e){} }, 200);
+                });
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function shopAiSug(){
+            const box = document.getElementById('shop-ai-suggestions');
+            if(!box) return;
+            box.innerHTML = SHOP_SUGGESTIONS.map(s=>'<button class="shop-ai-sug flex-shrink-0 bg-white/5 border border-white/10 text-gray-300 px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap active:scale-95 transition">'+s+'</button>').join('');
+            box.querySelectorAll('.shop-ai-sug').forEach(btn=>{ btn.addEventListener('click',()=>{ document.getElementById('shop-ai-input').value=btn.innerText; window.askShopAssistant(); }); });
+        }
+
+        window.openShopAssistant = () => {
+            document.getElementById('shop-ai-modal').classList.remove('hidden');
+            const box = document.getElementById('shop-ai-messages');
+            if(box && box.children.length===0){
+                shopAiAdd("Salut ! 👋 Je suis l'assistant de ta boutique. Je t'explique comment ajouter des articles, gérer tes commandes, régler tes tarifs, discuter avec les clients... Pose-moi ta question !", 'ai', []);
+            }
+            shopAiSug();
+        };
+
+        window.closeShopAssistant = () => { document.getElementById('shop-ai-modal').classList.add('hidden'); };
+
+        window.askShopAssistant = () => {
+            const inp = document.getElementById('shop-ai-input');
+            const q = inp.value.trim(); if(!q) return;
+            shopAiAdd(q, 'user', []); inp.value='';
+            setTimeout(()=>{
+                const f = shopAiFind(q);
+                if(f) shopAiAdd(f.answer, 'ai', f.actions);
+                else shopAiAdd("Hmm, je n'ai pas bien compris 🤔. Essaie de reformuler, ou choisis un sujet ci-dessous (ajouter un article, gérer les commandes, tarifs de livraison, chat client...).", 'ai', []);
+            }, 300);
+        };
+
     </script>
     <div id="new-order-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm z-[90] flex items-center justify-center p-6">
         <div class="bg-ink w-full max-w-sm rounded-3xl p-7 border-2 border-drip text-center space-y-4" style="box-shadow:0 0 60px rgba(255,77,28,0.45)">
@@ -2414,6 +2578,28 @@
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="window.closeExtraFeeForm()" class="bg-white/5 border border-white/10 text-white py-3 rounded-2xl text-xs font-black uppercase active:scale-95 transition">Annuler</button>
                 <button onclick="window.sendExtraFee()" class="bg-drip text-white py-3 rounded-2xl text-xs font-black uppercase active:scale-95 transition">Envoyer 🚚</button>
+            </div>
+        </div>
+    </div>
+    <button id="shop-ai-fab" onclick="window.openShopAssistant()" class="hidden fixed right-4 bottom-6 z-[88] bg-drip text-white w-14 h-14 rounded-full shadow-[0_4px_20px_rgba(255,77,28,0.45)] flex items-center justify-center active:scale-95 transition-all">
+        <i class="fa-solid fa-circle-question text-lg"></i>
+    </button>
+
+    <div id="shop-ai-modal" class="hidden fixed inset-0 bg-ink z-[103] flex flex-col" style="height:100dvh">
+        <div class="flex items-center gap-3 p-3 shrink-0" style="background:#0B0B0C;border-bottom:1px solid rgba(255,255,255,0.08)">
+            <button onclick="window.closeShopAssistant()" class="text-white text-lg px-1 opacity-90"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-drip"><i class="fa-solid fa-circle-question text-white"></i></div>
+            <div class="min-w-0">
+                <p class="text-sm font-black uppercase text-white">Assistant Boutique</p>
+                <p class="text-[10px] font-medium" style="color:rgba(255,255,255,0.55)">Guide pour gérer ta boutique</p>
+            </div>
+        </div>
+        <div id="shop-ai-messages" class="flex-1 overflow-y-auto p-4 space-y-3" style="background:#0f0f10"></div>
+        <div class="p-3 shrink-0" style="background:#0B0B0C;border-top:1px solid rgba(255,255,255,0.08)">
+            <div id="shop-ai-suggestions" class="flex gap-2 overflow-x-auto hide-scrollbar mb-2 pb-1"></div>
+            <div class="flex gap-2 items-center">
+                <input id="shop-ai-input" type="text" enterkeyhint="send" autocomplete="off" placeholder="Pose ta question..." class="flex-1 min-w-0 input-dark px-4 py-3 rounded-full outline-none text-sm" onkeydown="if(event.key==='Enter'){event.preventDefault();window.askShopAssistant();}">
+                <button onclick="window.askShopAssistant()" class="bg-drip text-white w-11 h-11 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition"><i class="fa-solid fa-paper-plane text-sm"></i></button>
             </div>
         </div>
     </div>
