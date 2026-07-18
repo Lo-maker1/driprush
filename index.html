@@ -978,6 +978,21 @@
             window.updateCartUI();
         }
 
+        window.retryGPS = () => {
+            if (!navigator.geolocation) { window.showToast('Ton navigateur ne supporte pas la géolocalisation', true); return; }
+            window.showToast('Recherche de ta position...', false);
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    clientCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    const g = document.getElementById('gps-required-modal'); if (g) g.classList.add('hidden');
+                    window.showToast('✅ Position activée !', false);
+                    if (getPendingItems().length > 0) window.computeDeliveryFees();
+                },
+                () => { window.showToast('📍 Localisation toujours bloquée — vérifie les réglages de ton téléphone', true); },
+                { timeout: 10000, enableHighAccuracy: true }
+            );
+        };
+
         window.computeDeliveryFees = () => {
             const items = getPendingItems();
             if (items.length === 0) { shopFees = {}; calculatedStdFee = 0; calculatedExpFee = 0; window.updateCartUI(); return; }
@@ -988,39 +1003,54 @@
             const lblS = document.getElementById('lbl-std'); if (lblS) lblS.innerText = '🚲 Calcul en cours...';
             const lblE = document.getElementById('lbl-exp'); if (lblE) lblE.innerText = '🚀 Calcul en cours...';
 
-            const fallback = () => {
-                shopFees = {};
-                shops.forEach(s => { shopFees[s.phone] = { std: 500, exp: 900, name: s.name }; });
-                applyFeeTotals();
-            };
+            const DEFAULT_STD = 0.179, DEFAULT_EXP = 0.20; // tarifs plateforme si la boutique n'a rien mis
 
             const withCoords = (coords) => {
                 clientCoords = coords;
                 Promise.all(shops.map(s => {
-                    const cc = parseGPSCoords(s.gps);
-                    if (cc) return Promise.resolve({ s: s, c: cc });
+                    // Récupérer coords + tarifs/mètre de la boutique depuis Firebase
                     return get(ref(db, 'driprush_boutiques/' + s.phone))
-                        .then(sn => { const b = sn.val(); return { s: s, c: (b && b.gps) ? parseGPSCoords(b.gps) : null }; })
-                        .catch(() => ({ s: s, c: null }));
+                        .then(sn => {
+                            const bt = sn.val() || {};
+                            const c = parseGPSCoords(s.gps) || (bt.gps ? parseGPSCoords(bt.gps) : null);
+                            return { s: s, c: c, rateStd: parseFloat(bt.rateStd) || 0, rateExp: parseFloat(bt.rateExp) || 0 };
+                        })
+                        .catch(() => ({ s: s, c: parseGPSCoords(s.gps), rateStd: 0, rateExp: 0 }));
                 })).then(res => {
                     shopFees = {};
                     res.forEach(r => {
                         if (!r.c) { shopFees[r.s.phone] = { std: 500, exp: 900, name: r.s.name }; return; }
-                        const dist = haversineDistance(r.c.lat, r.c.lng, coords.lat, coords.lng) * 1.25;
-                        shopFees[r.s.phone] = { std: roundTo25(dist * 0.179), exp: roundTo25(dist * 0.20), name: r.s.name };
+                        const dist = haversineDistance(r.c.lat, r.c.lng, coords.lat, coords.lng) * 1.25; // mètres + marge routes
+                        const rStd = r.rateStd > 0 ? r.rateStd : DEFAULT_STD;
+                        const rExp = r.rateExp > 0 ? r.rateExp : DEFAULT_EXP;
+                        shopFees[r.s.phone] = { std: roundTo25(dist * rStd), exp: roundTo25(dist * rExp), name: r.s.name };
                     });
                     applyFeeTotals();
-                }).catch(fallback);
+                }).catch(() => {
+                    shopFees = {};
+                    shops.forEach(s => { shopFees[s.phone] = { std: 500, exp: 900, name: s.name }; });
+                    applyFeeTotals();
+                });
             };
 
             if (clientCoords) { withCoords(clientCoords); }
             else if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     pos => withCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-                    () => { fallback(); window.showToast('GPS non disponible — tarifs forfaitaires appliqués', false); },
-                    { timeout: 10000 }
+                    () => {
+                        // GPS refusé -> livraison impossible à calculer, on force l'activation
+                        clientCoords = null;
+                        shopFees = {};
+                        shops.forEach(s => { shopFees[s.phone] = { std: 0, exp: 0, name: s.name, needGps: true }; });
+                        applyFeeTotals();
+                        const l1 = document.getElementById('lbl-std'); if (l1) l1.innerText = '📍 Active ta position';
+                        const l2 = document.getElementById('lbl-exp'); if (l2) l2.innerText = '📍 Active ta position';
+                    },
+                    { timeout: 10000, enableHighAccuracy: true }
                 );
-            } else { fallback(); }
+            } else {
+                const g = document.getElementById('gps-required-modal'); if (g) g.classList.remove('hidden');
+            }
         };
 
         // Compat : ancienne signature
@@ -1517,6 +1547,28 @@
                     return;
                 }
 
+                if (m.type === 'extrafee') {
+                    const paidX = m.status === 'paid';
+                    box.innerHTML += '<div class="flex justify-start mb-2"><div class="max-w-[85%] w-full rounded-2xl border-2 ' + (paidX ? 'border-green-400' : 'border-amber-400') + ' p-3 bg-amber-50">' +
+                        '<p class="text-[9px] font-black uppercase text-amber-600">🚚 Frais de livraison en plus</p>' +
+                        '<p class="text-2xl font-display text-amber-700 mt-1">+' + Number(m.amount).toLocaleString() + ' F</p>' +
+                        (m.reason ? '<p class="text-[10px] text-gray-600 mt-1">📝 ' + m.reason + '</p>' : '') +
+                        (paidX
+                            ? '<p class="text-[10px] font-black text-green-600 uppercase mt-2">✅ Payé, merci !</p>'
+                            : '<button onclick="window.payExtraFee(\'' + m.id + '\')" class="mt-2 w-full bg-amber-500 text-white py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">💳 Payer ce complément</button>') +
+                        '</div></div>';
+                    return;
+                }
+
+                if (m.type === 'location') {
+                    box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[75%] rounded-2xl overflow-hidden border border-gray-200 bg-white">' +
+                        '<div class="h-24 flex items-center justify-center" style="background:linear-gradient(135deg,#FF4D1C,#ff7a52)"><i class="fa-solid fa-location-dot text-white text-3xl"></i></div>' +
+                        '<div class="p-3"><p class="text-[11px] font-black uppercase text-gray-800">📍 Position partagée</p>' +
+                        '<a href="' + m.mapUrl + '" target="_blank" class="text-[10px] text-drip font-bold underline">Voir sur Google Maps</a></div>' +
+                        '</div></div>';
+                    return;
+                }
+
                 if (m.type === 'offer') {
                     const paid = m.status === 'paid';
                     const cancelled = m.status === 'cancelled';
@@ -1556,6 +1608,27 @@
                 box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs" style="' + bubbleStyle + '">' + m.text + '</div></div>';
             });
             box.scrollTop = box.scrollHeight;
+        };
+
+        window.shareLocationInChat = () => {
+            if (!currentChatRefPath) return;
+            if (!navigator.geolocation) return window.showToast('Géolocalisation non supportée', true);
+            window.showToast('📍 Récupération de ta position...', false);
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                    clientCoords = { lat: lat, lng: lng };
+                    const mapUrl = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+                    const clientName = localStorage.getItem('driprush_client_name') || 'Client';
+                    push(ref(db, 'driprush_chats/' + currentChatRefPath.shopPhone + '/' + currentChatRefPath.chatId + '/messages'), {
+                        sender: 'client', type: 'location', text: '📍 Ma position', mapUrl: mapUrl, lat: lat, lng: lng,
+                        clientName: clientName, timestamp: Date.now()
+                    }).then(() => window.showToast('📍 Position envoyée à la boutique ✅', false))
+                      .catch(() => window.showToast('Erreur envoi position', true));
+                },
+                () => { window.showToast('📍 Active ta localisation pour la partager', true); const g = document.getElementById('gps-required-modal'); if (g) g.classList.remove('hidden'); },
+                { timeout: 10000, enableHighAccuracy: true }
+            );
         };
 
         window.sendClientMessage = () => {
@@ -1787,6 +1860,41 @@
 
         // ---------- 💳 PAYER UNE OFFRE DU CHAT ----------
         let payingOffer = null;
+        window.payExtraFee = (msgId) => {
+            if (!currentChatRefPath) return;
+            const sp = currentChatRefPath.shopPhone, ci = currentChatRefPath.chatId;
+            get(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages/' + msgId)).then(s => {
+                const x = s.val();
+                if (!x || x.status === 'paid') return;
+                const amount = Number(x.amount);
+                const clientName = localStorage.getItem('driprush_client_name') || 'Client';
+                const phone = (loadSettings().clientPhone) || '';
+                try {
+                    const widget = FedaPay.init({
+                        public_key: FEDAPAY_PUBLIC_KEY, environment: 'live',
+                        transaction: { amount: amount, description: 'Frais de livraison supplémentaires - Driprush' },
+                        currency: { iso: 'XOF' },
+                        customer: { firstname: clientName, lastname: 'Driprush', email: 'client' + Date.now() + '@driprush.bj', phone_number: { number: phone || '90000000', country: 'BJ' } },
+                        onComplete: function (resp) {
+                            const st = resp && resp.transaction && resp.transaction.status;
+                            if (st !== 'approved' && st !== 'approved_partially') { window.showToast('❌ Paiement non validé', true); return; }
+                            update(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages/' + msgId), { status: 'paid', paidAt: Date.now() });
+                            // Créer une trace de commande pour la boutique
+                            const r = push(ref(db, 'driprush_orders'));
+                            set(r, {
+                                clientName: clientName, phone: phone, shopPhone: sp,
+                                items: 'Frais de livraison supplémentaires' + (x.reason ? ' (' + x.reason + ')' : ''),
+                                total: amount, commission: Math.round(amount * 0.10), montantBoutique: amount - Math.round(amount * 0.10),
+                                deliveryMode: 'complement', status: 'Payée', extraFee: true, timestamp: Date.now()
+                            }).catch(() => {});
+                            window.showToast('✅ Complément payé, merci !', false);
+                        }
+                    });
+                    widget.open();
+                } catch (e) { window.showToast('Erreur paiement : ' + e.message, true); }
+            });
+        };
+
         window.payOffer = (msgId) => {
             if (!currentChatRefPath) return;
             const sp = currentChatRefPath.shopPhone, ci = currentChatRefPath.chatId;
@@ -1818,22 +1926,35 @@
                 document.getElementById('offer-std-fee').innerText = std > 0 ? '+' + std.toLocaleString() + ' F' : 'Gratuit';
                 document.getElementById('offer-exp-fee').innerText = exp > 0 ? '+' + exp.toLocaleString() + ' F' : 'Gratuit';
             };
+
+            // 1) Si la boutique a renseigné les frais DANS l'offre -> on les utilise directement
+            if (payingOffer && (payingOffer.feeStd || payingOffer.feeExp)) {
+                const fs = parseInt(payingOffer.feeStd) || 0;
+                const fe = parseInt(payingOffer.feeExp) || fs;
+                setFees(fs, fe);
+                return;
+            }
+
+            // 2) Sinon -> calcul par distance × tarif/mètre de la boutique
             const fallback = () => setFees(500, 900);
             const compute = (coords) => {
                 clientCoords = coords;
                 get(ref(db, 'driprush_boutiques/' + shopPhone)).then(s => {
-                    const b = s.val();
-                    const cc = (b && b.gps) ? parseGPSCoords(b.gps) : null;
+                    const b = s.val() || {};
+                    const cc = b.gps ? parseGPSCoords(b.gps) : null;
                     if (!cc) return fallback();
                     const dist = haversineDistance(cc.lat, cc.lng, coords.lat, coords.lng) * 1.25;
-                    setFees(roundTo25(dist * 0.179), roundTo25(dist * 0.20));
+                    const rStd = parseFloat(b.rateStd) > 0 ? parseFloat(b.rateStd) : 0.179;
+                    const rExp = parseFloat(b.rateExp) > 0 ? parseFloat(b.rateExp) : 0.20;
+                    setFees(roundTo25(dist * rStd), roundTo25(dist * rExp));
                 }).catch(fallback);
             };
             if (clientCoords) return compute(clientCoords);
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     p => compute({ lat: p.coords.latitude, lng: p.coords.longitude }),
-                    () => fallback(), { timeout: 10000 }
+                    () => { setFees(0, 0); document.getElementById('offer-std-fee').innerText = '📍 Active GPS'; document.getElementById('offer-exp-fee').innerText = '📍 Active GPS'; },
+                    { timeout: 10000, enableHighAccuracy: true }
                 );
             } else fallback();
         };
@@ -3020,6 +3141,7 @@
                 <div id="emoji-panel" class="hidden border-t border-gray-100 p-2 grid grid-cols-8 gap-1 max-h-32 overflow-y-auto shrink-0 bg-gray-50"></div>
                 <div class="flex gap-2 p-2.5 border-t border-gray-100 shrink-0 items-center bg-white">
                     <input type="file" id="chat-img-input" accept="image/*" class="hidden" onchange="window.handleChatImage(event)">
+                    <button onclick="window.shareLocationInChat()" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 shrink-0 active:scale-90 transition" title="Partager ma position"><i class="fa-solid fa-location-dot"></i></button>
                     <button id="chat-attach-btn" onclick="document.getElementById('chat-img-input').click()" class="w-10 h-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center active:scale-95 transition shrink-0"><i class="fa-solid fa-paperclip"></i></button>
                     <button onclick="window.toggleEmojiPanel()" class="w-10 h-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center active:scale-95 transition shrink-0"><i class="fa-regular fa-face-smile"></i></button>
                     <input id="chat-message-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" placeholder="Message" class="flex-1 min-w-0 bg-gray-100 px-4 py-3 rounded-full outline-none text-sm border-none" onkeydown="if(event.key==='Enter'){event.preventDefault();window.sendClientMessage();}">
@@ -3264,7 +3386,7 @@
                 <p class="text-[10px] text-gray-500">🍎 <b>iPhone</b> — Réglages → Confidentialité → Localisation → Activer</p>
                 <p class="text-[10px] text-gray-500">🌐 <b>Navigateur</b> — quand le site demande ta position, appuie sur "Autoriser"</p>
             </div>
-            <button onclick="document.getElementById('gps-required-modal').classList.add('hidden')" class="w-full bg-drip text-white font-display py-4 rounded-2xl text-sm uppercase active:scale-95 transition">J'ai compris, réessayer ✅</button>
+            <button onclick="window.retryGPS()" class="w-full bg-drip text-white font-display py-4 rounded-2xl text-sm uppercase active:scale-95 transition">Activer ma position 📍</button>
         </div>
     </div>
     <div id="ai-bubble" onclick="window.openAssistant()" class="hidden fixed right-4 z-[66] cursor-pointer active:scale-95 transition" style="bottom:150px">

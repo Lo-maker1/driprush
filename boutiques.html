@@ -167,6 +167,12 @@
             </div>
             <input id="b-gps" placeholder="Ex: 6.3671,2.4323 ou lien Google Maps (pas goo.gl)" class="w-full input-dark p-4 rounded-2xl outline-none text-[10px] text-gray-500" oninput="window.validateGpsInput('b-gps','b-gps-status')">
             <p id="b-gps-status" class="text-[9px] text-gray-600 mt-1"></p>
+            <p class="text-[9px] font-black text-gray-500 uppercase px-1 pt-2 tracking-widest">🚚 Tes tarifs de livraison (max 0,6 F le mètre)</p>
+            <div class="grid grid-cols-2 gap-2">
+                <input id="b-rate-std" type="number" step="0.01" max="0.6" placeholder="🚲 Normale (F/mètre)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold" oninput="window.validateRate('b-rate-std')">
+                <input id="b-rate-exp" type="number" step="0.01" max="0.6" placeholder="🚀 Rapide (F/mètre)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold" oninput="window.validateRate('b-rate-exp')">
+            </div>
+            <p class="text-[8px] text-gray-600 px-1">Ex : 0,18 F/mètre = un client à 10 km paie environ 2 250 F. Laisse vide pour utiliser le tarif standard de la plateforme.</p>
             <label class="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase px-1 pt-1 tracking-widest">
                 <input type="checkbox" id="b-momo-same" checked onchange="window.toggleAdminMomoField()" class="w-4 h-4 accent-drip">
                 Mobile Money = même numéro que le WhatsApp
@@ -388,6 +394,26 @@
 
         <!-- 🎯 PROMOS BOUTIQUE -->
         <div id="promos-panel" class="hidden space-y-4 pb-10">
+            <div class="promo-card">
+                <div class="mb-3">
+                    <p class="text-xs font-black uppercase">🚚 Mes tarifs de livraison</p>
+                    <p class="text-[9px] text-gray-500">Prix au mètre (max 0,6 F). Calculé selon la distance client → ta boutique.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                        <label class="text-[8px] font-black text-gray-500 uppercase">🚲 Normale (F/mètre)</label>
+                        <input id="dash-rate-std" type="number" step="0.01" max="0.6" placeholder="Ex: 0.18" class="w-full input-dark p-3 rounded-2xl outline-none text-xs font-bold mt-1" oninput="window.validateRate('dash-rate-std')">
+                    </div>
+                    <div>
+                        <label class="text-[8px] font-black text-gray-500 uppercase">🚀 Rapide (F/mètre)</label>
+                        <input id="dash-rate-exp" type="number" step="0.01" max="0.6" placeholder="Ex: 0.20" class="w-full input-dark p-3 rounded-2xl outline-none text-xs font-bold mt-1" oninput="window.validateRate('dash-rate-exp')">
+                    </div>
+                </div>
+                <p class="text-[8px] text-gray-600 mb-2">💡 Laisse vide (0) pour utiliser le tarif standard de la plateforme. Ex : 0,18 F/m = client à 10 km paie ~2 250 F.</p>
+                <button onclick="window.saveDeliveryRates()" class="w-full bg-drip text-white font-black py-3 rounded-xl text-[10px] uppercase active:scale-95 transition">💾 Enregistrer mes tarifs</button>
+                <p id="dash-rate-status" class="text-[9px] text-center mt-2"></p>
+            </div>
+
             <p class="text-[9px] text-gray-500 font-black uppercase tracking-widest">Ta promo boutique est prioritaire sur les promos admin pour tes articles.</p>
 
             <div id="shop-promo-card-reduction" class="promo-card">
@@ -459,10 +485,7 @@
                 <input type="checkbox" id="prod-international" class="w-4 h-4 accent-drip">
                 ⏳ Disponible à l'étranger (délai de livraison plus long)
             </label>
-            <div class="grid grid-cols-2 gap-2">
-                <input id="prod-delivery-std" type="number" placeholder="Livraison normale (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
-                <input id="prod-delivery-exp" type="number" placeholder="Livraison rapide (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-xs font-bold">
-            </div>
+
             <button id="submit-product-btn" onclick="window.submitNewProduct()" class="w-full bg-drip hover:bg-dripdark text-white font-display py-4 rounded-2xl text-sm uppercase mt-2">Ajouter au catalogue 🚀</button>
         </div>
     </div>
@@ -479,7 +502,8 @@
             </div>
             <div id="shop-chat-messages-list" class="flex-1 overflow-y-auto p-4"></div>
             <div class="px-4 pb-2 shrink-0">
-                <button onclick="window.openOfferForm(null)" class="w-full bg-drip text-white py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">💰 Proposer un prix au client</button>
+                <button onclick="window.openOfferForm(null)" class="w-full bg-drip text-white py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition mb-1.5">💰 Proposer un prix au client</button>
+                <button onclick="window.openExtraFeeForm()" class="w-full bg-white/5 border border-white/15 text-white py-2.5 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">➕ Frais de livraison supplémentaires</button>
             </div>
             <div id="shop-emoji-panel" class="hidden border-t border-white/10 p-2 grid grid-cols-8 gap-1 max-h-32 overflow-y-auto shrink-0 bg-black/40"></div>
             <div class="flex gap-2 p-3 border-t border-white/10 shrink-0 items-center">
@@ -929,6 +953,14 @@
             }).catch((e) => alert("Erreur : " + e.message));
         };
 
+        window.validateRate = (id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            let v = parseFloat(el.value);
+            if (v > 0.6) { el.value = '0.6'; window.showNotif ? window.showNotif('Max 0,6 F/mètre', 'error') : null; }
+            if (v < 0) el.value = '0';
+        };
+
         window.registerBoutique = () => {
             const name = document.getElementById('b-name').value.trim();
             const phone = cleanPhone(document.getElementById('b-phone').value);
@@ -936,12 +968,16 @@
         const gps = parseGpsForStorage(rawGps) || rawGps;
             const momoSame = document.getElementById('b-momo-same').checked;
             const momo = momoSame ? phone : cleanPhone(document.getElementById('b-momo').value);
+            let rateStd = parseFloat(document.getElementById('b-rate-std').value) || 0;
+            let rateExp = parseFloat(document.getElementById('b-rate-exp').value) || 0;
+            if (rateStd > 0.6 || rateExp > 0.6) return alert("Le tarif ne peut pas dépasser 0,6 F le mètre !");
+            if (rateStd < 0) rateStd = 0; if (rateExp < 0) rateExp = 0;
             if (!name) return alert("Donne un nom à la boutique !");
             if (phone.length < 8) return alert("Numéro WhatsApp invalide !");
             if (!momo || momo.length < 8) return alert("Numéro Mobile Money invalide !");
             const pin = String(Math.floor(1000 + Math.random() * 9000));
             set(ref(db, 'driprush_boutiques/' + phone), {
-                name, phone, gps: gps || '', momo, pin, createdAt: Date.now()
+                name, phone, gps: gps || '', momo, pin, rateStd, rateExp, createdAt: Date.now()
             }).then(() => {
                 document.getElementById('generated-pin').innerText = pin;
                 document.getElementById('pin-result').classList.remove('hidden');
@@ -1203,6 +1239,31 @@
             }).catch(() => {});
         };
 
+        window.saveDeliveryRates = () => {
+            if (!currentShopPhone) return;
+            let rateStd = parseFloat(document.getElementById('dash-rate-std').value) || 0;
+            let rateExp = parseFloat(document.getElementById('dash-rate-exp').value) || 0;
+            const status = document.getElementById('dash-rate-status');
+            if (rateStd > 0.6 || rateExp > 0.6) {
+                if (status) status.innerHTML = '<span class="text-red-400 font-bold">❌ Max 0,6 F le mètre !</span>';
+                return;
+            }
+            if (rateStd < 0) rateStd = 0; if (rateExp < 0) rateExp = 0;
+            if (status) status.innerHTML = '<span class="text-gray-400">⏳ Enregistrement...</span>';
+            update(ref(db, 'driprush_boutiques/' + currentShopPhone), { rateStd: rateStd, rateExp: rateExp })
+                .then(() => {
+                    if (currentBoutique) { currentBoutique.rateStd = rateStd; currentBoutique.rateExp = rateExp; }
+                    // mettre à jour la session locale
+                    try {
+                        const sess = JSON.parse(localStorage.getItem('driprush_shop_session') || '{}');
+                        if (sess.boutique) { sess.boutique.rateStd = rateStd; sess.boutique.rateExp = rateExp; localStorage.setItem('driprush_shop_session', JSON.stringify(sess)); }
+                    } catch (e) {}
+                    if (status) status.innerHTML = '<span class="text-lime font-bold">✅ Tarifs enregistrés !</span>';
+                    setTimeout(() => { if (status) status.innerHTML = ''; }, 3000);
+                })
+                .catch(() => { if (status) status.innerHTML = '<span class="text-red-400 font-bold">❌ Erreur, réessaie</span>'; });
+        };
+
         window.openDashboard = (boutique) => {
             currentBoutique = boutique;
             if (currentShopPhone) {
@@ -1211,6 +1272,10 @@
             document.getElementById('dash-shop-name').innerText = boutique.name;
             ['landing-card', 'admin-panel', 'login-panel'].forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById('dashboard').classList.remove('hidden');
+
+            // Pré-remplir les tarifs de livraison de la boutique
+            const rs = document.getElementById('dash-rate-std'); if (rs) rs.value = boutique.rateStd || '';
+            const re2 = document.getElementById('dash-rate-exp'); if (re2) re2.value = boutique.rateExp || '';
 
             window.attachChatBadgeListener();
 
@@ -1419,8 +1484,6 @@
             document.getElementById('prod-price').value = '';
             document.getElementById('prod-sizes').value = '';
             document.getElementById('prod-colors').value = '';
-            document.getElementById('prod-delivery-std').value = '';
-            document.getElementById('prod-delivery-exp').value = '';
             document.getElementById('prod-international').checked = false;
             document.getElementById('size-prices-container').classList.add('hidden');
             document.getElementById('size-prices-grid').innerHTML = '';
@@ -1442,8 +1505,6 @@
                 document.getElementById('prod-sizes').value = (p.sizes && p.sizes !== 'N/A') ? p.sizes : '';
                 document.getElementById('prod-colors').value = p.colors || '';
                 document.getElementById('prod-international').checked = !!p.internationalDelay;
-                document.getElementById('prod-delivery-std').value = p.deliveryStandard || '';
-                document.getElementById('prod-delivery-exp').value = p.deliveryExpress || '';
                 window.renderImagePreviews();
                 document.getElementById('img-upload-btn').innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
                 document.getElementById('add-product-modal-title').innerText = "Modifier l'article";
@@ -1562,8 +1623,8 @@
             const colors = document.getElementById('prod-colors').value.trim() || '';
             const deliveryTime = document.getElementById('prod-delivery-time').value.trim() || '';
             const internationalDelay = document.getElementById('prod-international').checked;
-            const deliveryStandard = parseInt(document.getElementById('prod-delivery-std').value) || 0;
-            const deliveryExpress = parseInt(document.getElementById('prod-delivery-exp').value) || 0;
+            const deliveryStandard = 0;
+            const deliveryExpress = 0;
 
             // Récupérer les prix par taille
             const sizePrices = {};
@@ -1696,6 +1757,28 @@
                     return;
                 }
 
+                if (m.type === 'extrafee') {
+                    const paidX = m.status === 'paid';
+                    box.innerHTML += '<div class="flex justify-end mb-2"><div class="max-w-[85%] w-full rounded-2xl border-2 ' + (paidX ? 'border-green-400' : 'border-amber-400') + ' p-3 bg-amber-500/10">' +
+                        '<p class="text-[9px] font-black uppercase text-amber-400">🚚 Frais de livraison en plus (demandé)</p>' +
+                        '<p class="text-xl font-display text-amber-300 mt-1">+' + Number(m.amount).toLocaleString() + ' F</p>' +
+                        (m.reason ? '<p class="text-[10px] text-gray-400 mt-1">📝 ' + m.reason + '</p>' : '') +
+                        '<p class="text-[10px] font-black uppercase mt-2 ' + (paidX ? 'text-green-400' : 'text-gray-500') + '">' + (paidX ? '✅ Payé par le client' : '⏳ En attente de paiement') + '</p>' +
+                        '</div></div>';
+                    return;
+                }
+
+                if (m.type === 'location') {
+                    const align2 = mine ? 'justify-end' : 'justify-start';
+                    box.innerHTML += '<div class="flex ' + align2 + ' mb-2"><div class="max-w-[80%] rounded-2xl overflow-hidden border-2 border-drip bg-black/30">' +
+                        '<div class="h-24 flex items-center justify-center" style="background:linear-gradient(135deg,#FF4D1C,#ff7a52)"><i class="fa-solid fa-location-dot text-white text-3xl"></i></div>' +
+                        '<div class="p-3"><p class="text-[11px] font-black uppercase text-white">📍 ' + (m.clientName || 'Le client') + ' a partagé sa position</p>' +
+                        '<p class="text-[9px] text-gray-400 mb-2">Utilise-la pour estimer les frais de livraison</p>' +
+                        '<a href="' + m.mapUrl + '" target="_blank" class="block w-full bg-lime text-black text-center py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 transition">🗺️ Voir sur la carte</a></div>' +
+                        '</div></div>';
+                    return;
+                }
+
                 if (m.type === 'offer') {
                     const paid = m.status === 'paid';
                     box.innerHTML += '<div class="flex justify-end mb-2"><div class="max-w-[85%] w-full rounded-2xl border-2 border-drip p-3 bg-black/40">' +
@@ -1798,6 +1881,8 @@
             document.getElementById('offer-sizes-input').value = '';
             document.getElementById('offer-colors-input').value = '';
             document.getElementById('offer-delay-input').value = '';
+            const _fs = document.getElementById('offer-fee-std'); if (_fs) _fs.value = '';
+            const _fe = document.getElementById('offer-fee-exp'); if (_fe) _fe.value = '';
             document.getElementById('offer-preview').innerHTML = imgUrl ? '<img src="' + imgUrl + '" class="w-full h-28 object-cover rounded-xl">' : '';
             document.getElementById('offer-form-modal').classList.remove('hidden');
         };
@@ -1811,6 +1896,31 @@
             document.getElementById('offer-form-modal').classList.remove('hidden');
         };
         window.closeOfferForm = () => { document.getElementById('offer-form-modal').classList.add('hidden'); };
+
+        window.openExtraFeeForm = () => {
+            if (!currentShopChatRef) return alert('Ouvre une discussion client d\'abord');
+            document.getElementById('extra-fee-amount').value = '';
+            document.getElementById('extra-fee-reason').value = '';
+            document.getElementById('extra-fee-modal').classList.remove('hidden');
+        };
+
+        window.closeExtraFeeForm = () => {
+            document.getElementById('extra-fee-modal').classList.add('hidden');
+        };
+
+        window.sendExtraFee = () => {
+            const amount = parseInt(document.getElementById('extra-fee-amount').value);
+            const reason = document.getElementById('extra-fee-reason').value.trim();
+            if (!amount || amount < 1) return alert('Entre un montant valide');
+            if (!currentShopChatRef) return;
+            push(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages'), {
+                sender: 'shop', type: 'extrafee', amount: amount, reason: reason || 'Frais de livraison supplémentaires',
+                status: 'pending', timestamp: Date.now()
+            }).then(() => {
+                window.closeExtraFeeForm();
+                window.notifyClient('🚚 Frais de livraison supplémentaires');
+            }).catch(err => alert('Erreur : ' + err.message));
+        };
 
         window.sendOffer = () => {
             const price = parseInt(document.getElementById('offer-price-input').value);
@@ -1827,9 +1937,12 @@
             const sizes = document.getElementById('offer-sizes-input').value.trim();
             const colors = document.getElementById('offer-colors-input').value.trim();
             const delay = document.getElementById('offer-delay-input').value.trim();
+            const feeStd = parseInt(document.getElementById('offer-fee-std').value) || 0;
+            const feeExp = parseInt(document.getElementById('offer-fee-exp').value) || 0;
             push(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages'), {
                 sender: 'shop', type: 'offer', productName: name, price: price,
                 sizes: sizes || null, colors: colors || null, deliveryTime: delay || null,
+                feeStd: feeStd || null, feeExp: feeExp || null,
                 imageUrl: offerImageUrl || null, status: 'pending', timestamp: Date.now()
             }).then(() => { window.closeOfferForm(); window.notifyClient('💰 Proposition : ' + price.toLocaleString() + ' F'); })
               .catch(err => alert('Erreur : ' + err.message));
@@ -2276,10 +2389,31 @@
             <input type="text" id="offer-sizes-input" placeholder="TAILLES DISPO (ex: 40,41,42)" class="w-full input-dark p-3 rounded-2xl text-xs font-bold uppercase">
             <input type="text" id="offer-colors-input" placeholder="COULEURS DISPO (ex: Noir, Blanc)" class="w-full input-dark p-3 rounded-2xl text-xs font-bold">
             <input type="text" id="offer-delay-input" placeholder="DÉLAI LIVRAISON (ex: 24h, 2-3 jours)" class="w-full input-dark p-3 rounded-2xl text-xs font-bold uppercase">
+            <p class="text-[9px] text-gray-500 uppercase px-1">🚚 Frais de livraison (laisse vide pour calcul auto par distance)</p>
+            <div class="grid grid-cols-2 gap-2">
+                <input type="number" id="offer-fee-std" placeholder="🚲 Normale (F)" class="w-full input-dark p-3 rounded-2xl text-xs font-bold">
+                <input type="number" id="offer-fee-exp" placeholder="🚀 Rapide (F)" class="w-full input-dark p-3 rounded-2xl text-xs font-bold">
+            </div>
             <p class="text-[9px] text-gray-500 text-center">Le client pourra payer directement ou négocier 🤝</p>
             <div class="grid grid-cols-2 gap-2 pt-1">
                 <button onclick="window.closeOfferForm()" class="bg-white/10 text-white py-3.5 rounded-2xl text-[11px] font-black uppercase">Annuler</button>
                 <button onclick="window.sendOffer()" class="bg-drip text-white py-3.5 rounded-2xl text-[11px] font-black uppercase">Envoyer 💰</button>
+            </div>
+        </div>
+    </div>
+    <div id="extra-fee-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[95] flex items-center justify-center p-6">
+        <div class="bg-ink w-full max-w-sm rounded-3xl p-6 border border-white/10 space-y-3">
+            <div class="text-center">
+                <div class="text-4xl mb-2">🚚</div>
+                <h3 class="text-base font-display uppercase text-drip">Frais de livraison en plus</h3>
+                <p class="text-[10px] text-gray-500 mt-1">Envoie une demande de complément au client si la livraison a coûté plus que prévu</p>
+            </div>
+            <input type="number" id="extra-fee-amount" inputmode="numeric" placeholder="MONTANT SUPPLÉMENTAIRE (F)" class="w-full input-dark p-4 rounded-2xl text-lg font-black text-center">
+            <input type="text" id="extra-fee-reason" placeholder="Raison (ex: distance plus longue, embouteillage...)" class="w-full input-dark p-3 rounded-2xl text-xs font-bold">
+            <p class="text-[9px] text-gray-500 text-center">Le client recevra une demande de paiement qu'il pourra régler directement 💳</p>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="window.closeExtraFeeForm()" class="bg-white/5 border border-white/10 text-white py-3 rounded-2xl text-xs font-black uppercase active:scale-95 transition">Annuler</button>
+                <button onclick="window.sendExtraFee()" class="bg-drip text-white py-3 rounded-2xl text-xs font-black uppercase active:scale-95 transition">Envoyer 🚚</button>
             </div>
         </div>
     </div>
