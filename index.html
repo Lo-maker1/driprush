@@ -1397,6 +1397,13 @@
         let currentChatMeta = null;
 
         window.openChatWith = (shopPhone, shopName, chatKey, productId, productName) => {
+            // 🔒 Compte obligatoire pour la messagerie
+            if (window.isLoggedIn && !window.isLoggedIn()) {
+                window._afterLogin = () => window.openChatWith(shopPhone, shopName, chatKey, productId, productName);
+                if (window.showToast) window.showToast('Crée un compte pour discuter avec les boutiques 💬', false);
+                if (window.openAccountModal) window.openAccountModal('signup');
+                return;
+            }
             currentChatMeta = { shopPhone: String(shopPhone), shopName: shopName || 'Boutique', chatKey: chatKey, productId: productId || null, productName: productName || 'Discussion générale' };
             window.currentChatMeta = currentChatMeta;
             document.getElementById('chat-shop-name').innerText = currentChatMeta.shopName;
@@ -1516,6 +1523,21 @@
             const dot = document.getElementById('chat-unread-dot');
             if (dot) dot.classList.add('hidden');
             // Écoute le statut "négociation fermée"
+            // Statut en ligne de la boutique
+            if (window._shopPresenceUnsub) { window._shopPresenceUnsub(); window._shopPresenceUnsub = null; }
+            window._shopPresenceUnsub = onValue(ref(db, 'driprush_presence/shops/' + shopPhone), (ps) => {
+                const p = ps.val();
+                const el = document.getElementById('chat-shop-status');
+                if (!el) return;
+                const online = p && p.online && (Date.now() - (p.lastSeen || 0) < 90000);
+                if (online) { el.innerHTML = '<span class="inline-block w-1.5 h-1.5 rounded-full bg-lime mr-1"></span>En ligne'; el.style.color = '#a3e635'; }
+                else {
+                    let ago = '';
+                    if (p && p.lastSeen) { const min = Math.floor((Date.now() - p.lastSeen) / 60000); ago = min < 1 ? "à l'instant" : min < 60 ? 'il y a ' + min + ' min' : min < 1440 ? 'il y a ' + Math.floor(min/60) + ' h' : 'il y a longtemps'; }
+                    el.innerHTML = 'Hors ligne' + (ago ? ' · vu ' + ago : '');
+                    el.style.color = 'rgba(255,255,255,0.4)';
+                }
+            }, () => {});
             onValue(ref(db, 'driprush_chats/' + shopPhone + '/' + chatId + '/negotiationClosed'), (s) => {
                 window._negoClosed = s.val() === true;
                 if (window._lastChatMsgs) window.renderChatMessages(window._lastChatMsgs);
@@ -1605,9 +1627,22 @@
                     return;
                 }
 
-                box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs" style="' + bubbleStyle + '">' + m.text + '</div></div>';
+                const ticks = mine ? ('<span class="text-[9px] ml-1 ' + (m.readByShop ? 'text-sky-400' : 'text-gray-400') + '">' + (m.readByShop ? '✓✓' : '✓') + '</span>') : '';
+                box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs" style="' + bubbleStyle + '">' + m.text + ticks + '</div></div>';
             });
             box.scrollTop = box.scrollHeight;
+
+            // Marquer les messages de la boutique comme lus par le client
+            try {
+                if (currentChatRefPath && window.__drip) {
+                    const dd = window.__drip;
+                    messages.forEach(m => {
+                        if (m.sender === 'shop' && !m.readByClient && m.id) {
+                            dd.update(dd.ref(dd.db, 'driprush_chats/' + currentChatRefPath.shopPhone + '/' + currentChatRefPath.chatId + '/messages/' + m.id), { readByClient: true }).catch(() => {});
+                        }
+                    });
+                }
+            } catch (e) {}
         };
 
         window.shareLocationInChat = () => {
@@ -2759,7 +2794,7 @@
             }
         ];
 
-        const AI_SUGGESTIONS = ['Comment commander ?','Frais de livraison ?','Comment payer ?','Discuter avec une boutique','Les promos ?'];
+        const AI_SUGGESTIONS = ['✨ Nouveautés','Comment commander ?','Frais de livraison ?','Comment payer ?','Discuter avec une boutique','Les promos ?'];
 
         function aiNormalize(s) {
             return (s || '').toLowerCase()
@@ -2823,7 +2858,10 @@
                 '<button class="ai-sug flex-shrink-0 bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap active:scale-95 transition">' + s + '</button>'
             ).join('');
             box.querySelectorAll('.ai-sug').forEach(btn => {
-                btn.addEventListener('click', () => { document.getElementById('ai-input').value = btn.innerText; window.askAssistant(); });
+                btn.addEventListener('click', () => {
+                    if (btn.innerText.includes('Nouveautés')) { window.showWhatsNew(); return; }
+                    document.getElementById('ai-input').value = btn.innerText; window.askAssistant();
+                });
             });
         }
 
@@ -2860,16 +2898,68 @@
             aiBubbleTimer = setInterval(showAiBubble, 25000);
         }
         startAiBubbleLoop();
+        // Pastille NEW si nouveautés non vues
+        setTimeout(() => {
+            try {
+                if (window.hasUnseenNews && window.hasUnseenNews()) {
+                    const nd = document.getElementById('ai-news-dot'); if (nd) nd.classList.remove('hidden');
+                }
+            } catch (e) {}
+        }, 1500);
+
+        // ✨ NOUVEAUTÉS — orientation vers les nouvelles fonctions
+        const WHATS_NEW_VERSION = 'v3'; // incrémenter à chaque nouvelle vague de features
+        const WHATS_NEW = [
+            { icon: '👤', title: 'Compte client', desc: "Crée ton compte (nom + numéro) pour sauvegarder tes discussions et contacter les boutiques.", fn: 'openAccountModal', arg: 'signup' },
+            { icon: '🟢', title: 'Statut en ligne', desc: "Vois si une boutique est en ligne ou hors ligne directement dans le chat." },
+            { icon: '✓✓', title: 'Accusés de lecture', desc: "Sache quand la boutique a lu ton message, comme sur WhatsApp." },
+            { icon: '📍', title: 'Partage ta position', desc: "Envoie ta localisation dans le chat pour que la boutique estime tes frais.", fn: 'openChatHub', arg: 'recent' },
+            { icon: '🚚', title: 'Frais supplémentaires', desc: "Si la livraison coûte plus, la boutique peut demander un complément que tu paies dans le chat." }
+        ];
+
+        window.hasUnseenNews = () => {
+            try { return localStorage.getItem('driprush_news_seen') !== WHATS_NEW_VERSION; } catch (e) { return true; }
+        };
+        window.markNewsSeen = () => {
+            try { localStorage.setItem('driprush_news_seen', WHATS_NEW_VERSION); } catch (e) {}
+            const dot = document.getElementById('ai-news-dot'); if (dot) dot.classList.add('hidden');
+        };
+
+        window.showWhatsNew = () => {
+            window.markNewsSeen();
+            const box = document.getElementById('ai-messages');
+            if (!box) return;
+            let html = '<div class="flex justify-start"><div class="max-w-[90%] w-full rounded-2xl p-4 space-y-3" style="background:linear-gradient(135deg,#FF4D1C15,#FF4D1C05);border:1px solid rgba(255,77,28,0.25)">';
+            html += '<p class="text-sm font-black uppercase text-drip">✨ Quoi de neuf sur Driprush</p>';
+            WHATS_NEW.forEach((f, i) => {
+                html += '<div class="flex gap-3 items-start ' + (f.fn ? 'cursor-pointer active:opacity-70' : '') + '"' + (f.fn ? ' data-newsfn="' + f.fn + '" data-newsarg="' + (f.arg || '') + '"' : '') + '>' +
+                    '<div class="text-xl shrink-0">' + f.icon + '</div>' +
+                    '<div><p class="text-[12px] font-black text-gray-800">' + f.title + (f.fn ? ' <span class="text-drip text-[9px]">→ toucher</span>' : '') + '</p>' +
+                    '<p class="text-[10px] text-gray-500 leading-snug">' + f.desc + '</p></div></div>';
+            });
+            html += '</div></div>';
+            box.innerHTML += html;
+            box.querySelectorAll('[data-newsfn]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const fn = el.getAttribute('data-newsfn'), arg = el.getAttribute('data-newsarg');
+                    window.closeAssistant();
+                    setTimeout(() => { try { if (arg) window[fn](arg); else window[fn](); } catch (e) {} }, 200);
+                });
+            });
+            box.scrollTop = box.scrollHeight;
+        };
 
         window.openAssistant = () => {
             aiAssistantUsed = true;
             const bubble = document.getElementById('ai-bubble'); if (bubble) bubble.classList.add('hidden');
             const dot = document.getElementById('ai-fab-dot'); if (dot) dot.classList.add('hidden');
+            const wasUnseen = window.hasUnseenNews && window.hasUnseenNews();
             document.getElementById('ai-modal').classList.remove('hidden');
             const navb = document.getElementById('bottom-nav'); if (navb) navb.style.display = 'none';
             const box = document.getElementById('ai-messages');
             if (box && box.children.length === 0) {
                 aiAddMessage("Salut ! 👋 Je suis l'assistant Driprush. Je peux t'aider à commander, payer, discuter avec les boutiques, et répondre à tes questions sur la plateforme. Comment puis-je t'aider ?", 'ai', []);
+                if (wasUnseen) setTimeout(() => window.showWhatsNew(), 400);
             }
             aiRenderSuggestions();
         };
@@ -2891,6 +2981,174 @@
                 else aiAddMessage("Hmm, je ne suis pas sûr d'avoir compris 🤔. Essaie de reformuler, ou choisis un sujet ci-dessous. Pour une question précise sur un article, le mieux est d'écrire directement à la boutique via l'onglet Messages 💬", 'ai', [{label:'💬 Ouvrir les messages', fn:'openChatHub', arg:'recent'}]);
             }, 300);
         };
+
+        // ============================================================
+        // 👤 COMPTES CLIENTS
+        // ============================================================
+        const PHONE_COUNTRIES = { '229': '🇧🇯 Bénin', '228': '🇹🇬 Togo', '227': '🇳🇪 Niger', '225': "🇨🇮 Côte d'Ivoire" };
+
+        window.validateClientPhone = (raw) => {
+            const clean = String(raw || '').replace(/[\s\-\.\(\)]/g, '');
+            let digits = clean.replace(/^\+/, '');
+            if (digits.startsWith('00')) digits = digits.slice(2);
+            for (const ind in PHONE_COUNTRIES) {
+                if (digits.startsWith(ind)) {
+                    const local = digits.slice(ind.length);
+                    const need = (ind === '225') ? 10 : 8;
+                    if (local.length === need) return { valid: true, pays: PHONE_COUNTRIES[ind], e164: '+' + digits };
+                    return { valid: false, reason: 'Numéro incomplet pour ' + PHONE_COUNTRIES[ind] };
+                }
+            }
+            return { valid: false, reason: 'Indicatif non reconnu (+229, +228, +227, +225)' };
+        };
+
+        window.checkPhoneLive = () => {
+            const v = document.getElementById('acc-signup-phone').value;
+            const st = document.getElementById('acc-phone-status');
+            if (!v) { st.innerHTML = ''; return; }
+            const r = window.validateClientPhone(v);
+            st.innerHTML = r.valid
+                ? '<span class="text-lime font-bold">✅ ' + r.pays + '</span>'
+                : '<span class="text-amber-400 font-bold">⚠️ ' + r.reason + '</span>';
+        };
+
+        window.genPassword = () => {
+            const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+            let p = '';
+            for (let i = 0; i < 6; i++) p += chars[Math.floor(Math.random() * chars.length)];
+            document.getElementById('acc-signup-pass').value = p;
+            toast('Mot de passe généré : ' + p + ' (note-le !)');
+        };
+
+        window.switchAccTab = (tab) => {
+            const isLogin = tab === 'login';
+            document.getElementById('acc-login-panel').classList.toggle('hidden', !isLogin);
+            document.getElementById('acc-signup-panel').classList.toggle('hidden', isLogin);
+            document.getElementById('acc-tab-login').className = 'flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase transition ' + (isLogin ? 'bg-drip text-white' : 'text-gray-400');
+            document.getElementById('acc-tab-signup').className = 'flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase transition ' + (!isLogin ? 'bg-drip text-white' : 'text-gray-400');
+        };
+
+        window.openAccountModal = (defaultTab) => {
+            document.getElementById('account-modal').classList.remove('hidden');
+            window.switchAccTab(defaultTab || 'login');
+            const nav = document.getElementById('bottom-nav'); if (nav) nav.style.display = 'none';
+        };
+        window.closeAccountModal = () => {
+            document.getElementById('account-modal').classList.add('hidden');
+            const nav = document.getElementById('bottom-nav'); if (nav) nav.style.display = '';
+        };
+
+        // Hachage simple (pas du bcrypt, mais évite le stockage en clair)
+        function hashPass(s) {
+            let h = 5381;
+            for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+            return 'h' + h.toString(36);
+        }
+
+        window.doSignup = () => {
+            const d = D(); if (!d) return;
+            const name = document.getElementById('acc-signup-name').value.trim();
+            const phoneRaw = document.getElementById('acc-signup-phone').value.trim();
+            const pass = document.getElementById('acc-signup-pass').value.trim();
+            if (!name) return toast('Entre ton nom', true);
+            const pv = window.validateClientPhone(phoneRaw);
+            if (!pv.valid) return toast(pv.reason, true);
+            if (pass.length < 4) return toast('Mot de passe trop court (min 4)', true);
+            const uid = pv.e164.replace(/\+/g, '');
+            d.get(d.ref(d.db, 'driprush_clients/' + uid)).then(snap => {
+                if (snap.exists()) return toast('Ce numéro a déjà un compte — connecte-toi', true);
+                d.set(d.ref(d.db, 'driprush_clients/' + uid), {
+                    name: name, phone: pv.e164, pays: pv.pays, passHash: hashPass(pass), createdAt: Date.now(), lastSeen: Date.now()
+                }).then(() => {
+                    window.setClientSession({ uid: uid, name: name, phone: pv.e164 });
+                    toast('✅ Compte créé, bienvenue ' + name + ' !');
+                    window.closeAccountModal();
+                    if (window._afterLogin) { const cb = window._afterLogin; window._afterLogin = null; cb(); }
+                }).catch(() => toast('Erreur création compte', true));
+            }).catch(() => toast('Erreur réseau', true));
+        };
+
+        window.doLogin = () => {
+            const d = D(); if (!d) return;
+            const phoneRaw = document.getElementById('acc-login-phone').value.trim();
+            const pass = document.getElementById('acc-login-pass').value.trim();
+            const pv = window.validateClientPhone(phoneRaw);
+            if (!pv.valid) return toast(pv.reason, true);
+            const uid = pv.e164.replace(/\+/g, '');
+            d.get(d.ref(d.db, 'driprush_clients/' + uid)).then(snap => {
+                const acc = snap.val();
+                if (!acc) return toast('Aucun compte avec ce numéro', true);
+                if (acc.passHash !== hashPass(pass)) return toast('Mot de passe incorrect', true);
+                window.setClientSession({ uid: uid, name: acc.name, phone: acc.phone });
+                toast('✅ Content de te revoir ' + acc.name + ' !');
+                window.closeAccountModal();
+                if (window._afterLogin) { const cb = window._afterLogin; window._afterLogin = null; cb(); }
+            }).catch(() => toast('Erreur réseau', true));
+        };
+
+        window.setClientSession = (acc) => {
+            localStorage.setItem('driprush_account', JSON.stringify(acc));
+            localStorage.setItem('driprush_client_name', acc.name);
+            window._clientAccount = acc;
+            window.markClientOnline();
+        };
+
+        window.getClientAccount = () => {
+            if (window._clientAccount) return window._clientAccount;
+            try { const a = JSON.parse(localStorage.getItem('driprush_account') || 'null'); window._clientAccount = a; return a; } catch (e) { return null; }
+        };
+
+        window.isLoggedIn = () => !!window.getClientAccount();
+
+        // Présence en ligne du client
+        window.markClientOnline = () => {
+            const d = D(); const acc = window.getClientAccount();
+            if (!d || !acc) return;
+            const presRef = d.ref(d.db, 'driprush_presence/clients/' + acc.uid);
+            d.set(presRef, { online: true, lastSeen: Date.now() }).catch(() => {});
+        };
+        setInterval(() => { if (window.isLoggedIn()) window.markClientOnline(); }, 30000);
+
+        // ============================================================
+        // 📢 AFFICHE PUBLICITAIRE (client)
+        // ============================================================
+        let adTimer = null;
+        window.closeAdBanner = () => {
+            const b = document.getElementById('ad-banner');
+            if (b) { b.style.transition = 'opacity 0.3s, transform 0.3s'; b.style.opacity = '0'; b.style.transform = 'translateY(20px)'; setTimeout(() => b.classList.add('hidden'), 300); }
+            if (adTimer) { clearTimeout(adTimer); adTimer = null; }
+        };
+
+        function loadAd() {
+            const d = D(); if (!d) return;
+            d.get(d.ref(d.db, 'driprush_ad')).then(snap => {
+                const ad = snap.val();
+                if (!ad || !ad.active) return;
+                if (!ad.image && !ad.title) return;
+                const banner = document.getElementById('ad-banner');
+                const img = document.getElementById('ad-banner-img');
+                const title = document.getElementById('ad-banner-title');
+                const desc = document.getElementById('ad-banner-desc');
+                const progress = document.getElementById('ad-banner-progress');
+                const clickable = document.getElementById('ad-banner-clickable');
+                if (!banner) return;
+                if (ad.image) { img.src = ad.image; img.classList.remove('hidden'); } else { img.classList.add('hidden'); }
+                title.innerText = ad.title || '';
+                desc.innerText = ad.desc || '';
+                // lien au clic
+                clickable.onclick = () => { if (ad.link) { let u = ad.link; if (!/^https?:\/\//.test(u)) u = 'https://' + u; window.open(u, '_blank'); } };
+                // afficher
+                banner.classList.remove('hidden');
+                banner.style.opacity = '1'; banner.style.transform = 'translateY(0)';
+                // barre de progression (60s)
+                if (progress) { progress.style.width = '100%'; setTimeout(() => { progress.style.width = '0%'; }, 100); }
+                // disparaît après 1 minute
+                if (adTimer) clearTimeout(adTimer);
+                adTimer = setTimeout(() => window.closeAdBanner(), 60000);
+            }).catch(() => {});
+        }
+        // Afficher la pub 3s après l'ouverture (laisse le site charger)
+        setTimeout(loadAd, 3000);
 
         // ---------- 🔍 PARAMÈTRES D'URL ----------
         const qs = new URLSearchParams(location.search);
@@ -3146,6 +3404,7 @@
                     <div class="min-w-0">
                         <p id="chat-shop-name" class="text-sm font-black uppercase text-white truncate"></p>
                         <p id="chat-product-name" class="text-[10px] font-medium truncate" style="color:rgba(255,255,255,0.55)"></p>
+                        <p id="chat-shop-status" class="text-[10px] font-bold truncate" style="color:rgba(255,255,255,0.4)"></p>
                     </div>
                 </div>
                 <button onclick="window.shareShopLink()" class="text-white/70 text-sm px-2" title="Partager la boutique"><i class="fa-solid fa-share-nodes"></i></button>
@@ -3418,6 +3677,7 @@
 
     <button id="ai-fab" onclick="window.openAssistant()" class="fixed right-4 z-[66] bg-drip text-white w-14 h-14 rounded-full shadow-[0_4px_20px_rgba(255,77,28,0.45)] flex items-center justify-center active:scale-95 transition-all" style="bottom:88px">
         <i class="fa-solid fa-headset text-lg"></i>
+        <span id="ai-news-dot" class="hidden absolute -top-1.5 -right-1.5 bg-lime text-black text-[8px] font-black px-1.5 py-0.5 rounded-full border-2 border-white animate-pulse shadow-[0_0_10px_rgba(163,230,53,0.8)]">NEW</span>
         <span id="ai-fab-dot" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-lime rounded-full border-2 border-white animate-pulse"></span>
     </button>
 
@@ -3437,6 +3697,54 @@
                 <input id="ai-input" type="text" enterkeyhint="send" autocomplete="off" placeholder="Pose ta question..." class="flex-1 min-w-0 bg-gray-100 px-4 py-3 rounded-full outline-none text-sm border-none" onkeydown="if(event.key==='Enter'){event.preventDefault();window.askAssistant();}">
                 <button onclick="window.askAssistant()" class="bg-drip text-white w-11 h-11 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition"><i class="fa-solid fa-paper-plane text-sm"></i></button>
             </div>
+        </div>
+    </div>
+    <div id="account-modal" class="hidden fixed inset-0 bg-ink z-[108] flex flex-col overflow-y-auto" style="height:100dvh">
+        <div class="max-w-md mx-auto w-full p-6 pt-10">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-display text-drip uppercase tracking-tighter">Driprush</h1>
+                <p class="text-[10px] text-gray-500 font-black uppercase tracking-[0.3em] mt-1">Mon compte</p>
+            </div>
+
+            <div class="flex gap-2 mb-5 bg-white/5 rounded-2xl p-1">
+                <button id="acc-tab-login" onclick="window.switchAccTab('login')" class="flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase transition bg-drip text-white">Connexion</button>
+                <button id="acc-tab-signup" onclick="window.switchAccTab('signup')" class="flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase transition text-gray-400">Créer un compte</button>
+            </div>
+
+            <div id="acc-login-panel" class="space-y-3">
+                <input id="acc-login-phone" type="tel" placeholder="Ton numéro (+229...)" class="w-full input-dark p-4 rounded-2xl text-sm font-bold">
+                <input id="acc-login-pass" type="password" placeholder="Ton mot de passe" class="w-full input-dark p-4 rounded-2xl text-sm font-bold">
+                <button onclick="window.doLogin()" class="w-full bg-drip text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition">Se connecter</button>
+            </div>
+
+            <div id="acc-signup-panel" class="hidden space-y-3">
+                <input id="acc-signup-name" type="text" placeholder="Ton nom" class="w-full input-dark p-4 rounded-2xl text-sm font-bold">
+                <input id="acc-signup-phone" type="tel" placeholder="Ton numéro (+229, +228, +227, +225)" class="w-full input-dark p-4 rounded-2xl text-sm font-bold" oninput="window.checkPhoneLive()">
+                <p id="acc-phone-status" class="text-[9px] px-1"></p>
+                <div class="relative">
+                    <input id="acc-signup-pass" type="text" placeholder="Choisis un mot de passe" class="w-full input-dark p-4 rounded-2xl text-sm font-bold">
+                    <button onclick="window.genPassword()" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/10 text-white text-[9px] font-black px-3 py-2 rounded-xl uppercase active:scale-95">🎲 Générer</button>
+                </div>
+                <p class="text-[9px] text-gray-500 px-1">Pays acceptés : 🇧🇯 Bénin · 🇹🇬 Togo · 🇳🇪 Niger · 🇨🇮 Côte d'Ivoire</p>
+                <button onclick="window.doSignup()" class="w-full bg-drip text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition">Créer mon compte</button>
+            </div>
+
+            <button onclick="window.closeAccountModal()" class="w-full text-gray-500 text-[10px] font-bold uppercase mt-5 py-2">Plus tard, je continue sans compte</button>
+            <p class="text-center text-[9px] text-gray-600 mt-2 leading-relaxed">💡 Un compte te permet de sauvegarder tes discussions et de contacter les boutiques.</p>
+        </div>
+    </div>
+    <div id="ad-banner" class="hidden fixed left-3 right-3 z-[70] max-w-md mx-auto" style="bottom:80px">
+        <div class="relative bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.25)] overflow-hidden border border-gray-100">
+            <button onclick="window.closeAdBanner()" class="absolute top-2 right-2 z-10 w-7 h-7 bg-black/50 text-white rounded-full flex items-center justify-center text-xs active:scale-90 transition"><i class="fa-solid fa-xmark"></i></button>
+            <div id="ad-banner-clickable" class="cursor-pointer active:opacity-90 transition">
+                <img id="ad-banner-img" src="" class="hidden w-full h-32 object-cover">
+                <div class="p-3">
+                    <p class="text-[8px] font-black text-drip uppercase tracking-widest mb-0.5">✨ Publicité</p>
+                    <p id="ad-banner-title" class="text-sm font-black text-ink leading-tight"></p>
+                    <p id="ad-banner-desc" class="text-[11px] text-gray-500 leading-snug mt-0.5"></p>
+                </div>
+            </div>
+            <div class="h-0.5 bg-gray-100"><div id="ad-banner-progress" class="h-full bg-drip" style="width:100%;transition:width 60s linear"></div></div>
         </div>
     </div>
 </body>
