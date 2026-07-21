@@ -471,6 +471,14 @@
                 📷 Ajouter des photos (max 10)
             </button>
             <div id="img-preview-grid" class="hidden grid grid-cols-4 gap-2"></div>
+            <input type="file" id="prod-video-input" accept="video/*" class="hidden" onchange="window.handleVideoUpload(event)">
+            <button type="button" onclick="document.getElementById('prod-video-input').click()" id="video-upload-btn" class="w-full input-dark p-4 rounded-2xl text-xs font-black text-drip uppercase text-center active:scale-95 transition tracking-widest">
+                🎬 Ajouter une vidéo démo (optionnel)
+            </button>
+            <div id="video-preview" class="hidden relative">
+                <video id="video-preview-el" class="w-full h-40 object-cover rounded-2xl bg-black" controls></video>
+                <button type="button" onclick="window.removeProductVideo()" class="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-xs active:scale-90 z-10"><i class="fa-solid fa-xmark"></i></button>
+            </div>
             <input id="prod-name" placeholder="NOM DU PRODUIT" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold uppercase">
             <input id="prod-price" type="number" placeholder="PRIX DE VENTE (F)" class="w-full input-dark p-4 rounded-2xl outline-none text-sm font-bold">
             <div class="grid grid-cols-2 gap-2">
@@ -1511,6 +1519,7 @@
         };
 
         window.openAddProductForm = () => {
+            uploadedVideoURL = ''; const _vp = document.getElementById('video-preview'); if (_vp) _vp.classList.add('hidden'); const _vb = document.getElementById('video-upload-btn'); if (_vb) _vb.innerText = '🎬 Ajouter une vidéo démo (optionnel)';
             editingProductId = null;
             uploadedImageURLs = [];
             document.getElementById('img-preview-grid').innerHTML = '';
@@ -1535,6 +1544,15 @@
                 if (!p) return alert("Article introuvable.");
                 editingProductId = productId;
                 uploadedImageURLs = p.images && p.images.length > 0 ? [...p.images] : (p.image ? [p.image] : []);
+                uploadedVideoURL = p.videoUrl || '';
+                if (uploadedVideoURL) {
+                    const vp = document.getElementById('video-preview'); if (vp) vp.classList.remove('hidden');
+                    const ve = document.getElementById('video-preview-el'); if (ve) ve.src = uploadedVideoURL;
+                    const vb = document.getElementById('video-upload-btn'); if (vb) vb.innerText = '✅ Vidéo ajoutée — changer';
+                } else {
+                    const vp = document.getElementById('video-preview'); if (vp) vp.classList.add('hidden');
+                    const vb = document.getElementById('video-upload-btn'); if (vb) vb.innerText = '🎬 Ajouter une vidéo démo (optionnel)';
+                }
                 document.getElementById('prod-name').value = p.name || '';
                 document.getElementById('prod-price').value = p.price || '';
                 document.getElementById('prod-type').value = p.type || 'vetement';
@@ -1605,6 +1623,44 @@
             uploadedImageURLs.splice(idx, 1);
             window.renderImagePreviews();
             document.getElementById('img-upload-btn').innerText = uploadedImageURLs.length > 0 ? `📷 Ajouter des photos (${uploadedImageURLs.length}/${MAX_PHOTOS})` : "📷 Ajouter des photos (max 10)";
+        };
+
+        let uploadedVideoURL = '';
+
+        window.handleVideoUpload = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            // Limite de taille : 50 Mo (Cloudinary gratuit gère bien jusqu'à ~100 Mo)
+            if (file.size > 50 * 1024 * 1024) { alert('Vidéo trop lourde (max 50 Mo). Filme plus court ou réduis la qualité.'); event.target.value = ''; return; }
+            const btn = document.getElementById('video-upload-btn');
+            btn.disabled = true;
+            btn.innerText = '⏳ Envoi de la vidéo...';
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+            fetch('https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/video/upload', { method: 'POST', body: fd })
+                .then(res => res.json())
+                .then(data => {
+                    btn.disabled = false;
+                    if (data.secure_url) {
+                        uploadedVideoURL = data.secure_url;
+                        document.getElementById('video-preview').classList.remove('hidden');
+                        document.getElementById('video-preview-el').src = uploadedVideoURL;
+                        btn.innerText = '✅ Vidéo ajoutée — changer';
+                    } else {
+                        btn.innerText = '🎬 Ajouter une vidéo démo (optionnel)';
+                        alert('Échec : ' + (data.error && data.error.message ? data.error.message : 'réessaie'));
+                    }
+                })
+                .catch(() => { btn.disabled = false; btn.innerText = '🎬 Ajouter une vidéo démo (optionnel)'; alert('Erreur réseau lors de l\'envoi'); });
+        };
+
+        window.removeProductVideo = () => {
+            uploadedVideoURL = '';
+            document.getElementById('video-preview').classList.add('hidden');
+            document.getElementById('video-preview-el').src = '';
+            const btn = document.getElementById('video-upload-btn');
+            if (btn) btn.innerText = '🎬 Ajouter une vidéo démo (optionnel)';
         };
 
         window.handleImageUpload = async (event) => {
@@ -1684,7 +1740,7 @@
                 type, genre, sizes, colors, internationalDelay,
                 deliveryTime: deliveryTime || null,
                 sizePrices: hasSizePrices ? sizePrices : null,
-                shopName: currentBoutique.name, shopPhone: currentBoutique.phone,
+                shopName: currentBoutique.name, shopPhone: currentBoutique.phone, videoUrl: uploadedVideoURL || '',
                 shopGPS: currentBoutique.gps || '', shopMomo: currentBoutique.momo || currentBoutique.phone || '',
                 deliveryStandard, deliveryExpress
             };

@@ -802,6 +802,11 @@
             const pShopMomo = p.shopMomo && String(p.shopMomo).trim() !== "" ? p.shopMomo : (p.shopPhone || "2290147535343");
             selectedItem = { id: p.id, name: p.name, price: p.price, image: images[0] || '', shop: p.shopName || 'Driprush', shopGPS: p.shopGPS || '', shopPhone: p.shopPhone || '2290147535343', shopMomo: pShopMomo, internationalDelay: p.internationalDelay || false, size: null, color: null };
             document.getElementById('modal-img').src = images[0] || '';
+            const vBtn = document.getElementById('modal-video-btn');
+            if (vBtn) {
+                if (p.videoUrl) { vBtn.classList.remove('hidden'); window._currentProductVideo = p.videoUrl; }
+                else { vBtn.classList.add('hidden'); window._currentProductVideo = null; }
+            }
             document.getElementById('modal-name').innerText = p.name;
             document.getElementById('modal-price').innerText = parseInt(p.price).toLocaleString() + " F";
             document.getElementById('international-delay-notice').classList.toggle('hidden', !p.internationalDelay);
@@ -3160,6 +3165,21 @@
         // Afficher la pub 3s après l'ouverture (laisse le site charger)
         setTimeout(loadAd, 3000);
 
+        window.openProductVideo = () => {
+            const url = window._currentProductVideo;
+            if (!url) return;
+            const modal = document.getElementById('product-video-modal');
+            const el = document.getElementById('product-video-el');
+            if (el) { el.src = url; el.play().catch(() => {}); }
+            if (modal) modal.classList.remove('hidden');
+        };
+        window.closeProductVideo = () => {
+            const modal = document.getElementById('product-video-modal');
+            const el = document.getElementById('product-video-el');
+            if (el) { el.pause(); el.src = ''; }
+            if (modal) modal.classList.add('hidden');
+        };
+
         // ---------- 🔍 PARAMÈTRES D'URL ----------
         const qs = new URLSearchParams(location.search);
         const payId = qs.get('pay');
@@ -3275,7 +3295,12 @@
                 <button onclick="window.shareArticle && window.shareArticle()" class="absolute top-4 right-16 text-gray-400 hover:text-black transition text-lg p-2" title="Partager"><i class="fa-solid fa-share-nodes"></i></button>
                 <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2"></div>
                 <div class="flex gap-4">
-                    <img id="modal-img" src="" onclick="window.toggleZoom(true)" class="w-32 h-32 object-cover rounded-2xl shadow-lg cursor-zoom-in active:scale-95 transition duration-200">
+                    <div class="relative w-32 h-32 shrink-0">
+                        <img id="modal-img" src="" onclick="window.toggleZoom(true)" class="w-32 h-32 object-cover rounded-2xl shadow-lg cursor-zoom-in active:scale-95 transition duration-200">
+                        <button id="modal-video-btn" onclick="window.openProductVideo()" class="hidden absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl active:scale-95 transition">
+                            <span class="bg-drip text-white w-11 h-11 rounded-full flex items-center justify-center shadow-lg"><i class="fa-solid fa-play text-sm ml-0.5"></i></span>
+                        </button>
+                    </div>
                     <div class="flex-1 py-2">
                         <h2 id="modal-name" class="text-sm font-black uppercase text-gray-800 leading-tight mb-1"></h2>
                         <p id="modal-price" class="price-tag text-base"></p>
@@ -3756,6 +3781,10 @@
             </div>
             <div class="h-0.5 bg-gray-100"><div id="ad-banner-progress" class="h-full bg-drip" style="width:100%;transition:width 60s linear"></div></div>
         </div>
+    </div>
+    <div id="product-video-modal" class="hidden fixed inset-0 bg-black z-[112] flex items-center justify-center" onclick="window.closeProductVideo()">
+        <button onclick="window.closeProductVideo()" class="absolute top-5 right-5 z-10 w-10 h-10 bg-white/15 text-white rounded-full flex items-center justify-center text-lg"><i class="fa-solid fa-xmark"></i></button>
+        <video id="product-video-el" class="w-full max-h-[80vh]" controls playsinline onclick="event.stopPropagation()"></video>
     </div>
 </body>
 </html>
