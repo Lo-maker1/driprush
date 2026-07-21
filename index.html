@@ -1520,6 +1520,7 @@
             currentChatRefPath = { shopPhone: shopPhone, chatId: chatId };
             const tok = localStorage.getItem('driprush_client_fcm_token');
             if (tok) update(ref(db, 'driprush_chats/' + shopPhone + '/' + chatId), { clientFCMToken: tok }).catch(() => {});
+            try { const _acc = window.getClientAccount && window.getClientAccount(); if (_acc && _acc.uid) update(ref(db, 'driprush_chats/' + shopPhone + '/' + chatId), { clientUid: _acc.uid }).catch(() => {}); } catch (e) {}
             const key = currentChatMeta ? currentChatMeta.chatKey : null;
             if (key) {
                 let myChats = {};
@@ -1635,7 +1636,9 @@
                 }
 
                 const ticks = mine ? ('<span class="text-[9px] ml-1 ' + (m.readByShop ? 'text-sky-400' : 'text-gray-400') + '">' + (m.readByShop ? '✓✓' : '✓') + '</span>') : '';
-                box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs" style="' + bubbleStyle + '">' + m.text + ticks + '</div></div>';
+                const editedC = m.edited ? '<span class="text-[8px] opacity-50 ml-1">(modifié)</span>' : '';
+                const menuC = mine && m.id ? ' oncontextmenu="event.preventDefault();window.openClientMsgMenu(\'' + m.id + '\')" onclick="window.clientMsgTap(\'' + m.id + '\')"' : '';
+                box.innerHTML += '<div class="flex ' + align + ' mb-2"><div' + menuC + ' class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs" style="' + bubbleStyle + '">' + m.text + editedC + ticks + '</div></div>';
             });
             box.scrollTop = box.scrollHeight;
 
@@ -3165,6 +3168,49 @@
         // Afficher la pub 3s après l'ouverture (laisse le site charger)
         setTimeout(loadAd, 3000);
 
+        // ✏️🗑️ Modifier / Supprimer un message (client)
+        let _cliLastTap = 0;
+        window.clientMsgTap = (msgId) => {
+            const now = Date.now();
+            if (now - _cliLastTap < 400) { window.openClientMsgMenu(msgId); _cliLastTap = 0; }
+            else { _cliLastTap = now; }
+        };
+        window.openClientMsgMenu = (msgId) => {
+            if (!currentChatRefPath) return;
+            window._cliEditingMsgId = msgId;
+            document.getElementById('cli-msg-menu').classList.remove('hidden');
+        };
+        window.closeClientMsgMenu = () => {
+            document.getElementById('cli-msg-menu').classList.add('hidden');
+            window._cliEditingMsgId = null;
+        };
+        window.startEditClientMsg = () => {
+            const id = window._cliEditingMsgId;
+            document.getElementById('cli-msg-menu').classList.add('hidden');
+            if (!id || !currentChatRefPath) return;
+            const sp = currentChatRefPath.shopPhone, ci = currentChatRefPath.chatId;
+            get(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages/' + id)).then(s => {
+                const m = s.val();
+                if (!m || m.sender !== 'client') { window.showToast('Tu peux modifier seulement tes messages', true); return; }
+                const nv = prompt('Modifier le message :', m.text || '');
+                if (nv === null) return;
+                const t = nv.trim(); if (!t) return;
+                update(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages/' + id), { text: t, edited: true }).catch(() => {});
+            });
+        };
+        window.deleteClientMsg = () => {
+            const id = window._cliEditingMsgId;
+            document.getElementById('cli-msg-menu').classList.add('hidden');
+            if (!id || !currentChatRefPath) return;
+            if (!confirm('Supprimer ce message ?')) return;
+            const sp = currentChatRefPath.shopPhone, ci = currentChatRefPath.chatId;
+            get(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages/' + id)).then(s => {
+                const m = s.val();
+                if (!m || m.sender !== 'client') { window.showToast('Tu peux supprimer seulement tes messages', true); return; }
+                update(ref(db, 'driprush_chats/' + sp + '/' + ci + '/messages/' + id), { text: '🚫 Message supprimé', type: 'standard', deleted: true, imageUrl: null }).catch(() => {});
+            });
+        };
+
         window.openProductVideo = () => {
             const url = window._currentProductVideo;
             if (!url) return;
@@ -3785,6 +3831,14 @@
     <div id="product-video-modal" class="hidden fixed inset-0 bg-black z-[112] flex items-center justify-center" onclick="window.closeProductVideo()">
         <button onclick="window.closeProductVideo()" class="absolute top-5 right-5 z-10 w-10 h-10 bg-white/15 text-white rounded-full flex items-center justify-center text-lg"><i class="fa-solid fa-xmark"></i></button>
         <video id="product-video-el" class="w-full max-h-[80vh]" controls playsinline onclick="event.stopPropagation()"></video>
+    </div>
+    <div id="cli-msg-menu" class="hidden fixed inset-0 bg-black/70 z-[113] flex items-end justify-center" onclick="window.closeClientMsgMenu()">
+        <div class="bg-white w-full max-w-md rounded-t-3xl p-4 space-y-2" onclick="event.stopPropagation()">
+            <div class="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-2"></div>
+            <button onclick="window.startEditClientMsg()" class="w-full bg-gray-100 text-ink py-3.5 rounded-2xl text-sm font-black uppercase active:scale-95 transition flex items-center justify-center gap-2"><i class="fa-solid fa-pen"></i> Modifier</button>
+            <button onclick="window.deleteClientMsg()" class="w-full bg-red-50 text-red-500 py-3.5 rounded-2xl text-sm font-black uppercase active:scale-95 transition flex items-center justify-center gap-2"><i class="fa-solid fa-trash"></i> Supprimer</button>
+            <button onclick="window.closeClientMsgMenu()" class="w-full bg-gray-100 text-gray-500 py-3 rounded-2xl text-xs font-bold uppercase">Annuler</button>
+        </div>
     </div>
 </body>
 </html>

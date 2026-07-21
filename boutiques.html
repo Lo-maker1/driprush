@@ -1638,7 +1638,7 @@
             const fd = new FormData();
             fd.append('file', file);
             fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-            fetch('https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/video/upload', { method: 'POST', body: fd })
+            fetch('https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/auto/upload', { method: 'POST', body: fd })
                 .then(res => res.json())
                 .then(data => {
                     btn.disabled = false;
@@ -1836,6 +1836,25 @@
             const saf = document.getElementById('shop-ai-fab'); if (saf) saf.style.display = 'none';
             document.getElementById('shop-chat-client-name').innerText = clientName;
             document.getElementById('shop-chat-product-name').innerText = productName;
+            // Statut en ligne du client
+            if (window._clientPresenceUnsub) { window._clientPresenceUnsub(); window._clientPresenceUnsub = null; }
+            const statusEl = document.getElementById('shop-chat-client-status');
+            if (statusEl) statusEl.innerText = '';
+            get(ref(db, 'driprush_chats/' + currentShopPhone + '/' + chatId)).then(cs => {
+                const cdata = cs.val() || {};
+                if (!cdata.clientUid || !statusEl) return;
+                window._clientPresenceUnsub = onValue(ref(db, 'driprush_presence/clients/' + cdata.clientUid), (ps) => {
+                    const p = ps.val();
+                    const online = p && p.online && (Date.now() - (p.lastSeen || 0) < 90000);
+                    if (online) { statusEl.innerHTML = '<span class="inline-block w-1.5 h-1.5 rounded-full bg-lime mr-1"></span>En ligne'; statusEl.style.color = '#a3e635'; }
+                    else {
+                        let ago = '';
+                        if (p && p.lastSeen) { const mn = Math.floor((Date.now() - p.lastSeen)/60000); ago = mn < 1 ? "à l'instant" : mn < 60 ? 'il y a ' + mn + ' min' : mn < 1440 ? 'il y a ' + Math.floor(mn/60) + ' h' : 'il y a longtemps'; }
+                        statusEl.innerHTML = 'Hors ligne' + (ago ? ' · vu ' + ago : '');
+                        statusEl.style.color = 'rgba(255,255,255,0.4)';
+                    }
+                }, () => {});
+            }).catch(() => {});
             document.getElementById('shop-chat-modal').classList.remove('hidden');
             if (currentShopChatUnsub) { currentShopChatUnsub(); currentShopChatUnsub = null; }
             currentShopChatRef = chatId;
@@ -1851,6 +1870,47 @@
                         update(ref(db, `driprush_chats/${currentShopPhone}/${chatId}/messages/${m.id}`), { readByShop: true }).catch(() => {});
                     }
                 });
+            });
+        };
+
+        // ✏️🗑️ Modifier / Supprimer un message (boutique)
+        let _shopMsgTapTimer = null; let _shopLastTap = 0;
+        window.msgTapMaybe = (msgId) => {
+            const now = Date.now();
+            if (now - _shopLastTap < 400) { window.openMsgMenu(msgId); _shopLastTap = 0; }
+            else { _shopLastTap = now; }
+        };
+        window.openMsgMenu = (msgId) => {
+            if (!currentShopChatRef) return;
+            window._editingMsgId = msgId;
+            document.getElementById('msg-menu-modal').classList.remove('hidden');
+        };
+        window.closeMsgMenu = () => {
+            document.getElementById('msg-menu-modal').classList.add('hidden');
+            window._editingMsgId = null;
+        };
+        window.startEditMsg = () => {
+            const msgId = window._editingMsgId;
+            document.getElementById('msg-menu-modal').classList.add('hidden');
+            if (!msgId || !currentShopChatRef) return;
+            get(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages/' + msgId)).then(s => {
+                const m = s.val();
+                if (!m || m.sender !== 'shop') { alert('Tu peux modifier seulement tes messages'); return; }
+                const nv = prompt('Modifier le message :', m.text || '');
+                if (nv === null) return;
+                const t = nv.trim(); if (!t) return;
+                update(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages/' + msgId), { text: t, edited: true }).catch(() => alert('Erreur'));
+            });
+        };
+        window.deleteMsg = () => {
+            const msgId = window._editingMsgId;
+            document.getElementById('msg-menu-modal').classList.add('hidden');
+            if (!msgId || !currentShopChatRef) return;
+            if (!confirm('Supprimer ce message ?')) return;
+            get(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages/' + msgId)).then(s => {
+                const m = s.val();
+                if (!m || m.sender !== 'shop') { alert('Tu peux supprimer seulement tes messages'); return; }
+                update(ref(db, 'driprush_chats/' + currentShopPhone + '/' + currentShopChatRef + '/messages/' + msgId), { text: '🚫 Message supprimé', type: 'standard', deleted: true, imageUrl: null }).catch(() => alert('Erreur'));
             });
         };
 
@@ -1920,7 +1980,10 @@
                     return;
                 }
 
-                box.innerHTML += '<div class="flex ' + align + ' mb-2"><div class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs ' + (mine ? 'bg-drip text-white' : 'bg-white/10 text-white') + '">' + m.text + '</div></div>';
+                const ticksS = mine ? ('<span class="text-[9px] ml-1 ' + (m.readByClient ? 'text-sky-300' : 'text-white/50') + '">' + (m.readByClient ? '✓✓' : '✓') + '</span>') : '';
+                const editedS = m.edited ? '<span class="text-[8px] text-white/40 ml-1">(modifié)</span>' : '';
+                const menuS = mine && m.id ? ' oncontextmenu="event.preventDefault();window.openMsgMenu(\'' + m.id + '\')" onclick="window.msgTapMaybe(\'' + m.id + '\')"' : '';
+                box.innerHTML += '<div class="flex ' + align + ' mb-2"><div' + menuS + ' class="max-w-[75%] px-4 py-2.5 rounded-2xl text-xs ' + (mine ? 'bg-drip text-white' : 'bg-white/10 text-white') + '">' + m.text + editedS + ticksS + '</div></div>';
             });
             box.scrollTop = box.scrollHeight;
         };
@@ -2831,6 +2894,14 @@
                 <input id="shop-ai-input" type="text" enterkeyhint="send" autocomplete="off" placeholder="Pose ta question..." class="flex-1 min-w-0 input-dark px-4 py-3 rounded-full outline-none text-sm" onkeydown="if(event.key==='Enter'){event.preventDefault();window.askShopAssistant();}">
                 <button onclick="window.askShopAssistant()" class="bg-drip text-white w-11 h-11 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition"><i class="fa-solid fa-paper-plane text-sm"></i></button>
             </div>
+        </div>
+    </div>
+    <div id="msg-menu-modal" class="hidden fixed inset-0 bg-black/70 z-[95] flex items-end justify-center" onclick="window.closeMsgMenu()">
+        <div class="bg-ink w-full max-w-md rounded-t-3xl p-4 space-y-2" onclick="event.stopPropagation()">
+            <div class="w-12 h-1 bg-white/20 rounded-full mx-auto mb-2"></div>
+            <button onclick="window.startEditMsg()" class="w-full bg-white/5 text-white py-3.5 rounded-2xl text-sm font-black uppercase active:scale-95 transition flex items-center justify-center gap-2"><i class="fa-solid fa-pen"></i> Modifier</button>
+            <button onclick="window.deleteMsg()" class="w-full bg-red-500/10 text-red-400 py-3.5 rounded-2xl text-sm font-black uppercase active:scale-95 transition flex items-center justify-center gap-2"><i class="fa-solid fa-trash"></i> Supprimer</button>
+            <button onclick="window.closeMsgMenu()" class="w-full bg-white/5 text-gray-400 py-3 rounded-2xl text-xs font-bold uppercase">Annuler</button>
         </div>
     </div>
 </body>
