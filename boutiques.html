@@ -1747,23 +1747,37 @@
                 }
                 chats.forEach((c, idx) => {
                     const msgs = c.messages ? Object.values(c.messages) : [];
-                    const lastMsg = msgs.length > 0 ? msgs.sort((a,b) => b.timestamp - a.timestamp)[0] : null;
+                    const lastMsg = msgs.length > 0 ? msgs.slice().sort((a,b) => b.timestamp - a.timestamp)[0] : null;
                     const safeClientName = (c.clientName || '').replace(/'/g, "\\'");
                     const safeProductName = (c.productName || '').replace(/'/g, "\\'");
+                    // Compter les messages du client non lus par la boutique
+                    const lastRead = c.lastReadByShop || 0;
+                    const unread = msgs.filter(m => m.sender === 'client' && m.timestamp > lastRead).length;
+                    const hasUnread = unread > 0;
+                    // Aperçu du dernier message (préfixe si c'est le client qui a écrit)
+                    let preview = 'Aucun message encore';
+                    if (lastMsg) {
+                        const who = lastMsg.sender === 'client' ? '' : 'Toi : ';
+                        preview = who + (lastMsg.type === 'image' ? '📷 Photo' : lastMsg.type === 'location' ? '📍 Position' : lastMsg.type === 'offer' ? '💰 Offre' : lastMsg.type === 'extrafee' ? '🚚 Frais suppl.' : (lastMsg.text || ''));
+                    }
                     container.innerHTML += `
-                        <div class="card-surface rounded-2xl p-4 card-enter cursor-pointer" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s" onclick="window.openShopChatThread('${c.id}', '${safeClientName}', '${safeProductName}')">
+                        <div class="card-surface rounded-2xl p-4 card-enter cursor-pointer ${hasUnread ? 'border-2 border-drip' : ''}" style="animation-delay: ${Math.min(idx * 0.05, 0.3)}s" onclick="window.openShopChatThread('${c.id}', '${safeClientName}', '${safeProductName}')">
                             <div class="flex justify-between items-start mb-1">
-                                <p class="text-xs font-black uppercase">${c.clientName}</p>
-                                <span class="text-[8px] text-gray-500">${new Date(c.createdAt).toLocaleDateString('fr-FR')}</span>
+                                <p class="text-xs ${hasUnread ? 'font-black text-white' : 'font-black'} uppercase">${c.clientName}</p>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[8px] text-gray-500">${new Date(c.createdAt).toLocaleDateString('fr-FR')}</span>
+                                    ${hasUnread ? `<span class="bg-drip text-white text-[9px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">${unread}</span>` : ''}
+                                </div>
                             </div>
                             <p class="text-[10px] text-drip font-bold uppercase mb-2">${c.productName}</p>
-                            <p class="text-[11px] text-gray-400 line-clamp-1">${lastMsg ? lastMsg.text : 'Aucun message encore'}</p>
+                            <p class="text-[11px] ${hasUnread ? 'text-white font-bold' : 'text-gray-400'} line-clamp-1">${preview}</p>
                         </div>`;
                 });
             });
         };
 
         window.openShopChatThread = (chatId, clientName, productName) => {
+            const saf = document.getElementById('shop-ai-fab'); if (saf) saf.style.display = 'none';
             document.getElementById('shop-chat-client-name').innerText = clientName;
             document.getElementById('shop-chat-product-name').innerText = productName;
             document.getElementById('shop-chat-modal').classList.remove('hidden');
@@ -2023,6 +2037,7 @@
         };
 
         window.closeShopChatModal = () => {
+            const saf = document.getElementById('shop-ai-fab'); if (saf) saf.style.display = '';
             if (currentShopChatUnsub) { currentShopChatUnsub(); currentShopChatUnsub = null; }
             currentShopChatRef = null;
             document.getElementById('shop-chat-modal').classList.add('hidden');

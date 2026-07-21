@@ -1423,6 +1423,8 @@
                 // On a déjà le prénom -> on montre DIRECTEMENT la conversation
                 nameScreen.classList.add('hidden');
                 threadScreen.classList.remove('hidden');
+                const af = document.getElementById('ai-fab'); if (af) af.style.display = 'none';
+                const ab = document.getElementById('ai-bubble'); if (ab) ab.classList.add('hidden');
                 window.startOrLoadChat(clientName);
                 // Focus sur le champ -> le clavier s'ouvre
                 setTimeout(() => { const inp = document.getElementById('chat-message-input'); if (inp) inp.focus(); }, 250);
@@ -1713,6 +1715,7 @@
         window.closeShopProfile = () => { document.getElementById('shop-profile-modal').classList.add('hidden'); };
 
                 window.closeChatModal = () => {
+            const af = document.getElementById('ai-fab'); if (af) af.style.display = '';
             if (currentChatUnsub) { currentChatUnsub(); currentChatUnsub = null; }
             const ep = document.getElementById('emoji-panel'); if (ep) ep.classList.add('hidden');
             const inp = document.getElementById('chat-message-input'); if (inp) inp.blur();
@@ -1750,8 +1753,8 @@
                     const ch = s.val(); if (!ch) return null;
                     const msgs = ch.messages ? Object.values(ch.messages) : [];
                     const last = msgs.length ? msgs.sort((a, b) => b.timestamp - a.timestamp)[0] : null;
-                    const unread = msgs.some(x => x.sender === 'shop' && x.timestamp > (i.lastReadByClient || 0));
-                    return { key: k, shopPhone: i.shopPhone, shopName: ch.shopName || i.shopName || 'Boutique', productName: ch.productName || 'Discussion', productId: ch.productId || null, last: last, ts: last ? last.timestamp : (ch.createdAt || 0), unread: unread };
+                    const unreadCount = msgs.filter(x => x.sender === 'shop' && x.timestamp > (i.lastReadByClient || 0)).length;
+                    return { key: k, shopPhone: i.shopPhone, shopName: ch.shopName || i.shopName || 'Boutique', productName: ch.productName || 'Discussion', productId: ch.productId || null, last: last, ts: last ? last.timestamp : (ch.createdAt || 0), unread: unreadCount > 0, unreadCount: unreadCount };
                 }).catch(() => null);
             })).then(list => {
                 const rows = list.filter(Boolean).sort((a, b) => b.ts - a.ts);
@@ -1759,16 +1762,18 @@
                 box.innerHTML = rows.map(r => {
                     let apercu = 'Aucun message';
                     if (r.last) {
-                        if (r.last.type === 'image') apercu = '📸 Photo';
+                        const who = r.last.sender === 'client' ? 'Toi : ' : '';
+                        if (r.last.type === 'image') apercu = who + '📸 Photo';
                         else if (r.last.type === 'offer') apercu = '💰 Proposition : ' + Number(r.last.price).toLocaleString() + ' F';
-                        else if (r.last.type === 'counter') apercu = '🤝 Contre-proposition';
-                        else apercu = r.last.text || '';
+                        else if (r.last.type === 'counter') apercu = who + '🤝 Contre-proposition';
+                        else if (r.last.type === 'location') apercu = who + '📍 Position';
+                        else if (r.last.type === 'extrafee') apercu = '🚚 Frais supplémentaires';
+                        else apercu = who + (r.last.text || '');
                     }
-                    const pid = r.productId || r.key;
-                    return '<div onclick="window.openChatFromHub(\'' + r.shopPhone + '\',\'' + String(r.shopName).replace(/'/g, "") + '\',\'' + r.key + '\',\'' + (r.productId || '') + '\',\'' + String(r.productName).replace(/'/g, "") + '\')" class="bg-gray-50 border border-gray-100 rounded-2xl p-3 mb-2 cursor-pointer active:scale-95 transition">' +
-                        '<div class="flex justify-between items-center mb-1"><p class="text-[11px] font-black uppercase text-ink">🏪 ' + r.shopName + '</p>' + (r.unread ? '<span class="w-2.5 h-2.5 bg-red-500 rounded-full"></span>' : '') + '</div>' +
+                    return '<div onclick="window.openChatFromHub(\'' + r.shopPhone + '\',\'' + String(r.shopName).replace(/'/g, "") + '\',\'' + r.key + '\',\'' + (r.productId || '') + '\',\'' + String(r.productName).replace(/'/g, "") + '\')" class="bg-gray-50 rounded-2xl p-3 mb-2 cursor-pointer active:scale-95 transition ' + (r.unread ? 'border-2 border-drip' : 'border border-gray-100') + '">' +
+                        '<div class="flex justify-between items-center mb-1"><p class="text-[11px] font-black uppercase text-ink">🏪 ' + r.shopName + '</p>' + (r.unread ? '<span class="bg-drip text-white text-[9px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">' + r.unreadCount + '</span>' : '') + '</div>' +
                         '<p class="text-[9px] text-drip font-bold uppercase mb-1">' + r.productName + '</p>' +
-                        '<p class="text-[11px] text-gray-600 line-clamp-1">' + apercu + '</p></div>';
+                        '<p class="text-[11px] line-clamp-1 ' + (r.unread ? 'text-ink font-bold' : 'text-gray-600') + '">' + apercu + '</p></div>';
                 }).join('');
             });
         };
@@ -2985,7 +2990,12 @@
         // ============================================================
         // 👤 COMPTES CLIENTS
         // ============================================================
-        const PHONE_COUNTRIES = { '229': '🇧🇯 Bénin', '228': '🇹🇬 Togo', '227': '🇳🇪 Niger', '225': "🇨🇮 Côte d'Ivoire" };
+        const PHONE_COUNTRIES = {
+            '229': { name: '🇧🇯 Bénin', lengths: [10, 8] },
+            '228': { name: '🇹🇬 Togo', lengths: [8] },
+            '227': { name: '🇳🇪 Niger', lengths: [8] },
+            '225': { name: "🇨🇮 Côte d'Ivoire", lengths: [10, 8] }
+        };
 
         window.validateClientPhone = (raw) => {
             const clean = String(raw || '').replace(/[\s\-\.\(\)]/g, '');
@@ -2994,9 +3004,9 @@
             for (const ind in PHONE_COUNTRIES) {
                 if (digits.startsWith(ind)) {
                     const local = digits.slice(ind.length);
-                    const need = (ind === '225') ? 10 : 8;
-                    if (local.length === need) return { valid: true, pays: PHONE_COUNTRIES[ind], e164: '+' + digits };
-                    return { valid: false, reason: 'Numéro incomplet pour ' + PHONE_COUNTRIES[ind] };
+                    const c = PHONE_COUNTRIES[ind];
+                    if (c.lengths.includes(local.length)) return { valid: true, pays: c.name, e164: '+' + digits };
+                    return { valid: false, reason: c.name + ' : ' + c.lengths.join(' ou ') + ' chiffres attendus' };
                 }
             }
             return { valid: false, reason: 'Indicatif non reconnu (+229, +228, +227, +225)' };
@@ -3719,7 +3729,7 @@
 
             <div id="acc-signup-panel" class="hidden space-y-3">
                 <input id="acc-signup-name" type="text" placeholder="Ton nom" class="w-full input-dark p-4 rounded-2xl text-sm font-bold">
-                <input id="acc-signup-phone" type="tel" placeholder="Ton numéro (+229, +228, +227, +225)" class="w-full input-dark p-4 rounded-2xl text-sm font-bold" oninput="window.checkPhoneLive()">
+                <input id="acc-signup-phone" type="tel" inputmode="tel" placeholder="Ex: +229 01 97 00 00 00" class="w-full input-dark p-4 rounded-2xl text-sm font-bold" oninput="window.checkPhoneLive()">
                 <p id="acc-phone-status" class="text-[9px] px-1"></p>
                 <div class="relative">
                     <input id="acc-signup-pass" type="text" placeholder="Choisis un mot de passe" class="w-full input-dark p-4 rounded-2xl text-sm font-bold">
