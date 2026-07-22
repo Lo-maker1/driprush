@@ -473,7 +473,7 @@
             <div id="img-preview-grid" class="hidden grid grid-cols-4 gap-2"></div>
             <input type="file" id="prod-video-input" accept="video/*" class="hidden" onchange="window.handleVideoUpload(event)">
             <button type="button" onclick="document.getElementById('prod-video-input').click()" id="video-upload-btn" class="w-full input-dark p-4 rounded-2xl text-xs font-black text-drip uppercase text-center active:scale-95 transition tracking-widest">
-                🎬 Ajouter une vidéo démo · V2
+                🎬 Ajouter une vidéo démo · V3
             </button>
             <div class="flex items-center gap-2">
                 <div class="flex-1 h-px bg-white/10"></div>
@@ -1528,7 +1528,7 @@
         };
 
         window.openAddProductForm = () => {
-            uploadedVideoURL = ''; const _vp = document.getElementById('video-preview'); if (_vp) _vp.classList.add('hidden'); const _vb = document.getElementById('video-upload-btn'); if (_vb) _vb.innerText = '🎬 Ajouter une vidéo démo · V2';
+            uploadedVideoURL = ''; const _vp = document.getElementById('video-preview'); if (_vp) _vp.classList.add('hidden'); const _vb = document.getElementById('video-upload-btn'); if (_vb) _vb.innerText = '🎬 Ajouter une vidéo démo · V3';
             editingProductId = null;
             uploadedImageURLs = [];
             document.getElementById('img-preview-grid').innerHTML = '';
@@ -1560,7 +1560,7 @@
                     const vb = document.getElementById('video-upload-btn'); if (vb) vb.innerText = '✅ Vidéo ajoutée — changer';
                 } else {
                     const vp = document.getElementById('video-preview'); if (vp) vp.classList.add('hidden');
-                    const vb = document.getElementById('video-upload-btn'); if (vb) vb.innerText = '🎬 Ajouter une vidéo démo · V2';
+                    const vb = document.getElementById('video-upload-btn'); if (vb) vb.innerText = '🎬 Ajouter une vidéo démo · V3';
                 }
                 document.getElementById('prod-name').value = p.name || '';
                 document.getElementById('prod-price').value = p.price || '';
@@ -1644,29 +1644,35 @@
             const btn = document.getElementById('video-upload-btn');
             btn.disabled = true;
             btn.innerText = '⏳ Envoi de la vidéo...';
-            // Preset écrit en dur pour éviter toute dépendance de variable
-            const PRESET = 'drip_rush';
-            const CLOUD = 'dshzay8cf';
-            const fd = new FormData();
-            fd.append('upload_preset', PRESET);
-            fd.append('file', file);
-            console.log('[VIDEO] preset=', PRESET, '| cloud=', CLOUD, '| taille=', Math.round(file.size/1024) + 'Ko', '| type=', file.type);
-            fetch('https://api.cloudinary.com/v1_1/' + CLOUD + '/auto/upload', { method: 'POST', body: fd })
-                .then(res => res.json())
-                .then(data => {
-                    btn.disabled = false;
+            // MÊME MÉTHODE que l'upload des photos (XMLHttpRequest) — fetch échoue sur certains navigateurs mobiles
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`);
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) { btn.innerText = '⏳ Envoi ' + Math.round((e.loaded / e.total) * 100) + '%'; }
+            };
+            xhr.onload = () => {
+                btn.disabled = false;
+                try {
+                    const data = JSON.parse(xhr.responseText);
                     if (data.secure_url) {
                         uploadedVideoURL = data.secure_url;
                         document.getElementById('video-preview').classList.remove('hidden');
                         document.getElementById('video-preview-el').src = uploadedVideoURL;
                         btn.innerText = '✅ Vidéo ajoutée — changer';
                     } else {
-                        btn.innerText = '🎬 Ajouter une vidéo démo · V2';
-                        console.log('[VIDEO] réponse Cloudinary complète :', data);
+                        btn.innerText = '🎬 Ajouter une vidéo démo · V3';
                         alert('Échec : ' + (data.error && data.error.message ? data.error.message : 'réessaie'));
                     }
-                })
-                .catch(() => { btn.disabled = false; btn.innerText = '🎬 Ajouter une vidéo démo · V2'; alert('Erreur réseau lors de l\'envoi'); });
+                } catch (e) {
+                    btn.innerText = '🎬 Ajouter une vidéo démo · V3';
+                    alert('Réponse illisible du serveur');
+                }
+            };
+            xhr.onerror = () => { btn.disabled = false; btn.innerText = '🎬 Ajouter une vidéo démo · V3'; alert('Erreur réseau lors de l\'envoi'); };
+            xhr.send(formData);
         };
 
         window.useVideoLink = () => {
@@ -1689,7 +1695,7 @@
             document.getElementById('video-preview-el').src = '';
             const _vl = document.getElementById('video-link-input'); if (_vl) _vl.value = '';
             const btn = document.getElementById('video-upload-btn');
-            if (btn) btn.innerText = '🎬 Ajouter une vidéo démo · V2';
+            if (btn) btn.innerText = '🎬 Ajouter une vidéo démo · V3';
         };
 
         window.handleImageUpload = async (event) => {
@@ -2463,24 +2469,29 @@
                     else if (h > MAX) { w = w * MAX / h; h = MAX; }
                     canvas.width = w; canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    canvas.toBlob(async (blob) => {
+                    canvas.toBlob((blob) => {
                         if (!blob) { if (st) st.innerHTML = '<span class="text-red-400">❌ Image illisible</span>'; return; }
                         if (st) st.innerHTML = '<span class="text-gray-400">⏳ Upload...</span>';
                         const fd = new FormData();
                         fd.append('file', blob, 'ad.jpg');
                         fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-                        try {
-                            const res = await fetch('https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload', { method: 'POST', body: fd });
-                            const data = await res.json();
-                            if (data.secure_url) {
-                                adImageUrl = data.secure_url;
-                                document.getElementById('ad-image-preview').classList.remove('hidden');
-                                document.getElementById('ad-image-preview-img').src = adImageUrl;
-                                if (st) st.innerHTML = '<span class="text-lime">✅ Image prête</span>';
-                            } else {
-                                if (st) st.innerHTML = '<span class="text-red-400">❌ ' + (data.error && data.error.message ? data.error.message : 'Échec upload') + '</span>';
-                            }
-                        } catch (err) { if (st) st.innerHTML = '<span class="text-red-400">❌ Erreur réseau</span>'; }
+                        const xhrAd = new XMLHttpRequest();
+                        xhrAd.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`);
+                        xhrAd.onload = () => {
+                            try {
+                                const data = JSON.parse(xhrAd.responseText);
+                                if (data.secure_url) {
+                                    adImageUrl = data.secure_url;
+                                    document.getElementById('ad-image-preview').classList.remove('hidden');
+                                    document.getElementById('ad-image-preview-img').src = adImageUrl;
+                                    if (st) st.innerHTML = '<span class="text-lime">✅ Image prête</span>';
+                                } else {
+                                    if (st) st.innerHTML = '<span class="text-red-400">❌ ' + (data.error && data.error.message ? data.error.message : 'Échec upload') + '</span>';
+                                }
+                            } catch (e) { if (st) st.innerHTML = '<span class="text-red-400">❌ Réponse illisible</span>'; }
+                        };
+                        xhrAd.onerror = () => { if (st) st.innerHTML = '<span class="text-red-400">❌ Erreur réseau</span>'; };
+                        xhrAd.send(fd);
                     }, 'image/jpeg', 0.85);
                 };
                 img.onerror = () => { if (st) st.innerHTML = '<span class="text-red-400">❌ Fichier image invalide</span>'; };
