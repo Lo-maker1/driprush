@@ -1635,10 +1635,14 @@
             const btn = document.getElementById('video-upload-btn');
             btn.disabled = true;
             btn.innerText = '⏳ Envoi de la vidéo...';
+            // Preset écrit en dur pour éviter toute dépendance de variable
+            const PRESET = 'drip_rush';
+            const CLOUD = 'dshzay8cf';
             const fd = new FormData();
+            fd.append('upload_preset', PRESET);
             fd.append('file', file);
-            fd.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-            fetch('https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/auto/upload', { method: 'POST', body: fd })
+            console.log('[VIDEO] preset=', PRESET, '| cloud=', CLOUD, '| taille=', Math.round(file.size/1024) + 'Ko', '| type=', file.type);
+            fetch('https://api.cloudinary.com/v1_1/' + CLOUD + '/auto/upload', { method: 'POST', body: fd })
                 .then(res => res.json())
                 .then(data => {
                     btn.disabled = false;
@@ -1649,6 +1653,7 @@
                         btn.innerText = '✅ Vidéo ajoutée — changer';
                     } else {
                         btn.innerText = '🎬 Ajouter une vidéo démo (optionnel)';
+                        console.log('[VIDEO] réponse Cloudinary complète :', data);
                         alert('Échec : ' + (data.error && data.error.message ? data.error.message : 'réessaie'));
                     }
                 })
