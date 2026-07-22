@@ -473,7 +473,7 @@
             <div id="img-preview-grid" class="hidden grid grid-cols-4 gap-2"></div>
             <input type="file" id="prod-video-input" accept="video/*" class="hidden" onchange="window.handleVideoUpload(event)">
             <button type="button" onclick="document.getElementById('prod-video-input').click()" id="video-upload-btn" class="w-full input-dark p-4 rounded-2xl text-xs font-black text-drip uppercase text-center active:scale-95 transition tracking-widest">
-                🎬 Ajouter une vidéo démo (optionnel)
+                🎬 Ajouter une vidéo démo · V2
             </button>
             <div id="video-preview" class="hidden relative">
                 <video id="video-preview-el" class="w-full h-40 object-cover rounded-2xl bg-black" controls></video>
@@ -1519,7 +1519,7 @@
         };
 
         window.openAddProductForm = () => {
-            uploadedVideoURL = ''; const _vp = document.getElementById('video-preview'); if (_vp) _vp.classList.add('hidden'); const _vb = document.getElementById('video-upload-btn'); if (_vb) _vb.innerText = '🎬 Ajouter une vidéo démo (optionnel)';
+            uploadedVideoURL = ''; const _vp = document.getElementById('video-preview'); if (_vp) _vp.classList.add('hidden'); const _vb = document.getElementById('video-upload-btn'); if (_vb) _vb.innerText = '🎬 Ajouter une vidéo démo · V2';
             editingProductId = null;
             uploadedImageURLs = [];
             document.getElementById('img-preview-grid').innerHTML = '';
@@ -1551,7 +1551,7 @@
                     const vb = document.getElementById('video-upload-btn'); if (vb) vb.innerText = '✅ Vidéo ajoutée — changer';
                 } else {
                     const vp = document.getElementById('video-preview'); if (vp) vp.classList.add('hidden');
-                    const vb = document.getElementById('video-upload-btn'); if (vb) vb.innerText = '🎬 Ajouter une vidéo démo (optionnel)';
+                    const vb = document.getElementById('video-upload-btn'); if (vb) vb.innerText = '🎬 Ajouter une vidéo démo · V2';
                 }
                 document.getElementById('prod-name').value = p.name || '';
                 document.getElementById('prod-price').value = p.price || '';
@@ -1652,12 +1652,12 @@
                         document.getElementById('video-preview-el').src = uploadedVideoURL;
                         btn.innerText = '✅ Vidéo ajoutée — changer';
                     } else {
-                        btn.innerText = '🎬 Ajouter une vidéo démo (optionnel)';
+                        btn.innerText = '🎬 Ajouter une vidéo démo · V2';
                         console.log('[VIDEO] réponse Cloudinary complète :', data);
                         alert('Échec : ' + (data.error && data.error.message ? data.error.message : 'réessaie'));
                     }
                 })
-                .catch(() => { btn.disabled = false; btn.innerText = '🎬 Ajouter une vidéo démo (optionnel)'; alert('Erreur réseau lors de l\'envoi'); });
+                .catch(() => { btn.disabled = false; btn.innerText = '🎬 Ajouter une vidéo démo · V2'; alert('Erreur réseau lors de l\'envoi'); });
         };
 
         window.removeProductVideo = () => {
@@ -1665,7 +1665,7 @@
             document.getElementById('video-preview').classList.add('hidden');
             document.getElementById('video-preview-el').src = '';
             const btn = document.getElementById('video-upload-btn');
-            if (btn) btn.innerText = '🎬 Ajouter une vidéo démo (optionnel)';
+            if (btn) btn.innerText = '🎬 Ajouter une vidéo démo · V2';
         };
 
         window.handleImageUpload = async (event) => {
