@@ -18,8 +18,9 @@
 <h1>🔬 Test upload Cloudinary</h1>
 
 <div class="box">
-  <p class="lbl">Réglages testés</p>
-  <p style="font-size:12px">cloud = <b>dshzay8cf</b><br>preset = <b>drip_rush</b></p>
+  <p class="lbl">Réglages (modifiables)</p>
+  <input type="text" id="cloud" value="dshzay8cf" placeholder="cloud name" style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#000;color:#fff;font-size:13px;margin-bottom:8px">
+  <input type="text" id="preset" value="drip_rush" placeholder="upload preset" style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#000;color:#fff;font-size:13px">
 </div>
 
 <div class="box">
@@ -46,8 +47,6 @@
 </div>
 
 <script>
-const CLOUD = 'dshzay8cf';
-const PRESET = 'drip_rush';
 const out = document.getElementById('out');
 
 function log(t){ out.textContent = t; }
@@ -56,6 +55,8 @@ async function go(inputId, kind){
   const f = document.getElementById(inputId).files[0];
   if(!f){ log('❌ Choisis d\'abord un fichier.'); return; }
 
+  const CLOUD = document.getElementById('cloud').value.trim();
+  const PRESET = document.getElementById('preset').value.trim();
   const url = 'https://api.cloudinary.com/v1_1/' + CLOUD + '/' + kind + '/upload';
   const fd = new FormData();
   fd.append('upload_preset', PRESET);
