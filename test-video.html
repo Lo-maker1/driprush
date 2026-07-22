@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test upload Cloudinary</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0B0B0C;color:#fff;padding:20px;margin:0}
+  h1{font-size:18px;color:#FF4D1C}
+  .box{background:#1a1a1c;border:1px solid #333;border-radius:14px;padding:14px;margin:12px 0}
+  button{background:#FF4D1C;color:#fff;border:0;padding:14px;border-radius:12px;font-weight:800;width:100%;font-size:14px}
+  input[type=file]{width:100%;color:#aaa;font-size:12px;margin-bottom:10px}
+  pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:#a3e635;background:#000;padding:12px;border-radius:10px;max-height:50vh;overflow:auto}
+  .lbl{font-size:11px;color:#888;text-transform:uppercase;font-weight:800;letter-spacing:1px}
+</style>
+</head>
+<body>
+<h1>🔬 Test upload Cloudinary</h1>
+
+<div class="box">
+  <p class="lbl">Réglages testés</p>
+  <p style="font-size:12px">cloud = <b>dshzay8cf</b><br>preset = <b>drip_rush</b></p>
+</div>
+
+<div class="box">
+  <p class="lbl">1. Test IMAGE (doit marcher)</p>
+  <input type="file" id="img" accept="image/*">
+  <button onclick="go('img','image')">Tester l'image</button>
+</div>
+
+<div class="box">
+  <p class="lbl">2. Test VIDÉO (auto/upload)</p>
+  <input type="file" id="vid" accept="video/*">
+  <button onclick="go('vid','auto')">Tester la vidéo (auto)</button>
+</div>
+
+<div class="box">
+  <p class="lbl">3. Test VIDÉO (video/upload)</p>
+  <input type="file" id="vid2" accept="video/*">
+  <button onclick="go('vid2','video')">Tester la vidéo (video)</button>
+</div>
+
+<div class="box">
+  <p class="lbl">Résultat</p>
+  <pre id="out">En attente d'un test...</pre>
+</div>
+
+<script>
+const CLOUD = 'dshzay8cf';
+const PRESET = 'drip_rush';
+const out = document.getElementById('out');
+
+function log(t){ out.textContent = t; }
+
+async function go(inputId, kind){
+  const f = document.getElementById(inputId).files[0];
+  if(!f){ log('❌ Choisis d\'abord un fichier.'); return; }
+
+  const url = 'https://api.cloudinary.com/v1_1/' + CLOUD + '/' + kind + '/upload';
+  const fd = new FormData();
+  fd.append('upload_preset', PRESET);
+  fd.append('file', f);
+
+  let report = '';
+  report += 'ENDPOINT : ' + url + '\n';
+  report += 'PRESET   : ' + PRESET + '\n';
+  report += 'FICHIER  : ' + f.name + '\n';
+  report += 'TYPE     : ' + (f.type || '(inconnu)') + '\n';
+  report += 'TAILLE   : ' + Math.round(f.size/1024) + ' Ko\n';
+  report += '\n⏳ Envoi en cours...\n';
+  log(report);
+
+  try {
+    const res = await fetch(url, { method:'POST', body: fd });
+    const txt = await res.text();
+    report += '\nSTATUS HTTP : ' + res.status + '\n';
+    report += '\n=== RÉPONSE COMPLÈTE DE CLOUDINARY ===\n' + txt;
+    log(report);
+  } catch(e) {
+    report += '\n❌ ERREUR RÉSEAU : ' + e.message;
+    log(report);
+  }
+}
+</script>
+</body>
+</html>

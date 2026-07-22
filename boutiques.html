@@ -475,6 +475,15 @@
             <button type="button" onclick="document.getElementById('prod-video-input').click()" id="video-upload-btn" class="w-full input-dark p-4 rounded-2xl text-xs font-black text-drip uppercase text-center active:scale-95 transition tracking-widest">
                 🎬 Ajouter une vidéo démo · V2
             </button>
+            <div class="flex items-center gap-2">
+                <div class="flex-1 h-px bg-white/10"></div>
+                <span class="text-[8px] text-gray-600 font-black uppercase">ou colle un lien</span>
+                <div class="flex-1 h-px bg-white/10"></div>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="video-link-input" placeholder="https://... (lien .mp4 direct)" class="flex-1 min-w-0 input-dark p-3 rounded-2xl text-[10px] font-bold">
+                <button type="button" onclick="window.useVideoLink()" class="bg-drip text-white px-4 rounded-2xl text-[10px] font-black uppercase active:scale-95 transition shrink-0">OK</button>
+            </div>
             <div id="video-preview" class="hidden relative">
                 <video id="video-preview-el" class="w-full h-40 object-cover rounded-2xl bg-black" controls></video>
                 <button type="button" onclick="window.removeProductVideo()" class="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-xs active:scale-90 z-10"><i class="fa-solid fa-xmark"></i></button>
@@ -1660,10 +1669,25 @@
                 .catch(() => { btn.disabled = false; btn.innerText = '🎬 Ajouter une vidéo démo · V2'; alert('Erreur réseau lors de l\'envoi'); });
         };
 
+        window.useVideoLink = () => {
+            const inp = document.getElementById('video-link-input');
+            const url = (inp.value || '').trim();
+            if (!url) return alert('Colle un lien vidéo');
+            let u = url;
+            if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+            uploadedVideoURL = u;
+            document.getElementById('video-preview').classList.remove('hidden');
+            document.getElementById('video-preview-el').src = u;
+            const btn = document.getElementById('video-upload-btn');
+            if (btn) btn.innerText = '✅ Vidéo (lien) ajoutée';
+            alert('Vidéo ajoutée ✅ Vérifie qu\'elle se lit bien dans l\'aperçu.');
+        };
+
         window.removeProductVideo = () => {
             uploadedVideoURL = '';
             document.getElementById('video-preview').classList.add('hidden');
             document.getElementById('video-preview-el').src = '';
+            const _vl = document.getElementById('video-link-input'); if (_vl) _vl.value = '';
             const btn = document.getElementById('video-upload-btn');
             if (btn) btn.innerText = '🎬 Ajouter une vidéo démo · V2';
         };
