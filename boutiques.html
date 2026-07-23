@@ -1924,6 +1924,16 @@
                     return;
                 }
 
+                if (m.type === 'silhouette') {
+                    const tagsS = (m.measurements || []).map(x => '<span class="inline-block bg-white/10 text-white text-[9px] font-bold uppercase px-2 py-1 rounded-lg mr-1 mb-1">' + x.label + ' : ' + x.tag + '</span>').join('');
+                    box.innerHTML += '<div class="flex justify-start mb-2"><div class="max-w-[85%] w-full rounded-2xl border-2 border-drip p-3 bg-black/40">' +
+                        '<p class="text-[9px] font-black uppercase tracking-widest text-drip mb-2">📐 Le client a envoyé sa silhouette · ' + (m.gender === 'femme' ? 'Femme' : 'Homme') + '</p>' +
+                        '<div class="flex flex-wrap">' + tagsS + '</div>' +
+                        '<p class="text-[9px] text-gray-400 mt-2">💡 Utilise ces repères pour conseiller la bonne taille / coupe</p>' +
+                        '</div></div>';
+                    return;
+                }
+
                 const ticksS = mine ? ('<span class="text-[9px] ml-1 ' + (m.readByClient ? 'text-sky-300' : 'text-white/50') + '">' + (m.readByClient ? '✓✓' : '✓') + '</span>') : '';
                 const editedS = m.edited ? '<span class="text-[8px] text-white/40 ml-1">(modifié)</span>' : '';
                 const menuS = mine && m.id ? ' oncontextmenu="event.preventDefault();window.openMsgMenu(\'' + m.id + '\')" onclick="window.msgTapMaybe(\'' + m.id + '\')"' : '';

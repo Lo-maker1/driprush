@@ -28,6 +28,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
     <meta name="theme-color" content="#FF4D1C">
     <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #F7F5F2; color: #0B0B0C; overflow-x: hidden; }
         .font-display { font-family: 'Archivo Black', sans-serif; }
@@ -1635,6 +1636,15 @@
                     return;
                 }
 
+                if (m.type === 'silhouette') {
+                    const tagsC = (m.measurements || []).map(x => '<span class="inline-block bg-gray-100 text-gray-700 text-[9px] font-bold uppercase px-2 py-1 rounded-lg mr-1 mb-1">' + x.label + ' : ' + x.tag + '</span>').join('');
+                    box.innerHTML += '<div class="flex justify-end mb-2"><div class="max-w-[85%] w-full rounded-2xl border-2 p-3" style="border-color:' + chatTheme.head + ';background:#fff">' +
+                        '<p class="text-[9px] font-black uppercase tracking-widest mb-2" style="color:' + chatTheme.head + '">📐 Silhouette envoyée · ' + (m.gender === 'femme' ? 'Femme' : 'Homme') + '</p>' +
+                        '<div class="flex flex-wrap">' + tagsC + '</div>' +
+                        '</div></div>';
+                    return;
+                }
+
                 const ticks = mine ? ('<span class="text-[9px] ml-1 ' + (m.readByShop ? 'text-sky-400' : 'text-gray-400') + '">' + (m.readByShop ? '✓✓' : '✓') + '</span>') : '';
                 const editedC = m.edited ? '<span class="text-[8px] opacity-50 ml-1">(modifié)</span>' : '';
                 const menuC = mine && m.id ? ' oncontextmenu="event.preventDefault();window.openClientMsgMenu(\'' + m.id + '\')" onclick="window.clientMsgTap(\'' + m.id + '\')"' : '';
@@ -1776,6 +1786,7 @@
                         else if (r.last.type === 'counter') apercu = who + '🤝 Contre-proposition';
                         else if (r.last.type === 'location') apercu = who + '📍 Position';
                         else if (r.last.type === 'extrafee') apercu = '🚚 Frais supplémentaires';
+                        else if (r.last.type === 'silhouette') apercu = who + '📐 Silhouette envoyée';
                         else apercu = who + (r.last.text || '');
                     }
                     return '<div onclick="window.openChatFromHub(\'' + r.shopPhone + '\',\'' + String(r.shopName).replace(/'/g, "") + '\',\'' + r.key + '\',\'' + (r.productId || '') + '\',\'' + String(r.productName).replace(/'/g, "") + '\')" class="bg-gray-50 rounded-2xl p-3 mb-2 cursor-pointer active:scale-95 transition ' + (r.unread ? 'border-2 border-drip' : 'border border-gray-100') + '">' +
@@ -3360,6 +3371,34 @@
                 </div>
                 <div><p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Taille</p><div id="size-container" class="flex flex-wrap gap-2"></div></div>
                 <div id="color-section" class="hidden"><p class="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Choisir Couleur</p><div id="color-container" class="flex flex-wrap gap-2"></div></div>
+
+                <!-- ✅ MANNEQUIN VIRTUEL (facultatif) -->
+                <div class="border border-gray-100 rounded-2xl overflow-hidden">
+                    <button onclick="window.toggleMannequinWidget()" class="w-full flex items-center justify-between p-3 bg-gray-50">
+                        <span class="text-[10px] font-black text-gray-500 uppercase tracking-widest">📐 Essayer le mannequin virtuel <span class="text-gray-400 normal-case font-medium">(facultatif)</span></span>
+                        <i id="mnq-toggle-icon" class="fa-solid fa-chevron-down text-gray-400 text-xs transition-transform"></i>
+                    </button>
+                    <div id="mnq-widget-body" class="hidden p-3 pt-1">
+                        <p class="text-[10px] text-gray-500 mb-3 leading-relaxed">Ajuste un mannequin à ta morphologie et envoie-la à la boutique — elle pourra mieux te conseiller sur la coupe. Totalement optionnel, tu peux commander sans.</p>
+                        <div class="flex gap-2 mb-2">
+                            <button onclick="window.mnqSetGender('homme')" id="mnq-gender-homme" class="mnq-gender-pill flex-1 py-2 rounded-xl text-[10px] font-black uppercase border border-gray-200 bg-ink text-white">Homme</button>
+                            <button onclick="window.mnqSetGender('femme')" id="mnq-gender-femme" class="mnq-gender-pill flex-1 py-2 rounded-xl text-[10px] font-black uppercase border border-gray-200 bg-white text-ink">Femme</button>
+                        </div>
+                        <div class="relative rounded-2xl overflow-hidden border border-gray-100" style="height:260px; background:radial-gradient(ellipse at 50% 38%,#e9e9ea 0%,#cfd0d2 70%,#bdbec1 100%);">
+                            <div id="mnq-canvas-host" class="absolute inset-0"></div>
+                            <div id="mnq-hint" class="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold bg-white/70 text-gray-600 px-2.5 py-1 rounded-full pointer-events-none">Touche une zone du corps, glisse pour l'ajuster</div>
+                            <div id="mnq-readout" class="hidden absolute left-2 bottom-2 bg-white/90 rounded-xl px-3 py-2 min-w-[120px]">
+                                <p id="mnq-zone-name" class="text-[11px] font-black uppercase text-ink mb-1">—</p>
+                                <div class="w-full h-1 bg-gray-200 rounded-full overflow-hidden"><div id="mnq-bar-fill" class="h-full bg-drip" style="width:50%"></div></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="window.mnqReset()" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase border border-gray-200 bg-white text-ink active:scale-95 transition">Réinitialiser</button>
+                            <button onclick="window.mnqValidate()" id="mnq-validate-btn" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase bg-drip text-white active:scale-95 transition">Valider ma silhouette</button>
+                        </div>
+                    </div>
+                </div>
+
                 <button onclick="window.openChatModal()" class="w-full bg-gray-100 text-black py-4 rounded-2xl font-black uppercase text-xs active:scale-95 transition relative">💬 Discuter avec la boutique<span id="chat-unread-dot" class="hidden absolute top-2 right-4 w-2.5 h-2.5 bg-red-500 rounded-full"></span></button>
                 <div id="similar-section" class="hidden">
                     <div class="flex items-center justify-between mb-3">
@@ -3840,5 +3879,442 @@
             <button onclick="window.closeClientMsgMenu()" class="w-full bg-gray-100 text-gray-500 py-3 rounded-2xl text-xs font-bold uppercase">Annuler</button>
         </div>
     </div>
+    <!-- ===================== MODULE 3 : MANNEQUIN VIRTUEL (facultatif) ===================== -->
+    <!-- Isolé du module principal : si ce bloc échoue, le site continue de fonctionner normalement -->
+    <script type="module">
+    try {
+        const D = () => window.__drip;
+        const toast = (m, e) => { if (window.showToast) window.showToast(m, e); };
+
+        let mnqScene, mnqCamera, mnqRenderer, mnqRaycaster, mnqInitialized = false;
+        let mnqCurrent = null;
+        let mnqMode = null, mnqActiveZone = null, mnqDragStartX = 0, mnqDragStartVal = 0, mnqLastX = 0;
+
+        const MNQ_WIRE = () => new THREE.LineBasicMaterial({ color: 0x2a2a2e, transparent: true, opacity: 0.14 });
+
+        function mnqMakeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+        function mnqBlob(ctx, x, y, rx, ry, bright, alpha) {
+            const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(rx, ry));
+            g.addColorStop(0, `rgba(${bright},${bright},${bright},${alpha})`);
+            g.addColorStop(1, 'rgba(128,128,128,0)');
+            ctx.save(); ctx.translate(x, y); ctx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry)); ctx.translate(-x, -y);
+            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, Math.max(rx, ry), 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+        function mnqTorsoBump(gender) {
+            const c = mnqMakeCanvas(512, 512); const ctx = c.getContext('2d');
+            ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 512, 512);
+            if (gender === 'homme') {
+                mnqBlob(ctx, 180, 145, 90, 55, 190, 0.9); mnqBlob(ctx, 332, 145, 90, 55, 190, 0.9); mnqBlob(ctx, 256, 150, 22, 60, 70, 0.9);
+                const abY = [230, 285, 340, 392];
+                abY.forEach(y => { mnqBlob(ctx, 190, y, 70, 24, 175, 0.9); mnqBlob(ctx, 322, y, 70, 24, 175, 0.9); mnqBlob(ctx, 256, y, 16, 22, 75, 0.9); });
+                ctx.strokeStyle = 'rgba(70,70,70,0.55)'; ctx.lineWidth = 4;
+                abY.forEach(y => { ctx.beginPath(); ctx.moveTo(90, y + 20); ctx.lineTo(420, y + 20); ctx.stroke(); });
+                mnqBlob(ctx, 70, 460, 60, 70, 95, 0.9); mnqBlob(ctx, 442, 460, 60, 70, 95, 0.9);
+            } else {
+                mnqBlob(ctx, 178, 138, 78, 68, 205, 0.85); mnqBlob(ctx, 334, 138, 78, 68, 205, 0.85); mnqBlob(ctx, 256, 165, 18, 40, 95, 0.6);
+                mnqBlob(ctx, 96, 330, 55, 90, 100, 0.55); mnqBlob(ctx, 416, 330, 55, 90, 100, 0.55);
+                mnqBlob(ctx, 256, 300, 40, 60, 150, 0.35);
+                mnqBlob(ctx, 90, 460, 70, 75, 110, 0.6); mnqBlob(ctx, 422, 460, 70, 75, 110, 0.6);
+            }
+            const tex = new THREE.CanvasTexture(c); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.ClampToEdgeWrapping; tex.repeat.set(2.4, 1);
+            return tex;
+        }
+        function mnqLimbBump() {
+            const c = mnqMakeCanvas(256, 256); const ctx = c.getContext('2d');
+            ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 256, 256);
+            mnqBlob(ctx, 128, 78, 100, 100, 200, 0.85);
+            const tex = new THREE.CanvasTexture(c); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.ClampToEdgeWrapping; tex.repeat.set(2, 1);
+            return tex;
+        }
+
+        const MNQ_CONFIGS = {
+            homme: {
+                skinColor: 0xd9d9dc,
+                profile: [
+                    { key:'neck', y:1.52, r:0.085 }, { key:'shoulder', y:1.44, r:0.185 }, { key:'chest', y:1.28, r:0.150 },
+                    { key:'ribcage', y:1.14, r:0.125 }, { key:'belly', y:1.00, r:0.140 }, { key:'waist', y:0.90, r:0.120 },
+                    { key:'hip', y:0.83, r:0.160 }, { key:'crotch', y:0.78, r:0.140 },
+                ],
+                head:{ r:0.115, y:1.70 }, neckMesh:{ rTop:0.07, rBottom:0.085, h:0.09, y:1.565 },
+                armXOffset:0.205, upperArm:{ rTop:0.052, rBottom:0.044, h:0.28, y:1.26 }, foreArm:{ rTop:0.044, rBottom:0.036, h:0.26, y:0.99 }, hand:{ r:0.045, y:0.83 },
+                hipXOffset:0.078, thigh:{ rTop:0.095, rBottom:0.072, h:0.36, y:0.62 }, calf:{ rTop:0.066, rBottom:0.046, h:0.38, y:0.25 }, foot:{ w:0.09, h:0.055, d:0.23, y:0.03 },
+            },
+            femme: {
+                skinColor: 0xdedadc,
+                profile: [
+                    { key:'neck', y:1.50, r:0.074 }, { key:'shoulder', y:1.40, r:0.155 }, { key:'chest', y:1.25, r:0.163 },
+                    { key:'ribcage', y:1.13, r:0.113 }, { key:'belly', y:1.00, r:0.113 }, { key:'waist', y:0.90, r:0.098 },
+                    { key:'hip', y:0.83, r:0.175 }, { key:'crotch', y:0.78, r:0.148 },
+                ],
+                head:{ r:0.104, y:1.685 }, neckMesh:{ rTop:0.058, rBottom:0.072, h:0.085, y:1.548 },
+                armXOffset:0.165, upperArm:{ rTop:0.042, rBottom:0.036, h:0.27, y:1.245 }, foreArm:{ rTop:0.036, rBottom:0.030, h:0.25, y:0.985 }, hand:{ r:0.038, y:0.84 },
+                hipXOffset:0.072, thigh:{ rTop:0.088, rBottom:0.062, h:0.35, y:0.615 }, calf:{ rTop:0.052, rBottom:0.038, h:0.37, y:0.255 }, foot:{ w:0.078, h:0.048, d:0.205, y:0.028 },
+            }
+        };
+
+        function mnqBuildTorsoGeo(points) {
+            const curvePts = points.map(p => new THREE.Vector3(p.r, p.y, 0));
+            const curve = new THREE.CatmullRomCurve3(curvePts, false, 'catmullrom', 0.4);
+            const sampled = curve.getPoints(60);
+            const pts = sampled.map(v => new THREE.Vector2(Math.max(v.x, 0.02), v.y));
+            return new THREE.LatheGeometry(pts, 36);
+        }
+
+        function mnqCreate(gender) {
+            const cfg = MNQ_CONFIGS[gender];
+            const group = new THREE.Group();
+            const torsoBumpTex = mnqTorsoBump(gender), limbBumpTex = mnqLimbBump();
+            const skinMat = new THREE.MeshStandardMaterial({ color: cfg.skinColor, roughness: 0.55, metalness: 0.04 });
+            const torsoMat = new THREE.MeshStandardMaterial({ color: cfg.skinColor, roughness: 0.55, metalness: 0.04, bumpMap: torsoBumpTex, bumpScale: gender==='homme' ? 0.006 : 0.0045 });
+            const limbMat = new THREE.MeshStandardMaterial({ color: cfg.skinColor, roughness: 0.55, metalness: 0.04, bumpMap: limbBumpTex, bumpScale: 0.004 });
+
+            let profile = cfg.profile.map(p => ({ ...p }));
+            let torsoMesh = new THREE.Mesh(mnqBuildTorsoGeo(profile), torsoMat);
+            torsoMesh.userData.type = 'torso'; group.add(torsoMesh);
+            let torsoWire = new THREE.LineSegments(new THREE.WireframeGeometry(torsoMesh.geometry), MNQ_WIRE()); group.add(torsoWire);
+            function rebuildTorso() {
+                torsoMesh.geometry.dispose(); torsoMesh.geometry = mnqBuildTorsoGeo(profile);
+                torsoWire.geometry.dispose(); torsoWire.geometry = new THREE.WireframeGeometry(torsoMesh.geometry);
+            }
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(cfg.head.r, 24, 18), skinMat);
+            head.position.set(0, cfg.head.y, 0); group.add(head);
+            const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(cfg.neckMesh.rTop, cfg.neckMesh.rBottom, cfg.neckMesh.h, 20), skinMat);
+            neckMesh.position.set(0, cfg.neckMesh.y, 0); group.add(neckMesh);
+
+            function makeLimb(rTop, rBottom, h, x, y, z, zoneKey, parent) {
+                const geo = new THREE.CylinderGeometry(rTop, rBottom, h, 20);
+                const mesh = new THREE.Mesh(geo, limbMat);
+                mesh.position.set(x, y, z); mesh.userData.zone = zoneKey; (parent || group).add(mesh);
+                mesh.add(new THREE.LineSegments(new THREE.WireframeGeometry(geo), MNQ_WIRE()));
+                return mesh;
+            }
+
+            const ARM_OUT = 1.48, ELBOW_BEND = 0.08, LEG_OUT = 0.025, KNEE_BEND = 0.05;
+            const ax = cfg.armXOffset;
+            function buildArm(sign, zoneKey) {
+                const shoulderY = cfg.upperArm.y + cfg.upperArm.h / 2;
+                const shoulderPivot = new THREE.Group();
+                shoulderPivot.position.set(sign * ax, shoulderY, 0);
+                shoulderPivot.rotation.z = sign * ARM_OUT;
+                group.add(shoulderPivot);
+                const upperArm = makeLimb(cfg.upperArm.rTop, cfg.upperArm.rBottom, cfg.upperArm.h, 0, -cfg.upperArm.h / 2, 0, zoneKey, shoulderPivot);
+                const elbowPivot = new THREE.Group();
+                elbowPivot.position.set(0, -cfg.upperArm.h, 0); elbowPivot.rotation.x = ELBOW_BEND;
+                shoulderPivot.add(elbowPivot);
+                const foreArm = makeLimb(cfg.foreArm.rTop, cfg.foreArm.rBottom, cfg.foreArm.h, 0, -cfg.foreArm.h / 2, 0, zoneKey, elbowPivot);
+                const elbowBaselineY = cfg.upperArm.y - cfg.upperArm.h / 2;
+                const hand = new THREE.Mesh(new THREE.SphereGeometry(cfg.hand.r, 14, 12), skinMat);
+                hand.position.set(0, cfg.hand.y - elbowBaselineY, 0.02); elbowPivot.add(hand);
+                return { upperArm, foreArm };
+            }
+            const armDataL = buildArm(-1, 'armL'), armDataR = buildArm(1, 'armR');
+            const upperArmL = armDataL.upperArm, foreArmL = armDataL.foreArm;
+            const upperArmR = armDataR.upperArm, foreArmR = armDataR.foreArm;
+
+            const hx = cfg.hipXOffset;
+            function buildLeg(sign, thighZone, calfZone, weightSide) {
+                const hipY = cfg.thigh.y + cfg.thigh.h / 2;
+                const hipPivot = new THREE.Group();
+                hipPivot.position.set(sign * hx, hipY, 0);
+                hipPivot.rotation.z = sign * LEG_OUT; hipPivot.rotation.x = weightSide ? -0.03 : 0.015;
+                group.add(hipPivot);
+                const thigh = makeLimb(cfg.thigh.rTop, cfg.thigh.rBottom, cfg.thigh.h, 0, -cfg.thigh.h / 2, 0, thighZone, hipPivot);
+                const kneePivot = new THREE.Group();
+                kneePivot.position.set(0, -cfg.thigh.h, 0); kneePivot.rotation.x = KNEE_BEND * (weightSide ? 1.4 : 0.7);
+                hipPivot.add(kneePivot);
+                const calf = makeLimb(cfg.calf.rTop, cfg.calf.rBottom, cfg.calf.h, 0, -cfg.calf.h / 2, 0.01, calfZone, kneePivot);
+                const kneeBaselineY = cfg.thigh.y - cfg.thigh.h / 2;
+                const foot = new THREE.Mesh(new THREE.BoxGeometry(cfg.foot.w, cfg.foot.h, cfg.foot.d), skinMat);
+                foot.position.set(0, cfg.foot.y - kneeBaselineY, 0.05); kneePivot.add(foot);
+                return { thigh, calf };
+            }
+            const legDataL = buildLeg(-1, 'thighL', 'calfL', true), legDataR = buildLeg(1, 'thighR', 'calfR', false);
+            const thighL = legDataL.thigh, calfL = legDataL.calf, thighR = legDataR.thigh, calfR = legDataR.calf;
+
+            let bustL = null, bustR = null, gluteL = null, gluteR = null;
+            if (gender === 'femme') {
+                const bustGeo = new THREE.SphereGeometry(0.075, 18, 14);
+                bustL = new THREE.Mesh(bustGeo, skinMat);
+                bustL.position.set(-0.068, 1.235, 0.115); bustL.scale.set(1, 0.92, 0.85); bustL.userData.baseScale = { x:1, y:0.92, z:0.85 };
+                group.add(bustL);
+                bustR = bustL.clone(); bustR.position.x = 0.068; bustR.userData.baseScale = { x:1, y:0.92, z:0.85 }; group.add(bustR);
+                const gluteGeo = new THREE.SphereGeometry(0.095, 18, 14);
+                gluteL = new THREE.Mesh(gluteGeo, skinMat);
+                gluteL.position.set(-0.058, 0.795, -0.13); gluteL.scale.set(0.95, 0.85, 0.75); gluteL.userData.baseScale = { x:0.95, y:0.85, z:0.75 };
+                group.add(gluteL);
+                gluteR = gluteL.clone(); gluteR.position.x = 0.058; gluteR.userData.baseScale = { x:0.95, y:0.85, z:0.75 }; group.add(gluteR);
+            }
+
+            function torsoZone(label, key, lo, hi) { const base = profile.find(p => p.key === key).r; return { type:'torso', key, label, min: base*lo, max: base*hi }; }
+            const ZONES = {
+                neck: torsoZone('Cou', 'neck', 0.82, 1.30),
+                shoulder: torsoZone('Épaules', 'shoulder', 0.80, 1.28),
+                chest: torsoZone('Poitrine', 'chest', 0.78, gender==='homme' ? 1.30 : 1.40),
+                belly: torsoZone('Ventre', 'belly', 0.72, 1.55),
+                waist: torsoZone('Taille', 'waist', 0.75, 1.40),
+                hip: torsoZone('Hanches', 'hip', 0.80, 1.35),
+                armL: { type:'limb', label:'Bras', min:0.65, max:1.6, meshes:[upperArmL, foreArmL] },
+                armR: { type:'limb', label:'Bras', min:0.65, max:1.6, meshes:[upperArmR, foreArmR] },
+                thighL: { type:'limb', label:'Cuisse', min:0.7, max:1.6, meshes:[thighL] },
+                thighR: { type:'limb', label:'Cuisse', min:0.7, max:1.6, meshes:[thighR] },
+                calfL: { type:'limb', label:'Mollet', min:0.7, max:1.5, meshes:[calfL] },
+                calfR: { type:'limb', label:'Mollet', min:0.7, max:1.5, meshes:[calfR] },
+            };
+            if (gender === 'femme') {
+                ZONES.bust = { type:'limb', label:'Poitrine (volume)', min:0.55, max:1.7, meshes:[bustL, bustR], axes:['x','y','z'] };
+                ZONES.glute = { type:'limb', label:'Fesses', min:0.6, max:1.6, meshes:[gluteL, gluteR], axes:['x','y','z'] };
+            }
+            const limbScaleState = {};
+            Object.keys(ZONES).forEach(k => { if (ZONES[k].type === 'limb') limbScaleState[k] = 1; });
+            const pickables = [torsoMesh, upperArmL, upperArmR, foreArmL, foreArmR, thighL, thighR, calfL, calfR];
+            if (gender === 'femme') pickables.push(bustL, bustR, gluteL, gluteR);
+
+            return {
+                group, gender, cfg,
+                get profile(){ return profile; },
+                resetProfile(){ profile = cfg.profile.map(p => ({ ...p })); rebuildTorso(); },
+                rebuildTorso, ZONES, limbScaleState, pickables,
+            };
+        }
+
+        function mnqEnsureScene() {
+            if (mnqScene) return;
+            const host = document.getElementById('mnq-canvas-host');
+            mnqScene = new THREE.Scene();
+            mnqCamera = new THREE.PerspectiveCamera(32, Math.max(host.clientWidth,1) / Math.max(host.clientHeight,1), 0.1, 50);
+            mnqCamera.position.set(0, 1.05, 2.85); mnqCamera.lookAt(0, 0.95, 0);
+            mnqRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            mnqRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            mnqRenderer.setSize(host.clientWidth, host.clientHeight);
+            host.appendChild(mnqRenderer.domElement);
+            mnqRenderer.domElement.style.touchAction = 'none';
+
+            const hemi = new THREE.HemisphereLight(0xffffff, 0x9a9a9d, 0.9); mnqScene.add(hemi);
+            const keyL = new THREE.DirectionalLight(0xffffff, 0.85); keyL.position.set(1.4, 2.6, 1.8); mnqScene.add(keyL);
+            const fillL = new THREE.DirectionalLight(0xffffff, 0.25); fillL.position.set(-1.6, 1.2, -1.2); mnqScene.add(fillL);
+
+            mnqRaycaster = new THREE.Raycaster();
+
+            const dom = mnqRenderer.domElement;
+            dom.addEventListener('mousedown', mnqPointerDown);
+            window.addEventListener('mousemove', mnqPointerMove);
+            window.addEventListener('mouseup', mnqPointerUp);
+            dom.addEventListener('touchstart', e => mnqPointerDown(e), { passive:true });
+            dom.addEventListener('touchmove', e => { e.preventDefault(); mnqPointerMove(e); }, { passive:false });
+            dom.addEventListener('touchend', mnqPointerUp);
+
+            function animate() { requestAnimationFrame(animate); mnqRenderer.render(mnqScene, mnqCamera); }
+            animate();
+        }
+
+        function mnqLoadGender(gender) {
+            mnqEnsureScene();
+            if (mnqCurrent) mnqScene.remove(mnqCurrent.group);
+            mnqCurrent = mnqCreate(gender);
+            mnqScene.add(mnqCurrent.group);
+            document.getElementById('mnq-readout').classList.add('hidden');
+            document.getElementById('mnq-hint').style.display = 'block';
+            const bH = document.getElementById('mnq-gender-homme'), bF = document.getElementById('mnq-gender-femme');
+            bH.className = 'mnq-gender-pill flex-1 py-2 rounded-xl text-[10px] font-black uppercase border border-gray-200 ' + (gender==='homme' ? 'bg-ink text-white' : 'bg-white text-ink');
+            bF.className = 'mnq-gender-pill flex-1 py-2 rounded-xl text-[10px] font-black uppercase border border-gray-200 ' + (gender==='femme' ? 'bg-ink text-white' : 'bg-white text-ink');
+
+            // Restaurer la dernière silhouette validée par ce client, si même genre
+            try {
+                const saved = JSON.parse(localStorage.getItem('driprush_client_silhouette') || 'null');
+                if (saved && saved.gender === gender && saved.raw) {
+                    Object.keys(saved.raw.profile || {}).forEach(k => { if (mnqCurrent.ZONES[k]) mnqApplyZoneValue(k, saved.raw.profile[k], true); });
+                    Object.keys(saved.raw.limbs || {}).forEach(k => { if (mnqCurrent.ZONES[k]) mnqApplyZoneValue(k, saved.raw.limbs[k], true); });
+                }
+            } catch(e) {}
+        }
+
+        function mnqFindNearestProfileIndex(localY) {
+            let bestIdx = 0, bestDist = Infinity;
+            mnqCurrent.profile.forEach((p, i) => { const d = Math.abs(p.y - localY); if (d < bestDist) { bestDist = d; bestIdx = i; } });
+            return bestIdx;
+        }
+        function mnqZoneKeyForProfileIndex(idx) {
+            const pKey = mnqCurrent.profile[idx].key;
+            return Object.keys(mnqCurrent.ZONES).find(k => mnqCurrent.ZONES[k].type === 'torso' && mnqCurrent.ZONES[k].key === pKey) || null;
+        }
+        function mnqPointerPos(e) {
+            const rect = mnqRenderer.domElement.getBoundingClientRect();
+            const cx = e.touches ? e.touches[0].clientX : e.clientX, cy = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: cx - rect.left, y: cy - rect.top, rect };
+        }
+        function mnqCurrentZoneValue(key) {
+            const z = mnqCurrent.ZONES[key];
+            if (z.type === 'torso') return mnqCurrent.profile.find(p => p.key === z.key).r;
+            return mnqCurrent.limbScaleState[key];
+        }
+        function mnqApplyZoneValue(key, val, silent) {
+            const z = mnqCurrent.ZONES[key];
+            val = Math.max(z.min, Math.min(z.max, val));
+            if (z.type === 'torso') {
+                mnqCurrent.profile.find(p => p.key === z.key).r = val;
+                mnqCurrent.rebuildTorso();
+            } else {
+                mnqCurrent.limbScaleState[key] = val;
+                const axes = z.axes || ['x','z'];
+                z.meshes.forEach(m => { const base = m.userData.baseScale || { x:1, y:1, z:1 }; axes.forEach(ax2 => { m.scale[ax2] = base[ax2] * val; }); });
+            }
+            if (!silent) mnqUpdateReadout(key, val);
+        }
+        function mnqUpdateReadout(key, val) {
+            const z = mnqCurrent.ZONES[key];
+            const pct = Math.round(((val - z.min) / (z.max - z.min)) * 100);
+            document.getElementById('mnq-readout').classList.remove('hidden');
+            document.getElementById('mnq-zone-name').innerText = z.label;
+            document.getElementById('mnq-bar-fill').style.width = pct + '%';
+        }
+        function mnqPointerDown(e) {
+            const { x, y, rect } = mnqPointerPos(e);
+            const ndc = new THREE.Vector2((x / rect.width) * 2 - 1, -(y / rect.height) * 2 + 1);
+            mnqRaycaster.setFromCamera(ndc, mnqCamera);
+            const hits = mnqRaycaster.intersectObjects(mnqCurrent.pickables, false);
+            mnqLastX = x;
+            if (hits.length) {
+                const obj = hits[0].object;
+                let zoneKey = null;
+                if (obj.userData.zone) zoneKey = obj.userData.zone;
+                else if (obj.userData.type === 'torso') {
+                    const lp = obj.worldToLocal(hits[0].point.clone());
+                    zoneKey = mnqZoneKeyForProfileIndex(mnqFindNearestProfileIndex(lp.y));
+                }
+                if (zoneKey) {
+                    mnqMode = 'edit'; mnqActiveZone = zoneKey; mnqDragStartX = x; mnqDragStartVal = mnqCurrentZoneValue(zoneKey);
+                    mnqUpdateReadout(zoneKey, mnqDragStartVal);
+                    document.getElementById('mnq-hint').style.display = 'none';
+                    return;
+                }
+            }
+            mnqMode = 'rotate'; mnqActiveZone = null;
+        }
+        function mnqPointerMove(e) {
+            if (!mnqMode) return;
+            const { x } = mnqPointerPos(e);
+            if (mnqMode === 'edit' && mnqActiveZone) {
+                const z = mnqCurrent.ZONES[mnqActiveZone];
+                const span = z.max - z.min;
+                const sensitivity = (z.type === 'torso' ? 1.0 : 4.0) * (span / 300);
+                mnqApplyZoneValue(mnqActiveZone, mnqDragStartVal + (x - mnqDragStartX) * sensitivity);
+            } else if (mnqMode === 'rotate') {
+                const delta = x - mnqLastX; mnqCurrent.group.rotation.y += delta * 0.008; mnqLastX = x;
+            }
+        }
+        function mnqPointerUp() { mnqMode = null; mnqActiveZone = null; }
+
+        window.toggleMannequinWidget = () => {
+            const body = document.getElementById('mnq-widget-body');
+            const icon = document.getElementById('mnq-toggle-icon');
+            const opening = body.classList.contains('hidden');
+            body.classList.toggle('hidden');
+            icon.style.transform = opening ? 'rotate(180deg)' : 'rotate(0deg)';
+            if (opening) {
+                setTimeout(() => {
+                    if (!mnqInitialized) {
+                        mnqInitialized = true;
+                        let startGender = 'homme';
+                        try { const saved = JSON.parse(localStorage.getItem('driprush_client_silhouette') || 'null'); if (saved && saved.gender) startGender = saved.gender; } catch(e) {}
+                        mnqLoadGender(startGender);
+                    } else if (mnqRenderer) {
+                        const host = document.getElementById('mnq-canvas-host');
+                        mnqCamera.aspect = host.clientWidth / host.clientHeight;
+                        mnqCamera.updateProjectionMatrix();
+                        mnqRenderer.setSize(host.clientWidth, host.clientHeight);
+                    }
+                }, 30);
+            }
+        };
+
+        window.mnqSetGender = (g) => { if (mnqCurrent && mnqCurrent.gender === g) return; mnqLoadGender(g); };
+
+        window.mnqReset = () => {
+            if (!mnqCurrent) return;
+            mnqCurrent.resetProfile();
+            Object.keys(mnqCurrent.limbScaleState).forEach(k => {
+                mnqCurrent.limbScaleState[k] = 1;
+                const z = mnqCurrent.ZONES[k]; const axes = z.axes || ['x','z'];
+                z.meshes.forEach(m => { const base = m.userData.baseScale || { x:1, y:1, z:1 }; axes.forEach(ax2 => { m.scale[ax2] = base[ax2]; }); });
+            });
+            document.getElementById('mnq-readout').classList.add('hidden');
+            document.getElementById('mnq-hint').style.display = 'block';
+        };
+
+        function mnqTag(pct) { return pct < 30 ? 'Fin' : (pct > 70 ? 'Prononcé' : 'Standard'); }
+
+        window.mnqValidate = () => {
+            if (!mnqCurrent) return;
+            const zoneOrder = Object.keys(mnqCurrent.ZONES);
+            const measurements = zoneOrder.map(k => {
+                const z = mnqCurrent.ZONES[k];
+                const val = mnqCurrentZoneValue(k);
+                const pct = Math.round(((val - z.min) / (z.max - z.min)) * 100);
+                return { label: z.label, pct, tag: mnqTag(pct) };
+            });
+            const rawProfile = {}; mnqCurrent.profile.forEach(p => {
+                const zk = Object.keys(mnqCurrent.ZONES).find(k => mnqCurrent.ZONES[k].type === 'torso' && mnqCurrent.ZONES[k].key === p.key);
+                if (zk) rawProfile[zk] = p.r;
+            });
+            const rawLimbs = Object.assign({}, mnqCurrent.limbScaleState);
+
+            const payload = { gender: mnqCurrent.gender, measurements, raw: { profile: rawProfile, limbs: rawLimbs } };
+            localStorage.setItem('driprush_client_silhouette', JSON.stringify(payload));
+            window.sendSilhouetteToBoutique(payload);
+        };
+
+        window.sendSilhouetteToBoutique = (payload) => {
+            if (!window.selectedItem && !(window.__drip && window.__drip.getCtx().selectedItem)) { toast('Sélectionne un article d\'abord', true); return; }
+            const item = window.selectedItem || window.__drip.getCtx().selectedItem;
+            if (window.isLoggedIn && !window.isLoggedIn()) {
+                window._afterLogin = () => window.sendSilhouetteToBoutique(payload);
+                toast('Crée un compte pour envoyer ta silhouette 💬', false);
+                if (window.openAccountModal) window.openAccountModal('signup');
+                return;
+            }
+            const dd = window.__drip; if (!dd) return;
+            const shopPhone = item.shopPhone || '2290147535343';
+            const shopName = item.shop || 'Boutique';
+            const key = item.id;
+            const clientName = localStorage.getItem('driprush_client_name') || 'Client';
+            const btn = document.getElementById('mnq-validate-btn');
+            const originalTxt = btn ? btn.innerText : '';
+            if (btn) { btn.disabled = true; btn.innerText = 'Envoi...'; }
+
+            let myChats = {};
+            try { myChats = JSON.parse(localStorage.getItem('driprush_my_chats') || '{}'); } catch(e) {}
+
+            const pushIt = (spPhone, chatId) => {
+                dd.push(dd.ref(dd.db, 'driprush_chats/' + spPhone + '/' + chatId + '/messages'), {
+                    sender: 'client', type: 'silhouette', gender: payload.gender, measurements: payload.measurements, timestamp: Date.now()
+                }).then(() => {
+                    toast('✅ Silhouette envoyée à ' + shopName);
+                    if (btn) { btn.innerText = 'Envoyée ✅'; setTimeout(() => { btn.disabled = false; btn.innerText = originalTxt; }, 1800); }
+                }).catch(err => { toast('Erreur : ' + err.message, true); if (btn) { btn.disabled = false; btn.innerText = originalTxt; } });
+            };
+
+            if (myChats[key] && myChats[key].chatId) {
+                pushIt(myChats[key].shopPhone, myChats[key].chatId);
+            } else {
+                const chatRef = dd.push(dd.ref(dd.db, 'driprush_chats/' + shopPhone));
+                dd.set(chatRef, { clientName, productName: item.name, productId: item.id, shopName, createdAt: Date.now() }).then(() => {
+                    myChats[key] = { chatId: chatRef.key, shopPhone, shopName, productName: item.name, lastReadByClient: Date.now() };
+                    localStorage.setItem('driprush_my_chats', JSON.stringify(myChats));
+                    pushIt(shopPhone, chatRef.key);
+                }).catch(err => { toast('Erreur : ' + err.message, true); if (btn) { btn.disabled = false; btn.innerText = originalTxt; } });
+            }
+        };
+
+        window.addEventListener('resize', () => {
+            if (!mnqRenderer) return;
+            const host = document.getElementById('mnq-canvas-host');
+            if (!host || host.clientWidth === 0) return;
+            mnqCamera.aspect = host.clientWidth / host.clientHeight;
+            mnqCamera.updateProjectionMatrix();
+            mnqRenderer.setSize(host.clientWidth, host.clientHeight);
+        });
+    } catch (e) { console.error('Module mannequin virtuel :', e); }
+    </script>
 </body>
 </html>
